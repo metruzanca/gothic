@@ -1,0 +1,20 @@
+package views
+
+templ PingPong() {
+	state messages []string = ["ready"]
+
+	<div class="app">
+		<button onclick={
+			messages.Push("ping")
+			pong := await api.Ping()
+			messages.Push(pong)
+		}>Ping</button>
+		<ul>
+			@each messages as m {
+				<li>{ m }</li>
+			}
+		</ul>
+	</div>
+}
+
+proc Ping() string
