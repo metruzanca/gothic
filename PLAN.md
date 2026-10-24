@@ -293,8 +293,7 @@ version of the thesis and should be the first thing built after Phase 0.
 
 ## Open questions
 
-- Confirm the module path (`github.com/metru/gothic` assumed) and the final source
-  extension (`.gothic` assumed).
+- Confirm the final source extension (`.gothic` assumed).
 - Confirm procedure/route declaration as Go marker comments (recommended, gives real
   types) versus a `procedure` block inside `.gothic` files.
 - Decide the exact equality and numeric-conversion rules for the expression subset.

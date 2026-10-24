@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/metru/gothic/parser"
+	"github.com/metruzanca/gothic/parser"
 )
 
 // Options controls a single generated JavaScript module.

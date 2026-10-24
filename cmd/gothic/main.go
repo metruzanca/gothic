@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/metru/gothic/generator"
-	"github.com/metru/gothic/generator/jsgen"
-	"github.com/metru/gothic/parser"
+	"github.com/metruzanca/gothic/generator"
+	"github.com/metruzanca/gothic/generator/jsgen"
+	"github.com/metruzanca/gothic/parser"
 )
 
 func main() {

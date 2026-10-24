@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/metru/gothic/parser"
+	"github.com/metruzanca/gothic/parser"
 )
 
 // Options controls a single generated .gothic file.
@@ -75,7 +75,7 @@ func Generate(f *parser.File, opts Options) ([]byte, error) {
 	}
 	b.WriteString("\t\"io\"\n")
 	b.WriteString("\t_ \"embed\"\n\n")
-	b.WriteString("\t\"github.com/metru/gothic\"\n")
+	b.WriteString("\t\"github.com/metruzanca/gothic\"\n")
 	b.WriteString(")\n\n")
 
 	embedName := sanitizeIdent(opts.ModuleBase) + "JS"

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/metru/gothic/generator/jsgen"
-	"github.com/metru/gothic/parser"
+	"github.com/metruzanca/gothic/generator/jsgen"
+	"github.com/metruzanca/gothic/parser"
 )
 
 const demo = `package views

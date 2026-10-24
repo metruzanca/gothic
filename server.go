@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
-	runtimeclient "github.com/metru/gothic/client/runtime"
+	runtimeclient "github.com/metruzanca/gothic/client/runtime"
 )
 
 // ProcedureFunc handles a server procedure call.

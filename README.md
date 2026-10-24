@@ -28,6 +28,34 @@ gothic: wrote 2 artifact(s) from 1 source file(s)
 
 Open the printed URL and click Ping. Set `PORT` to use a different port.
 
+## Install as a dependency
+
+```sh
+go get github.com/metruzanca/gothic@v0.1.0
+go install github.com/metruzanca/gothic/cmd/gothic@v0.1.0
+```
+
+In an application, wires the generator into `go generate`. The in-repo
+`../../cmd/gothic` form only works inside this repository, so use the published
+module path:
+
+```go
+//go:generate go run github.com/metruzanca/gothic/cmd/gothic@v0.1.0 generate .
+```
+
+Or, on Go 1.24 and newer, add the CLI as a tool dependency:
+
+```sh
+go get -tool github.com/metruzanca/gothic/cmd/gothic@v0.1.0
+```
+
+```go
+//go:generate go tool gothic generate .
+```
+
+Run `go generate` before `go build`. Generated Go embeds its sibling JavaScript
+with `//go:embed`, so the JavaScript file must exist at build time.
+
 ## Documentation
 
 - [PLAN.md](PLAN.md): architecture, decisions, and full roadmap.

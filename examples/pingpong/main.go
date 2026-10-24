@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/metru/gothic"
-	"github.com/metru/gothic/examples/pingpong/views"
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/examples/pingpong/views"
 )
 
 type procedures struct{}

@@ -1,4 +1,4 @@
-module github.com/metru/gothic
+module github.com/metruzanca/gothic
 
 go 1.26
 

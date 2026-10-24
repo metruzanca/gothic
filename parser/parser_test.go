@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/metru/gothic/parser"
+	"github.com/metruzanca/gothic/parser"
 )
 
 const demo = `package views

@@ -10,7 +10,7 @@ import (
 	"html"
 	"io"
 
-	"github.com/metru/gothic"
+	"github.com/metruzanca/gothic"
 )
 
 //go:embed pingpong_gothic.js
