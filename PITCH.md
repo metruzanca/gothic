@@ -21,26 +21,30 @@ No virtual DOM. No hand-written client modules. No npm on the happy path.
 
 ```gothic
 templ PingPong() {
-	state messages []string = ["ready"]
+	state messages = []string{"ready"}
 
 	<div>
-		<button onclick={
-			messages.Push("ping")
-			pong := await api.Ping()
-			messages.Push(pong)
-		}>Ping</button>
+		<button onclick={ func() {
+			messages = append(messages, "ping")
+			pong, err := api.Ping()
+			if err != nil {
+				messages = append(messages, err.Error())
+				return
+			}
+			messages = append(messages, pong)
+		} }>Ping</button>
 		<ul>
-			@each messages as m {
+			for _, m := range messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
 
-proc Ping() string
+rpc Ping() string
 ```
 
-Clicking Ping appends `ping` to the DOM immediately, calls a typed Go procedure, receives `pong`, and appends that too. The server rendered the initial list. The client hydrated it in place.
+Clicking Ping appends `ping` to the DOM immediately, calls a typed Go procedure, receives `pong`, and appends that too. The handler body is Go. There is no `await`, no JavaScript array syntax, and no separate client dialect. The server rendered the initial list. The client hydrated it in place.
 
 ## The pipeline
 
@@ -67,8 +71,9 @@ The client runtime stays tiny: signals, effects, list adoption, event binding, a
 
 ## How it fits together
 
+- **Go-first syntax.** State initializers, loop headers, interpolations, and event handler bodies are parsed with Go's own parser. Embedded code reads like Go, not JavaScript.
 - **Shared AST, two walkers.** The Go backend and the JavaScript backend consume the same parse tree, so server and client output cannot drift apart.
-- **Signals with auto-tracking.** Component state compiles to signals. Reads register dependencies. Writes schedule surgical updates.
+- **Signals with auto-tracking.** Component state compiles to signals. Reads register dependencies. Writes schedule surgical updates. `append` on state lowers to a reactive push.
 - **Full hydration.** The server emits markers. The client adopts the existing DOM instead of rebuilding it, so first paint is server HTML and interactivity attaches without a flash.
 - **Typed procedures.** Server functions become generated Go registrars and typed client calls. Same-origin JSON by default, with a no-JS form fallback planned.
 - **`net/http` at the core.** chi v5 is the blessed router; `http.Handler` compatibility means no lock-in.
@@ -82,6 +87,7 @@ Iteration 1 is implemented and verified: the ping/pong slice above runs end to e
 - The Go server renders the initial list with hydration markers and serialized state.
 - The client hydrates the existing list, binds the button, and calls the procedure.
 - Clicking Ping produces `ready`, `ping`, `pong` in the DOM with no reload.
+- Go-style two-value error handling works: `pong, err := api.Ping()`.
 - No hand-written JavaScript. No wasm. No npm.
 - Unit, integration, and live browser tests pass.
 

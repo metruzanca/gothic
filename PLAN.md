@@ -47,6 +47,24 @@ from the Go binary.
 | Internal RPC | gothic-native generated JSON procedures with a no-JS form-POST fallback. |
 | External API | REST + OpenAPI 3.1 via huma, mounted alongside page routes and procedures. |
 
+## Syntax direction
+
+The embedded code is Go, not JavaScript. The parser uses `go/parser` for state
+initializers, loop headers, interpolations, and event handler bodies.
+
+- State is declared as `state name = <Go expression>`.
+- Lists use `for ... range`, with templ-style markup in the body.
+- Event handlers are Go function literals: `onclick={ func() { ... } }`.
+- Procedures are declared with `rpc Name() string`.
+- Procedure calls are awaited automatically. There is no `await` keyword in the
+  source.
+- Two-value procedure calls use Go error handling: `v, err := api.Proc()`.
+- `append` on state lowers to a reactive push.
+- `nil` and `err.Error()` lower to their JavaScript equivalents.
+
+There is no state, `@each`, `.Push`, or JavaScript array literal in the source
+language. See [SYNTAX.md](SYNTAX.md) for the current grammar and limits.
+
 ## Repository layout
 
 ```

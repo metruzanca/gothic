@@ -1,6 +1,7 @@
 package jsgen_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -11,23 +12,27 @@ import (
 const demo = `package views
 
 templ PingPong() {
-	state messages []string = ["ready"]
+	state messages = []string{"ready"}
 
 	<div class="app">
-		<button onclick={
-			messages.Push("ping")
-			pong := await api.Ping()
-			messages.Push(pong)
-		}>Ping</button>
+		<button onclick={ func() {
+			messages = append(messages, "ping")
+			pong, err := api.Ping()
+			if err != nil {
+				messages = append(messages, err.Error())
+				return
+			}
+			messages = append(messages, pong)
+		} }>Ping</button>
 		<ul>
-			@each messages as m {
+			for _, m := range messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
 
-proc Ping() string
+rpc Ping() string
 `
 
 func TestGenerate(t *testing.T) {
@@ -45,18 +50,48 @@ func TestGenerate(t *testing.T) {
 	src := string(out)
 	for _, want := range []string{
 		`import { readState, signal, each, on, rpc } from "/_gothic/runtime.js";`,
-		`const messages = signal(state["messages"] ?? []);`,
+		`const messages = signal(["ready"]);`,
 		`Ping: (...args) => rpc("Ping", ...args)`,
+		`on(root, "0", "click", async () => {`,
 		`messages.push("ping");`,
-		`const pong = await api.Ping();`,
+		`let pong, err;`,
+		`try {`,
+		`pong = await api.Ping();`,
+		`} catch (__gothicErr1) {`,
+		`err = __gothicErr1;`,
+		`if (err != null) {`,
+		`messages.push(err.message);`,
+		`return;`,
 		`messages.push(pong);`,
 		`each(root, "0", messages, pingpongRenderEach0);`,
-		`function pingpongRenderEach0(m)`,
+		`function pingpongRenderEach0(_index, m)`,
 		`document.createElement("li")`,
+		`String(m)`,
 		`hydrate();`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
 		}
+	}
+	if strings.Contains(src, "await await") {
+		t.Errorf("generated JS contains a duplicated await\n\n%s", src)
+	}
+}
+
+func TestGenerateIsStableAcrossPaths(t *testing.T) {
+	f, err := parser.Parse("pingpong.gothic", []byte(demo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := jsgen.Generate(f, jsgen.Options{FileName: "examples/pingpong/views/pingpong.gothic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := jsgen.Generate(f, jsgen.Options{FileName: "views/pingpong.gothic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a, b) {
+		t.Fatalf("generated JS depends on the source path\n\nA:\n%s\n\nB:\n%s", a, b)
 	}
 }

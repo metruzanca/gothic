@@ -1,6 +1,7 @@
 # Iteration 1: the ping/pong vertical slice
 
-Status: complete and verified.
+Status: complete and verified. The syntax is Go-first; see [SYNTAX.md](SYNTAX.md)
+for the full grammar.
 
 ## Goal
 
@@ -54,46 +55,54 @@ pong
 
 ## Language subset
 
-The iteration 1 grammar is intentionally narrow:
+The syntax is Go-first. Embedded code is parsed with Go's own parser, so there
+is no `await`, no JavaScript array literal, and no custom statement dialect.
 
 ```gothic
 package pingpong
 
 templ PingPong() {
-	state messages []string = ["ready"]
+	state messages = []string{"ready"}
 
 	<div class="app">
-		<button onclick={
-			messages.Push("ping")
-			pong := await api.Ping()
-			messages.Push(pong)
-		}>Ping</button>
+		<button onclick={ func() {
+			messages = append(messages, "ping")
+			pong, err := api.Ping()
+			if err != nil {
+				messages = append(messages, err.Error())
+				return
+			}
+			messages = append(messages, pong)
+		} }>Ping</button>
 		<ul>
-			@each messages as m {
+			for _, m := range messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
 
-proc Ping() string
+rpc Ping() string
 ```
 
 Supported:
 
 - One root element per template.
-- `state name []string = ["..."]` declarations at the top of a template.
+- `state name = <Go expression>` declarations at the top of a template.
 - Constant elements and constant attributes.
-- Static text and `{ identifier }` expressions inside `@each`.
-- `@each list as item { ... }` with one element child.
-- `on<event>={ ... }` handlers with two statement forms:
-  - `target.Method(args)` calls,
-  - `name := await api.Procedure(args)`.
-- Zero-argument `proc Name() string` declarations.
+- Static text and `{ <Go expression> }` interpolations.
+- `for ... range` over a state identifier, with one element child.
+- `on<event>={ func() { ... } }` handlers with Go statements.
+- Two-value procedure calls with Go-style error handling.
+- Zero-argument `rpc Name() string` declarations.
 
-Not supported yet: template parameters, nested `@each`, events inside `@each`,
-top-level dynamic expressions, reactive conditionals, keyed lists, multiple
-state types, procedure arguments, and component composition.
+The generated JavaScript awaits procedure calls automatically. It lowers
+`append` on state to a signal push, and it lowers `err != nil` and `err.Error()`
+to their JavaScript equivalents.
+
+Not supported yet: template parameters, nested lists, events inside lists,
+top-level dynamic expressions, reactive conditionals, keyed lists, state types
+other than string slices, procedure arguments, and component composition.
 
 ## Generated contract
 
@@ -177,7 +186,9 @@ Manual browser verification was also run against the live server:
 - initial DOM contains `ready`,
 - clicking Ping yields `ready`, `ping`, `pong`,
 - the RPC endpoint returns `{"result":"pong"}`,
-- the runtime and generated module are served as JavaScript.
+- the runtime and generated module are served as JavaScript,
+- with `PING_FAIL=1`, clicking Ping yields `ready`, `ping`, `ping failed`,
+  proving the two-value error path.
 
 ## Deviations from PLAN.md
 
@@ -201,6 +212,9 @@ Other accepted iteration 1 limits:
 - Unkeyed list.
 - String-slice state only.
 - Zero-argument procedures only.
+- One state declaration per line.
+- Range source must be a state identifier.
+- No events or nested lists inside lists.
 - The component emits its own module script tag, so using it twice duplicates
   the tag.
 - No CSRF, auth, or no-JS form fallback.

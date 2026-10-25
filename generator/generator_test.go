@@ -11,23 +11,27 @@ import (
 const demo = `package views
 
 templ PingPong() {
-	state messages []string = ["ready"]
+	state messages = []string{"ready"}
 
 	<div class="app">
-		<button onclick={
-			messages.Push("ping")
-			pong := await api.Ping()
-			messages.Push(pong)
-		}>Ping</button>
+		<button onclick={ func() {
+			messages = append(messages, "ping")
+			pong, err := api.Ping()
+			if err != nil {
+				messages = append(messages, err.Error())
+				return
+			}
+			messages = append(messages, pong)
+		} }>Ping</button>
 		<ul>
-			@each messages as m {
+			for _, m := range messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
 
-proc Ping() string
+rpc Ping() string
 `
 
 func TestGenerate(t *testing.T) {
@@ -46,12 +50,14 @@ func TestGenerate(t *testing.T) {
 	for _, want := range []string{
 		`package views`,
 		`func PingPong() gothic.Component`,
+		`messages := []string{"ready"}`,
 		`data-gothic-root=\"pingpong\"`,
 		`data-gothic-state=\"pingpong\"`,
 		`data-gothic-on=\"0\"`,
 		`<!--g:each:0:open-->`,
 		`<!--g:each:0:close-->`,
-		`[]string{"ready"}`,
+		`for _, m := range messages {`,
+		`html.EscapeString(fmt.Sprint(m))`,
 		`//go:embed pingpong_gothic.js`,
 		`type PingPongProcedures interface`,
 		`func RegisterPingPong(s *gothic.Server, impl PingPongProcedures)`,
@@ -60,6 +66,9 @@ func TestGenerate(t *testing.T) {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated Go missing %q\n\n%s", want, src)
 		}
+	}
+	if strings.Contains(src, "await") {
+		t.Errorf("generated Go must not contain await\n\n%s", src)
 	}
 }
 

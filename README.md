@@ -59,6 +59,7 @@ with `//go:embed`, so the JavaScript file must exist at build time.
 ## Documentation
 
 - [PLAN.md](PLAN.md): architecture, decisions, and full roadmap.
+- [SYNTAX.md](SYNTAX.md): the Go-first component syntax and its current limits.
 - [ITERATION_1.md](ITERATION_1.md): what iteration 1 implements, how it works,
   how it is verified, and what is deferred.
 

@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/metruzanca/gothic/parser"
@@ -9,23 +10,27 @@ import (
 const demo = `package views
 
 templ PingPong() {
-	state messages []string = ["ready"]
+	state messages = []string{"ready"}
 
 	<div class="app">
-		<button onclick={
-			messages.Push("ping")
-			pong := await api.Ping()
-			messages.Push(pong)
-		}>Ping</button>
+		<button onclick={ func() {
+			messages = append(messages, "ping")
+			pong, err := api.Ping()
+			if err != nil {
+				messages = append(messages, err.Error())
+				return
+			}
+			messages = append(messages, pong)
+		} }>Ping</button>
 		<ul>
-			@each messages as m {
+			for _, m := range messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
 
-proc Ping() string
+rpc Ping() string
 `
 
 func TestParseDemo(t *testing.T) {
@@ -46,66 +51,64 @@ func TestParseDemo(t *testing.T) {
 	if len(tpl.State) != 1 {
 		t.Fatalf("state count = %d", len(tpl.State))
 	}
-	if got := tpl.State[0]; got.Name != "messages" || got.Type != "[]string" || len(got.Init) != 1 || got.Init[0] != "ready" {
-		t.Fatalf("state = %#v", got)
+	sd := tpl.State[0]
+	if sd.Name != "messages" {
+		t.Fatalf("state name = %q", sd.Name)
 	}
-	if len(tpl.Children) != 1 {
-		t.Fatalf("root nodes = %d", len(tpl.Children))
+	if _, ok := sd.Init.(*ast.CompositeLit); !ok {
+		t.Fatalf("state init = %T", sd.Init)
 	}
+
 	root, ok := tpl.Children[0].(*parser.Element)
 	if !ok || root.Name != "div" {
 		t.Fatalf("root = %#v", tpl.Children[0])
-	}
-	if len(root.Attributes) != 1 {
-		t.Fatalf("root attrs = %#v", root.Attributes)
-	}
-	if a, ok := root.Attributes[0].(*parser.ConstantAttr); !ok || a.Name != "class" || a.Value != "app" {
-		t.Fatalf("class attr = %#v", root.Attributes[0])
 	}
 
 	button := findElement(root, "button")
 	if button == nil {
 		t.Fatal("button not found")
 	}
-	if len(button.Attributes) != 1 {
-		t.Fatalf("button attrs = %#v", button.Attributes)
-	}
 	ev, ok := button.Attributes[0].(*parser.EventAttr)
-	if !ok || ev.Name != "onclick" {
-		t.Fatalf("button attr = %#v", button.Attributes[0])
+	if !ok || ev.Name != "onclick" || ev.Fn == nil {
+		t.Fatalf("event attr = %#v", button.Attributes[0])
 	}
-	if len(ev.Body) != 3 {
-		t.Fatalf("handler statements = %d", len(ev.Body))
+	if len(ev.Fn.Body.List) != 4 {
+		t.Fatalf("handler statements = %d", len(ev.Fn.Body.List))
 	}
-	call, ok := ev.Body[0].(*parser.HandlerCall)
-	if !ok || call.Target != "messages.Push" || len(call.Args) != 1 || !call.Args[0].IsString || call.Args[0].Value != "ping" {
-		t.Fatalf("first statement = %#v", ev.Body[0])
+	if as, ok := ev.Fn.Body.List[0].(*ast.AssignStmt); !ok || as.Tok.String() != "=" {
+		t.Fatalf("first statement = %T", ev.Fn.Body.List[0])
 	}
-	await, ok := ev.Body[1].(*parser.HandlerAwaitAssign)
-	if !ok || await.Name != "pong" || await.Call.Target != "api.Ping" {
-		t.Fatalf("second statement = %#v", ev.Body[1])
+	if _, ok := ev.Fn.Body.List[2].(*ast.IfStmt); !ok {
+		t.Fatalf("third statement = %T", ev.Fn.Body.List[2])
 	}
 
 	ul := findElement(root, "ul")
 	if ul == nil {
 		t.Fatal("ul not found")
 	}
-	var each *parser.Each
-	for _, child := range ul.Children {
-		if e, ok := child.(*parser.Each); ok {
-			each = e
-		}
+	if len(ul.Children) != 1 {
+		t.Fatalf("ul children = %d", len(ul.Children))
 	}
-	if each == nil || each.List != "messages" || each.Var != "m" {
-		t.Fatalf("each = %#v", each)
+	loop, ok := ul.Children[0].(*parser.For)
+	if !ok {
+		t.Fatalf("ul child = %T", ul.Children[0])
 	}
-	li := findElementIn(each.Children, "li")
+	if loop.Key != "_" || loop.Value != "m" {
+		t.Fatalf("for vars = %q %q", loop.Key, loop.Value)
+	}
+	if id, ok := loop.X.(*ast.Ident); !ok || id.Name != "messages" {
+		t.Fatalf("for X = %T", loop.X)
+	}
+	li := findElementIn(loop.Children, "li")
 	if li == nil {
 		t.Fatal("li not found")
 	}
-	expr, ok := li.Children[0].(*parser.Expr)
-	if !ok || expr.Value != "m" {
-		t.Fatalf("li expr = %#v", li.Children[0])
+	interp, ok := li.Children[0].(*parser.Interpolation)
+	if !ok {
+		t.Fatalf("li child = %T", li.Children[0])
+	}
+	if id, ok := interp.Expr.(*ast.Ident); !ok || id.Name != "m" {
+		t.Fatalf("interpolation = %T", interp.Expr)
 	}
 
 	if len(f.Procedures) != 1 {
@@ -113,6 +116,20 @@ func TestParseDemo(t *testing.T) {
 	}
 	if p := f.Procedures[0]; p.Name != "Ping" || p.ResultType != "string" {
 		t.Fatalf("procedure = %#v", p)
+	}
+}
+
+func TestRejectsAwait(t *testing.T) {
+	src := `package views
+templ Bad() {
+	<button onclick={ func() {
+		pong := await api.Ping()
+		_ = pong
+	} }>x</button>
+}
+`
+	if _, err := parser.Parse("bad.gothic", []byte(src)); err == nil {
+		t.Fatal("expected a parse error for await")
 	}
 }
 

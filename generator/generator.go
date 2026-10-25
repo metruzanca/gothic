@@ -2,8 +2,11 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
+	"go/ast"
 	"go/format"
+	"go/token"
 	"html"
 	"sort"
 	"strconv"
@@ -123,14 +126,14 @@ func (g *templateGen) generate() (string, error) {
 	b.WriteString("\t\twrite := func(s string) error {\n\t\t\t_, err := io.WriteString(w, s)\n\t\t\treturn err\n\t\t}\n")
 
 	for _, sd := range g.t.State {
-		fmt.Fprintf(&b, "\t\t%s := %s\n", sd.Name, goStringSlice(sd.Init))
+		fmt.Fprintf(&b, "\t\t%s := %s\n", sd.Name, goExpr(sd.Init))
 	}
 	b.WriteString("\t\tstateJSON, err := json.Marshal(")
 	b.WriteString(goStateMap(g.t.State))
 	b.WriteString(")\n")
 	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
 
-	if err := g.writeElement(&b, root, true, ""); err != nil {
+	if err := g.writeElement(&b, root, true); err != nil {
 		return "", err
 	}
 	fmt.Fprintf(&b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("\n<script type=\"module\" src=\""+g.moduleURL+"\"></script>\n"))
@@ -138,7 +141,7 @@ func (g *templateGen) generate() (string, error) {
 	return b.String(), nil
 }
 
-func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoot bool, eachVar string) error {
+func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoot bool) error {
 	var open strings.Builder
 	open.WriteString("<" + el.Name)
 	if isRoot {
@@ -167,7 +170,7 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 	}
 
 	for _, child := range el.Children {
-		if err := g.writeNode(b, child, eachVar); err != nil {
+		if err := g.writeNode(b, child); err != nil {
 			return err
 		}
 	}
@@ -175,31 +178,43 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 	return nil
 }
 
-func (g *templateGen) writeNode(b *strings.Builder, n parser.Node, eachVar string) error {
+func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 	switch n := n.(type) {
 	case *parser.Text:
 		g.emitWrite(b, html.EscapeString(n.Value))
-	case *parser.Expr:
+	case *parser.Interpolation:
 		g.usesHTML = true
 		g.usesFmt = true
-		fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", n.Value)
+		fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", goExpr(n.Expr))
 	case *parser.Element:
-		return g.writeElement(b, n, false, eachVar)
-	case *parser.Each:
-		idx := g.eachN
-		g.eachN++
-		g.emitWrite(b, fmt.Sprintf("<!--g:each:%d:open-->", idx))
-		fmt.Fprintf(b, "\t\tfor _, %s := range %s {\n", n.Var, n.List)
-		for _, child := range n.Children {
-			if err := g.writeNode(b, child, n.Var); err != nil {
-				return err
-			}
-		}
-		b.WriteString("\t\t}\n")
-		g.emitWrite(b, fmt.Sprintf("<!--g:each:%d:close-->", idx))
+		return g.writeElement(b, n, false)
+	case *parser.For:
+		return g.writeFor(b, n)
 	default:
 		return fmt.Errorf("unsupported node type %T", n)
 	}
+	return nil
+}
+
+func (g *templateGen) writeFor(b *strings.Builder, n *parser.For) error {
+	idx := g.eachN
+	g.eachN++
+	g.emitWrite(b, fmt.Sprintf("<!--g:each:%d:open-->", idx))
+	switch {
+	case n.Key != "" && n.Value != "":
+		fmt.Fprintf(b, "\t\tfor %s, %s := range %s {\n", n.Key, n.Value, goExpr(n.X))
+	case n.Key != "":
+		fmt.Fprintf(b, "\t\tfor %s := range %s {\n", n.Key, goExpr(n.X))
+	default:
+		fmt.Fprintf(b, "\t\tfor range %s {\n", goExpr(n.X))
+	}
+	for _, child := range n.Children {
+		if err := g.writeNode(b, child); err != nil {
+			return err
+		}
+	}
+	b.WriteString("\t\t}\n")
+	g.emitWrite(b, fmt.Sprintf("<!--g:each:%d:close-->", idx))
 	return nil
 }
 
@@ -232,12 +247,10 @@ func paramsOrEmpty(t *parser.Template) string {
 	return t.Params
 }
 
-func goStringSlice(values []string) string {
-	parts := make([]string, len(values))
-	for i, v := range values {
-		parts[i] = strconv.Quote(v)
-	}
-	return "[]string{" + strings.Join(parts, ", ") + "}"
+func goExpr(e ast.Expr) string {
+	var b bytes.Buffer
+	_ = format.Node(&b, token.NewFileSet(), e)
+	return b.String()
 }
 
 func goStateMap(state []parser.StateDecl) string {

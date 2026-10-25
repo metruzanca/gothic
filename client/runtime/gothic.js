@@ -88,7 +88,7 @@ export function each(root, marker, sig, render) {
       node.remove();
     }
     for (let i = nodes.length; i < items.length; i++) {
-      const node = render(items[i], i);
+      const node = render(i, items[i]);
       close.parentNode.insertBefore(node, close);
       nodes.push(node);
     }

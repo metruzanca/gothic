@@ -1,10 +1,7 @@
-// Package parser parses the iteration 1 subset of the gothic DSL.
-//
-// The subset is intentionally small. It covers package declarations,
-// components with a single string-slice state, constant elements and
-// attributes, text, variable expressions, reactive each blocks, click
-// handlers with the imperative mini block, and zero-argument procedures.
+// Package parser parses the gothic DSL and the Go fragments embedded in it.
 package parser
+
+import "go/ast"
 
 // File is a parsed .gothic file.
 type File struct {
@@ -13,7 +10,7 @@ type File struct {
 	Templates  []*Template
 }
 
-// Procedure is a client-callable server procedure declared with proc.
+// Procedure is a client-callable server procedure declared with rpc.
 type Procedure struct {
 	Name       string
 	ResultType string
@@ -27,11 +24,10 @@ type Template struct {
 	Children []Node
 }
 
-// StateDecl declares component state. Iteration 1 supports string slices only.
+// StateDecl declares component state. Init is a real Go expression.
 type StateDecl struct {
 	Name string
-	Type string
-	Init []string
+	Init ast.Expr
 }
 
 // Node is a template body node.
@@ -55,21 +51,22 @@ type Text struct {
 
 func (*Text) node() {}
 
-// Expr is an inline { expression } node. Iteration 1 supports identifiers.
-type Expr struct {
-	Value string
+// Interpolation is an inline { expression } node.
+type Interpolation struct {
+	Expr ast.Expr
 }
 
-func (*Expr) node() {}
+func (*Interpolation) node() {}
 
-// Each renders a reactive list over a state value.
-type Each struct {
-	List     string
-	Var      string
+// For renders a list. X is a real Go expression, normally a state identifier.
+type For struct {
+	Key      string
+	Value    string
+	X        ast.Expr
 	Children []Node
 }
 
-func (*Each) node() {}
+func (*For) node() {}
 
 // Attribute is an element attribute.
 type Attribute interface {
@@ -84,37 +81,10 @@ type ConstantAttr struct {
 
 func (*ConstantAttr) attr() {}
 
-// EventAttr is an on<event>={ ... } handler.
+// EventAttr is an on<event>={ func() { ... } } handler.
 type EventAttr struct {
 	Name string
-	Body []HandlerStmt
+	Fn   *ast.FuncLit
 }
 
 func (*EventAttr) attr() {}
-
-// HandlerStmt is a statement in an event handler block.
-type HandlerStmt interface {
-	stmt()
-}
-
-// HandlerCall is a dotted call such as messages.Push("ping").
-type HandlerCall struct {
-	Target string
-	Args   []Arg
-}
-
-func (*HandlerCall) stmt() {}
-
-// HandlerAwaitAssign is name := await dotted.Call(args).
-type HandlerAwaitAssign struct {
-	Name string
-	Call HandlerCall
-}
-
-func (*HandlerAwaitAssign) stmt() {}
-
-// Arg is a call argument. Iteration 1 supports string literals and identifiers.
-type Arg struct {
-	IsString bool
-	Value    string
-}

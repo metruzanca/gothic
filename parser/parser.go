@@ -2,6 +2,9 @@ package parser
 
 import (
 	"fmt"
+	"go/ast"
+	goparser "go/parser"
+	"go/token"
 	"strings"
 )
 
@@ -37,14 +40,14 @@ func (p *parser) parseFile() (*File, error) {
 				return nil, err
 			}
 			f.Templates = append(f.Templates, t)
-		case p.consumeKeyword("proc"):
+		case p.consumeKeyword("rpc"):
 			proc, err := p.parseProcedure()
 			if err != nil {
 				return nil, err
 			}
 			f.Procedures = append(f.Procedures, proc)
 		default:
-			return nil, p.errf("expected package, templ, or proc")
+			return nil, p.errf("expected package, templ, or rpc")
 		}
 	}
 	if f.Package == "" {
@@ -103,43 +106,23 @@ func (p *parser) parseState() (StateDecl, error) {
 		return sd, p.errf("expected state name")
 	}
 	p.skipSpace()
-	start := p.pos
-	for !p.eof() && p.peek() != '=' {
-		p.pos++
-	}
-	if p.eof() {
-		return sd, p.errf("expected = in state declaration")
-	}
-	sd.Type = strings.TrimSpace(string(p.src[start:p.pos]))
 	if !p.consume("=") {
 		return sd, p.errf("expected = in state declaration")
 	}
 	p.skipSpace()
-	if !p.consume("[") {
-		return sd, p.errf("expected [ for state initializer")
+	start := p.pos
+	for !p.eof() && p.peek() != '\n' && p.peek() != '\r' {
+		p.pos++
 	}
-	for {
-		p.skipSpace()
-		if p.consume("]") {
-			break
-		}
-		if p.peek() != '"' {
-			return sd, p.errf("expected string in state initializer")
-		}
-		v, err := p.readQuoted()
-		if err != nil {
-			return sd, err
-		}
-		sd.Init = append(sd.Init, v)
-		p.skipSpace()
-		if p.consume(",") {
-			continue
-		}
-		if p.consume("]") {
-			break
-		}
-		return sd, p.errf("expected , or ] in state initializer")
+	text := strings.TrimSpace(string(p.src[start:p.pos]))
+	if text == "" {
+		return sd, p.errf("expected Go expression for state %s", sd.Name)
 	}
+	expr, err := goparser.ParseExpr(text)
+	if err != nil {
+		return sd, p.errf("invalid state expression for %s: %v", sd.Name, err)
+	}
+	sd.Init = expr
 	return sd, nil
 }
 
@@ -193,13 +176,11 @@ func (p *parser) parseNode() (Node, error) {
 	case '<':
 		return p.parseElement()
 	case '{':
-		return p.parseExpr()
-	case '@':
-		if p.startsKeyword("@each") {
-			return p.parseEach()
-		}
-		return nil, p.errf("unknown @ directive")
+		return p.parseInterpolation()
 	default:
+		if p.startsKeyword("for") {
+			return p.parseFor()
+		}
 		return p.parseText(), nil
 	}
 }
@@ -208,7 +189,7 @@ func (p *parser) parseText() Node {
 	start := p.pos
 	for !p.eof() {
 		switch p.peek() {
-		case '<', '{', '@':
+		case '<', '{':
 			s := strings.TrimSpace(string(p.src[start:p.pos]))
 			if s == "" {
 				return nil
@@ -225,55 +206,89 @@ func (p *parser) parseText() Node {
 	return &Text{Value: s}
 }
 
-func (p *parser) parseExpr() (Node, error) {
-	if !p.consume("{") {
-		return nil, p.errf("expected {")
+func (p *parser) parseInterpolation() (Node, error) {
+	inner, err := p.readBalancedBraces()
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(inner) == "" {
+		return nil, p.errf("empty expression")
+	}
+	expr, err := goparser.ParseExpr(inner)
+	if err != nil {
+		return nil, p.errf("invalid expression %q: %v", strings.TrimSpace(inner), err)
+	}
+	return &Interpolation{Expr: expr}, nil
+}
+
+func (p *parser) parseFor() (Node, error) {
+	if !p.consumeKeyword("for") {
+		return nil, p.errf("expected for")
 	}
 	start := p.pos
-	for !p.eof() && p.peek() != '}' {
+	for !p.eof() && p.peek() != '{' {
 		p.pos++
 	}
 	if p.eof() {
-		return nil, p.errf("expected } to close expression")
+		return nil, p.errf("expected { after for header")
 	}
-	v := strings.TrimSpace(string(p.src[start:p.pos]))
-	p.pos++
-	if v == "" {
-		return nil, p.errf("empty expression")
+	header := strings.TrimSpace(string(p.src[start:p.pos]))
+	if header == "" {
+		return nil, p.errf("empty for header")
 	}
-	return &Expr{Value: v}, nil
-}
 
-func (p *parser) parseEach() (Node, error) {
-	if !p.consume("@each") {
-		return nil, p.errf("expected @each")
+	rs, err := parseRangeHeader(header)
+	if err != nil {
+		return nil, p.errf("invalid for header %q: %v", header, err)
 	}
-	p.skipSpace()
-	list := p.readIdent()
-	if list == "" {
-		return nil, p.errf("expected list identifier after @each")
+	if _, ok := rs.X.(*ast.Ident); !ok {
+		return nil, p.errf("iteration 1 only supports range over a state identifier")
 	}
-	p.skipSpace()
-	if !p.consumeKeyword("as") {
-		return nil, p.errf("expected as after @each list")
-	}
-	p.skipSpace()
-	v := p.readIdent()
-	if v == "" {
-		return nil, p.errf("expected item identifier after as")
-	}
-	p.skipSpace()
+
 	if !p.consume("{") {
-		return nil, p.errf("expected { after @each header")
+		return nil, p.errf("expected { after for header")
 	}
 	children, err := p.parseNodesUntil('}')
 	if err != nil {
 		return nil, err
 	}
 	if !p.consume("}") {
-		return nil, p.errf("expected } to close @each")
+		return nil, p.errf("expected } to close for")
 	}
-	return &Each{List: list, Var: v, Children: children}, nil
+
+	key, value := "", ""
+	if rs.Key != nil {
+		if id, ok := rs.Key.(*ast.Ident); ok {
+			key = id.Name
+		}
+	}
+	if rs.Value != nil {
+		if id, ok := rs.Value.(*ast.Ident); ok {
+			value = id.Name
+		}
+	}
+	return &For{Key: key, Value: value, X: rs.X, Children: children}, nil
+}
+
+func parseRangeHeader(header string) (*ast.RangeStmt, error) {
+	src := "package p\nfunc _() {\nfor " + header + " {\n}\n}\n"
+	fset := token.NewFileSet()
+	file, err := goparser.ParseFile(fset, "for.gothic", src, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(file.Decls) != 1 {
+		return nil, fmt.Errorf("unexpected declaration shape")
+	}
+	fn, ok := file.Decls[0].(*ast.FuncDecl)
+	if !ok || fn.Body == nil || len(fn.Body.List) != 1 {
+		return nil, fmt.Errorf("unexpected for shape")
+	}
+	rs, ok := fn.Body.List[0].(*ast.RangeStmt)
+	if !ok {
+		return nil, fmt.Errorf("expected range loop")
+	}
+	return rs, nil
 }
 
 func (p *parser) parseElement() (Node, error) {
@@ -352,12 +367,23 @@ func (p *parser) parseAttribute() (Attribute, error) {
 		return &ConstantAttr{Name: name}, nil
 	}
 	p.skipSpace()
-	if p.peek() == '{' && isEventAttribute(name) {
-		body, err := p.parseHandlerBlock()
+	if p.peek() == '{' {
+		if !isEventAttribute(name) {
+			return nil, p.errf("expression attributes are not supported in iteration 1")
+		}
+		inner, err := p.readBalancedBraces()
 		if err != nil {
 			return nil, err
 		}
-		return &EventAttr{Name: name, Body: body}, nil
+		expr, err := goparser.ParseExpr(inner)
+		if err != nil {
+			return nil, p.errf("invalid event handler for %s: %v", name, err)
+		}
+		fn, ok := expr.(*ast.FuncLit)
+		if !ok {
+			return nil, p.errf("event handler for %s must be a func literal", name)
+		}
+		return &EventAttr{Name: name, Fn: fn}, nil
 	}
 	if p.peek() != '"' {
 		return nil, p.errf("expected quoted value for attribute %s", name)
@@ -369,100 +395,88 @@ func (p *parser) parseAttribute() (Attribute, error) {
 	return &ConstantAttr{Name: name, Value: v}, nil
 }
 
-func (p *parser) parseHandlerBlock() ([]HandlerStmt, error) {
+// readBalancedBraces consumes the { at the current position and returns the
+// text inside it. It understands Go strings, runes, raw strings, and comments.
+func (p *parser) readBalancedBraces() (string, error) {
 	if !p.consume("{") {
-		return nil, p.errf("expected { for event handler")
+		return "", p.errf("expected {")
 	}
-	var stmts []HandlerStmt
-	for {
-		p.skipSpace()
-		if p.eof() {
-			return nil, p.errf("unexpected end of file in event handler")
+	start := p.pos
+	depth := 1
+	for !p.eof() {
+		c := p.peek()
+		switch c {
+		case '"', '\'':
+			if err := p.skipQuoted(c); err != nil {
+				return "", err
+			}
+		case '`':
+			if err := p.skipRawString(); err != nil {
+				return "", err
+			}
+		case '/':
+			if p.pos+1 < len(p.src) {
+				switch p.src[p.pos+1] {
+				case '/':
+					for !p.eof() && p.peek() != '\n' {
+						p.pos++
+					}
+					continue
+				case '*':
+					p.pos += 2
+					for !p.eof() {
+						if p.peek() == '*' && p.pos+1 < len(p.src) && p.src[p.pos+1] == '/' {
+							p.pos += 2
+							break
+						}
+						p.pos++
+					}
+					continue
+				}
+			}
+			p.pos++
+		case '{':
+			depth++
+			p.pos++
+		case '}':
+			depth--
+			p.pos++
+			if depth == 0 {
+				return string(p.src[start : p.pos-1]), nil
+			}
+		default:
+			p.pos++
 		}
-		if p.consume("}") {
-			return stmts, nil
-		}
-		stmt, err := p.parseHandlerStmt()
-		if err != nil {
-			return nil, err
-		}
-		stmts = append(stmts, stmt)
 	}
+	return "", p.errf("unterminated {")
 }
 
-func (p *parser) parseHandlerStmt() (HandlerStmt, error) {
-	first := p.readIdent()
-	if first == "" {
-		return nil, p.errf("expected statement in event handler")
-	}
-	p.skipSpace()
-	if p.consume(":=") {
-		p.skipSpace()
-		p.consumeKeyword("await")
-		p.skipSpace()
-		target := p.readDottedIdent()
-		if target == "" {
-			return nil, p.errf("expected call target after :=")
-		}
-		args, err := p.parseArgs()
-		if err != nil {
-			return nil, err
-		}
-		return &HandlerAwaitAssign{
-			Name: first,
-			Call: HandlerCall{Target: target, Args: args},
-		}, nil
-	}
-
-	target := first
-	for p.peek() == '.' {
-		p.pos++
-		next := p.readIdent()
-		if next == "" {
-			return nil, p.errf("expected identifier after .")
-		}
-		target += "." + next
-	}
-	args, err := p.parseArgs()
-	if err != nil {
-		return nil, err
-	}
-	return &HandlerCall{Target: target, Args: args}, nil
-}
-
-func (p *parser) parseArgs() ([]Arg, error) {
-	p.skipSpace()
-	if !p.consume("(") {
-		return nil, p.errf("expected ( for call arguments")
-	}
-	var args []Arg
-	for {
-		p.skipSpace()
-		if p.consume(")") {
-			return args, nil
-		}
-		if p.peek() == '"' {
-			v, err := p.readQuoted()
-			if err != nil {
-				return nil, err
-			}
-			args = append(args, Arg{IsString: true, Value: v})
-		} else {
-			v := p.readDottedIdent()
-			if v == "" {
-				return nil, p.errf("expected argument")
-			}
-			args = append(args, Arg{Value: v})
-		}
-		p.skipSpace()
-		if p.consume(",") {
+func (p *parser) skipQuoted(quote byte) error {
+	p.pos++
+	for !p.eof() {
+		c := p.peek()
+		if c == '\\' {
+			p.pos += 2
 			continue
 		}
-		if p.consume(")") {
-			return args, nil
+		p.pos++
+		if c == quote {
+			return nil
 		}
-		return nil, p.errf("expected , or ) in call arguments")
 	}
+	return p.errf("unterminated quoted literal")
+}
+
+func (p *parser) skipRawString() error {
+	p.pos++
+	for !p.eof() {
+		c := p.peek()
+		p.pos++
+		if c == '`' {
+			return nil
+		}
+	}
+	return p.errf("unterminated raw string")
 }
 
 func (p *parser) readQuoted() (string, error) {
@@ -535,20 +549,6 @@ func (p *parser) readIdent() string {
 			continue
 		}
 		break
-	}
-	return string(p.src[start:p.pos])
-}
-
-func (p *parser) readDottedIdent() string {
-	start := p.pos
-	if p.readIdent() == "" {
-		return ""
-	}
-	for p.peek() == '.' {
-		p.pos++
-		if p.readIdent() == "" {
-			break
-		}
 	}
 	return string(p.src[start:p.pos])
 }

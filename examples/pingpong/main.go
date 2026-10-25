@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,9 @@ import (
 type procedures struct{}
 
 func (procedures) Ping(ctx context.Context) (string, error) {
+	if os.Getenv("PING_FAIL") != "" {
+		return "", errors.New("ping failed")
+	}
 	return "pong", nil
 }
 
