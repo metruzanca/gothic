@@ -67,7 +67,7 @@ templ PingPong() {
 	<div class="app">
 		<button onclick={ func() {
 			messages = append(messages, "ping")
-			pong, err := api.Ping()
+			pong, err := Ping()
 			if err != nil {
 				messages = append(messages, err.Error())
 				return
@@ -164,7 +164,7 @@ func RegisterPingPong(s *gothic.Server, impl PingPongProcedures)
 ```
 
 The application implements the interface in Go, which keeps the server side
-typed while the client calls the generated `api.Ping()`.
+typed while the client calls the generated `Ping()`.
 
 ## Verification
 

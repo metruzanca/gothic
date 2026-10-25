@@ -40,6 +40,9 @@ func ModuleURL(base string) string {
 
 // Generate renders the Go source for f.
 func Generate(f *parser.File, opts Options) ([]byte, error) {
+	if err := parser.Validate(f); err != nil {
+		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+	}
 	if len(f.Templates) == 0 {
 		return nil, fmt.Errorf("%s: no template to generate", opts.FileName)
 	}

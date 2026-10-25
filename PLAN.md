@@ -56,9 +56,11 @@ initializers, loop headers, interpolations, and event handler bodies.
 - Lists use `for ... range`, with templ-style markup in the body.
 - Event handlers are Go function literals: `onclick={ func() { ... } }`.
 - Procedures are declared with `rpc Name() string`.
+- Procedures are called directly by name, for example `Ping()`. There is no
+  `api.` namespace.
 - Procedure calls are awaited automatically. There is no `await` keyword in the
   source.
-- Two-value procedure calls use Go error handling: `v, err := api.Proc()`.
+- Two-value procedure calls use Go error handling: `v, err := Proc()`.
 - `append` on state lowers to a reactive push.
 - `nil` and `err.Error()` lower to their JavaScript equivalents.
 
@@ -175,7 +177,7 @@ func CreateUser(ctx context.Context, in UserInput) (User, error) { ... }
 ```
 
 `gothic generate` emits a Go handler registration at `POST /_gothic/rpc/CreateUser`, a
-typed JS fetch stub for `.gothic` expressions such as `api.CreateUser(input)`, and a
+typed JS fetch stub for `.gothic` expressions such as `CreateUser(input)`, and a
 manifest entry with input/output schemas.
 
 Behavior:

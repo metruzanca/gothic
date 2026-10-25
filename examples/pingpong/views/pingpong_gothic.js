@@ -2,6 +2,8 @@
 
 import { readState, signal, each, on, rpc } from "/_gothic/runtime.js";
 
+const Ping = (...args) => rpc("Ping", ...args);
+
 export function hydrate() {
   // PingPong
   {
@@ -9,14 +11,11 @@ export function hydrate() {
     if (root) {
       const state = readState("pingpong");
       const messages = signal(["ready"]);
-      const api = {
-        Ping: (...args) => rpc("Ping", ...args),
-      };
       on(root, "0", "click", async () => {
         messages.push("ping");
         let pong, err;
         try {
-          pong = await api.Ping();
+          pong = await Ping();
         } catch (__gothicErr1) {
           err = __gothicErr1;
         }

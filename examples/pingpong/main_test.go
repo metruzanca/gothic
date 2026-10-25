@@ -42,7 +42,7 @@ func TestPingPongSlice(t *testing.T) {
 	res.Body.Close()
 	for _, want := range []string{
 		`messages.push("ping");`,
-		`pong = await api.Ping();`,
+		`pong = await Ping();`,
 		`if (err != null) {`,
 		`messages.push(err.message);`,
 		`messages.push(pong);`,

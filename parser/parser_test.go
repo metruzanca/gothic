@@ -15,7 +15,7 @@ templ PingPong() {
 	<div class="app">
 		<button onclick={ func() {
 			messages = append(messages, "ping")
-			pong, err := api.Ping()
+			pong, err := Ping()
 			if err != nil {
 				messages = append(messages, err.Error())
 				return
@@ -123,7 +123,7 @@ func TestRejectsAwait(t *testing.T) {
 	src := `package views
 templ Bad() {
 	<button onclick={ func() {
-		pong := await api.Ping()
+		pong := await Ping()
 		_ = pong
 	} }>x</button>
 }

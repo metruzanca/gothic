@@ -16,7 +16,7 @@ templ PingPong() {
 	<div class="app">
 		<button onclick={ func() {
 			messages = append(messages, "ping")
-			pong, err := api.Ping()
+			pong, err := Ping()
 			if err != nil {
 				messages = append(messages, err.Error())
 				return
@@ -80,7 +80,7 @@ type <Template>Procedures interface {
 }
 ```
 
-The generated JavaScript exposes `api.Ping()`.
+The generated JavaScript exposes `Ping()`.
 
 ## Markup
 
@@ -134,12 +134,12 @@ automatically, so the source never writes `await`.
 Supported statements in this iteration:
 
 - `x := expr`
-- `x, err := api.Procedure(...)`
+- `x, err := Procedure(...)`
 - `state = append(state, ...)`
 - `state = expr`
 - `if cond { ... }` with an optional `else` block
 - `return` and `return expr`
-- expression statements, including `api.Procedure(...)`
+- expression statements, including `Procedure(...)`
 
 Supported expressions:
 
@@ -155,14 +155,17 @@ Supported expressions:
 
 ### Procedure calls
 
-`api.Ping()` compiles to `await api.Ping()` inside an async handler. Calling a
+`Ping()` compiles to `await Ping()` inside an async handler. Calling a
 procedure outside an event handler is a compile error.
 
-`pong, err := api.Ping()` compiles to a try/catch. The error variable receives
+There is no `api.` namespace. `api.Ping()` is a compile error that points to
+`Ping()`.
+
+`pong, err := Ping()` compiles to a try/catch. The error variable receives
 the rejection, so Go-style error handling works:
 
 ```gothic
-pong, err := api.Ping()
+pong, err := Ping()
 if err != nil {
 	messages = append(messages, err.Error())
 	return

@@ -26,7 +26,7 @@ templ PingPong() {
 	<div>
 		<button onclick={ func() {
 			messages = append(messages, "ping")
-			pong, err := api.Ping()
+			pong, err := Ping()
 			if err != nil {
 				messages = append(messages, err.Error())
 				return
@@ -87,7 +87,7 @@ Iteration 1 is implemented and verified: the ping/pong slice above runs end to e
 - The Go server renders the initial list with hydration markers and serialized state.
 - The client hydrates the existing list, binds the button, and calls the procedure.
 - Clicking Ping produces `ready`, `ping`, `pong` in the DOM with no reload.
-- Go-style two-value error handling works: `pong, err := api.Ping()`.
+- Go-style two-value error handling works: `pong, err := Ping()`.
 - No hand-written JavaScript. No wasm. No npm.
 - Unit, integration, and live browser tests pass.
 

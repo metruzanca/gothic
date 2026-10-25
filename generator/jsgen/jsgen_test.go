@@ -17,7 +17,7 @@ templ PingPong() {
 	<div class="app">
 		<button onclick={ func() {
 			messages = append(messages, "ping")
-			pong, err := api.Ping()
+			pong, err := Ping()
 			if err != nil {
 				messages = append(messages, err.Error())
 				return
@@ -51,12 +51,12 @@ func TestGenerate(t *testing.T) {
 	for _, want := range []string{
 		`import { readState, signal, each, on, rpc } from "/_gothic/runtime.js";`,
 		`const messages = signal(["ready"]);`,
-		`Ping: (...args) => rpc("Ping", ...args)`,
+		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", async () => {`,
 		`messages.push("ping");`,
 		`let pong, err;`,
 		`try {`,
-		`pong = await api.Ping();`,
+		`pong = await Ping();`,
 		`} catch (__gothicErr1) {`,
 		`err = __gothicErr1;`,
 		`if (err != null) {`,
@@ -75,6 +75,31 @@ func TestGenerate(t *testing.T) {
 	}
 	if strings.Contains(src, "await await") {
 		t.Errorf("generated JS contains a duplicated await\n\n%s", src)
+	}
+	if strings.Contains(src, "const api") {
+		t.Errorf("generated JS still contains the api namespace\n\n%s", src)
+	}
+}
+
+func TestRejectsAPIPrefix(t *testing.T) {
+	src := `package views
+templ T() {
+	<div>
+		<button onclick={ func() {
+			v, err := api.Ping()
+			_, _ = v, err
+		} }>x</button>
+	</div>
+}
+rpc Ping() string
+`
+	f, err := parser.Parse("test.gothic", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = jsgen.Generate(f, jsgen.Options{FileName: "test.gothic"})
+	if err == nil || !strings.Contains(err.Error(), "call procedures directly") {
+		t.Fatalf("Generate() = %v, want a direct-call error", err)
 	}
 }
 
