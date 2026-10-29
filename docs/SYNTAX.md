@@ -414,6 +414,7 @@ Not supported yet:
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - typed procedure argument validation,
+- browser JavaScript interop such as `window.alert` and third-party browser globals,
 - message serialization,
 - `go/packages` type information.
 

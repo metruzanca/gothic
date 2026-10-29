@@ -18,6 +18,10 @@ The syntax is under active development and subject to change. See the
 [component demo](examples/components), and the
 [TodoMVC app](examples/todo) for working examples.
 
+Browser globals such as `window.alert` are not yet part of a supported
+JavaScript interop bridge. The example below is illustrative; see the roadmap
+for the planned bridge.
+
 ```templ
 //app.gth
 type Model struct{}

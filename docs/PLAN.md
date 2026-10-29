@@ -233,7 +233,8 @@ Not supported yet:
 - typed procedure argument validation,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
-- formatter, LSP, and source maps.
+- formatter, LSP, and source maps,
+- browser JavaScript interop such as `window.alert`, `window.location`, or third-party browser globals.
 
 The earlier `state` and imperative `func()` handler syntax still exists in the
 compiler as a legacy path. It is not the direction of the project.
@@ -251,6 +252,8 @@ These will be planned in detail after the proof of concept is evaluated:
 7. Manifest, content hashing, and production serving.
 8. Formatter, LSP, and source maps.
 9. Selective vendoring of templ's HTML and whitespace handling with tests.
+10. A designed browser JavaScript interop bridge, such as typed bindings or a
+    client-only declaration syntax, for `window.alert` and similar APIs.
 
 ## Risks
 
@@ -263,6 +266,10 @@ These will be planned in detail after the proof of concept is evaluated:
 - Stateful child components need a runtime component instance model that pure
   expansion does not provide.
 - Conditional rendering is not yet designed.
+- Arbitrary browser globals such as `window.alert` have no designed bridge.
+  The JavaScript backend can emit selector calls, but the Go prelude must still
+  compile, so browser-only symbols need a future client-side declaration or
+  typed binding.
 - The model is serialized whole. Large models may need selective state later.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
