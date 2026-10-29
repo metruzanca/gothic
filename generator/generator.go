@@ -122,6 +122,8 @@ func (g *templateGen) generate() (string, error) {
 		return "", fmt.Errorf("template %s root must be an element", g.t.Name)
 	}
 
+	modelName, modelType, hasModel := singleModelParam(g.t.Params)
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "func %s%s gothic.Component {\n", g.t.Name, paramsOrEmpty(g.t))
 	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
@@ -132,7 +134,14 @@ func (g *templateGen) generate() (string, error) {
 		fmt.Fprintf(&b, "\t\t%s := %s\n", sd.Name, goExpr(sd.Init))
 	}
 	b.WriteString("\t\tstateJSON, err := json.Marshal(")
-	b.WriteString(goStateMap(g.t.State))
+	switch {
+	case hasModel:
+		b.WriteString(modelName)
+	case len(g.t.State) > 0:
+		b.WriteString(goStateMap(g.t.State))
+	default:
+		b.WriteString("map[string]any{}")
+	}
 	b.WriteString(")\n")
 	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
 
@@ -141,7 +150,27 @@ func (g *templateGen) generate() (string, error) {
 	}
 	fmt.Fprintf(&b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("\n<script type=\"module\" src=\""+g.moduleURL+"\"></script>\n"))
 	b.WriteString("\t\treturn nil\n\t})\n}\n")
+
+	if hasModel {
+		fmt.Fprintf(&b, "\n// View implements gothic.Model for %s.\n", modelType)
+		fmt.Fprintf(&b, "func (m %s) View() gothic.Component {\n\treturn %s(m)\n}\n", modelType, g.t.Name)
+	}
 	return b.String(), nil
+}
+
+func singleModelParam(params string) (name, typ string, ok bool) {
+	p := strings.TrimSpace(params)
+	p = strings.TrimPrefix(p, "(")
+	p = strings.TrimSuffix(p, ")")
+	p = strings.TrimSpace(p)
+	if p == "" || strings.Contains(p, ",") {
+		return "", "", false
+	}
+	parts := strings.Fields(p)
+	if len(parts) != 2 {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }
 
 func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoot bool) error {
@@ -241,6 +270,13 @@ func writeRegistrar(b *strings.Builder, f *parser.File) {
 		b.WriteString("\t})\n")
 	}
 	b.WriteString("}\n")
+
+	for _, p := range f.Procedures {
+		fmt.Fprintf(b, "\n// %s is the client-side stub for the %s procedure.\n", p.Name, p.Name)
+		fmt.Fprintf(b, "func %s() (%s, error) {\n", p.Name, p.ResultType)
+		fmt.Fprintf(b, "\tpanic(%s)\n", strconv.Quote("gothic: "+p.Name+" is a client-only procedure"))
+		b.WriteString("}\n")
+	}
 }
 
 func paramsOrEmpty(t *parser.Template) string {

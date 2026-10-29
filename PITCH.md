@@ -12,29 +12,52 @@ gothic closes that gap. Client interactivity becomes part of the component langu
 
 ## What gothic is
 
-gothic is a fork of [templ](https://github.com/a-h/templ) that compiles one `.gothic` component file to two targets:
+gothic is a fullstack Go framework inspired by [templ](https://github.com/a-h/templ) and [Bubble Tea](https://github.com/charmbracelet/bubbletea). It compiles a Go application and a `.gothic` view to two targets:
 
 - **Go** that renders HTML on the server, and
-- **JavaScript** that performs fine-grained DOM updates in the browser.
+- **JavaScript** that dispatches messages, runs `Update`, and performs fine-grained DOM updates in the browser.
 
 No virtual DOM. No hand-written client modules. No npm on the happy path.
 
-```gothic
-templ PingPong() {
-	state messages = []string{"ready"}
+```go
+// app.go
+type Model struct{ Messages []string }
 
+type PingClicked struct{}
+type PongReceived struct{ Text string }
+type PingFailed struct{ Message string }
+
+func (m Model) Init() gothic.Cmd { return nil }
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case PingClicked:
+		m.Messages = append(m.Messages, "ping")
+		return m, callPing
+	case PongReceived:
+		m.Messages = append(m.Messages, msg.Text)
+	case PingFailed:
+		m.Messages = append(m.Messages, msg.Message)
+	}
+	return m, nil
+}
+
+func callPing() gothic.Msg {
+	pong, err := Ping()
+	if err != nil {
+		return PingFailed{Message: err.Error()}
+	}
+	return PongReceived{Text: pong}
+}
+```
+
+```gothic
+// view.gothic
+templ View(model Model) {
 	<div>
-		<button onclick={ func() {
-			messages = append(messages, "ping")
-			pong, err := Ping()
-			if err != nil {
-				messages = append(messages, err.Error())
-				return
-			}
-			messages = append(messages, pong)
-		} }>Ping</button>
+		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>
-			for _, m := range messages {
+			for _, m := range model.Messages {
 				<li>{ m }</li>
 			}
 		</ul>
@@ -44,17 +67,16 @@ templ PingPong() {
 rpc Ping() string
 ```
 
-Clicking Ping appends `ping` to the DOM immediately, calls a typed Go procedure, receives `pong`, and appends that too. The handler body is Go. There is no `await`, no JavaScript array syntax, and no separate client dialect. The server rendered the initial list. The client hydrated it in place.
+Application logic is ordinary Go built on Bubble Tea's Model-View-Update pattern. Events dispatch messages. `Update` returns the next model and an optional command. The view is a pure function of the model. Clicking Ping appends `ping` immediately, runs the command, receives `pong` or an error message, and updates the DOM. There is no `await`, no JavaScript array syntax, and no separate client dialect.
 
 ## The pipeline
 
 ```
-.gothic source
+app.go + view.gothic
     |
 gothic generate
-    |-- _gothic.go    server render, hydration markers, serialized state
-    |-- _gothic.js    DOM bindings and effects
-    |-- manifest      roots, modules, procedure names
+    |-- view_gothic.go   server render, View method, procedure registrar
+    |-- view_gothic.js   compiled Init/Update/commands, render, dispatch loop
     |
 go build / go run
     |-- serves HTML and assets
@@ -81,39 +103,41 @@ The client runtime stays tiny: signals, effects, list adoption, event binding, a
 
 ## What already works
 
-Iteration 1 is implemented and verified: the ping/pong slice above runs end to end.
+The ping/pong proof of concept runs end to end.
 
 - `gothic generate` emits Go and JavaScript.
-- The Go server renders the initial list with hydration markers and serialized state.
-- The client hydrates the existing list, binds the button, and calls the procedure.
-- Clicking Ping produces `ready`, `ping`, `pong` in the DOM with no reload.
-- Go-style two-value error handling works: `pong, err := Ping()`.
+- The application is Bubble Tea-style MVU: `Model`, `Msg`, `Cmd`, `Init`, `Update`, and a generated `View`.
+- Messages are ordinary Go values. Commands are `func() Msg`.
+- The Go server renders the initial model with hydration markers and serialized state.
+- The client adopts the server list, binds message-valued events, runs `Update`, and patches the DOM.
+- Clicking Ping produces `ready`, `ping`, `pong` with no reload.
+- Failure handling produces `ready`, `ping`, `ping failed`.
 - No hand-written JavaScript. No wasm. No npm.
 - Unit, integration, and live browser tests pass.
 
-Iteration 1 uses a bootstrap compiler to prove the pipeline. Iteration 2 replaces it with the full templ fork while keeping the generated contract stable.
+gothic grows its own bootstrap compiler and selectively vendors templ code. It does not hard fork templ.
 
 ## What comes next
 
-1. The templ fork, so the full component language is available.
-2. Multiple component instances, keyed lists, and events inside lists.
-3. General Go-expression transpilation with type information.
-4. Richer state, procedure arguments, and client-callable functions.
-5. No-JS form fallback, CSRF, and the progressive enhancement story in full.
-6. Islands, async resources, and OpenAPI integration.
+1. Keyed lists, item updates, and conditionals in views.
+2. Multiple components and message mapping between them.
+3. `Batch` and `Sequence` commands.
+4. Typed procedure arguments, validation, and the no-JS form fallback.
+5. `go/packages` type information for stronger compiler checks.
+6. Manifest, content hashing, formatter, LSP, and source maps.
 
 ## Why this can work
 
-- [ghtmx](https://ghtmx.dev) already proves a hard fork of templ can ship.
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea) proves Model-View-Update is idiomatic and production-ready in Go.
 - [templ](https://templ.guide) proves server-rendered components with excellent tooling can win.
 - Svelte, Solid, and Gea prove compile-time surgical DOM updates beat virtual DOM diffing for size and speed.
 - Alpine and HTMX prove developers want reactivity without adopting a frontend framework.
 - `go:embed` and modern ES modules remove the need for a bundler in the default path.
 
-gothic is the missing combination: templ's server language, compiled reactivity, and a single Go binary.
+gothic is the missing combination: Bubble Tea's state model, templ-style views, compiled DOM updates, and a single Go binary.
 
 ## Status
 
-Early, honest, and working. The pipeline is real, the demo runs, and the design decisions are documented. The next milestone is replacing the bootstrap compiler with the templ fork without changing the generated contract.
+Early, honest, and working. The pipeline is real, the demo runs, and the design decisions are documented. gothic grows its own compiler and selectively vendors templ code. It does not hard fork templ.
 
 If you want a fullstack Go framework where the client is not a second codebase, this is that bet.

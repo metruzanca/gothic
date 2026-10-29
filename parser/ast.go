@@ -81,10 +81,10 @@ type ConstantAttr struct {
 
 func (*ConstantAttr) attr() {}
 
-// EventAttr is an on<event>={ func() { ... } } handler.
+// EventAttr is an on<event>={ expression } attribute.
 type EventAttr struct {
 	Name string
-	Fn   *ast.FuncLit
+	Expr ast.Expr
 }
 
 func (*EventAttr) attr() {}

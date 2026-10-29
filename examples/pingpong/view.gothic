@@ -1,0 +1,14 @@
+package main
+
+templ View(model Model) {
+	<div class="app">
+		<button onclick={ PingClicked{} }>Ping</button>
+		<ul>
+			for _, m := range model.Messages {
+				<li>{ m }</li>
+			}
+		</ul>
+	</div>
+}
+
+rpc Ping() string

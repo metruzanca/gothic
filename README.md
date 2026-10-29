@@ -1,11 +1,13 @@
 # gothic
 
-A fullstack framework that compiles one `.gothic` component language to Go
-server code and to fine-grained JavaScript DOM updates.
+A fullstack framework that compiles `.gothic` views to Go server code and to
+fine-grained JavaScript DOM updates, with application logic written in ordinary
+Go.
 
-Status: iteration 1 is complete. It implements a ping/pong vertical slice with
-server rendering, hydration, reactive state, and a generated typed RPC call.
-No hand-written JavaScript and no WebAssembly.
+Status: proof of concept. The current model follows
+[Bubble Tea](https://github.com/charmbracelet/bubbletea): a `Model` with
+`Init`, `Update`, and a generated `View`, messages as `any`, and commands as
+`func() Msg`. No hand-written JavaScript and no WebAssembly.
 
 ## Quick start
 
@@ -18,21 +20,27 @@ The generator reports each artifact it writes, and the server prints the URL it
 is listening on:
 
 ```
-gothic: views/pingpong.gothic
-  -> views/pingpong_gothic.go
-  -> views/pingpong_gothic.js
+gothic: examples/pingpong/view.gothic
+  -> examples/pingpong/view_gothic.go
+  -> examples/pingpong/view_gothic.js
 gothic: wrote 2 artifact(s) from 1 source file(s)
 
-2026/10/24 12:33:00 gothic: listening on http://localhost:8080
+2026/10/29 11:33:10 gothic: listening on http://localhost:8080
 ```
 
 Open the printed URL and click Ping. Set `PORT` to use a different port.
 
+The example splits application logic and markup:
+
+- `examples/pingpong/app.go`: model, messages, `Init`, `Update`, and commands.
+- `examples/pingpong/view.gothic`: a pure view of the model.
+- `examples/pingpong/main.go`: `gothic.NewApp` and server wiring.
+
 ## Install as a dependency
 
 ```sh
-go get github.com/metruzanca/gothic@v0.1.0
-go install github.com/metruzanca/gothic/cmd/gothic@v0.1.0
+go get github.com/metruzanca/gothic@v0.2.0
+go install github.com/metruzanca/gothic/cmd/gothic@v0.2.0
 ```
 
 In an application, wires the generator into `go generate`. The in-repo
@@ -40,13 +48,13 @@ In an application, wires the generator into `go generate`. The in-repo
 module path:
 
 ```go
-//go:generate go run github.com/metruzanca/gothic/cmd/gothic@v0.1.0 generate .
+//go:generate go run github.com/metruzanca/gothic/cmd/gothic@v0.2.0 generate .
 ```
 
 Or, on Go 1.24 and newer, add the CLI as a tool dependency:
 
 ```sh
-go get -tool github.com/metruzanca/gothic/cmd/gothic@v0.1.0
+go get -tool github.com/metruzanca/gothic/cmd/gothic@v0.2.0
 ```
 
 ```go
@@ -70,8 +78,10 @@ gothic generate ./path/to/app
 ```
 
 The generator reads `.gothic` files and writes `<name>_gothic.go` and
-`<name>_gothic.js` beside each source. Generated code registers its JavaScript
-module with the server and embeds it in the Go binary.
+`<name>_gothic.js` beside each source. When the `.gothic` file is an app view
+and an `app.go` sits beside it, the generator also compiles the Go `Model`,
+messages, `Update`, and commands into the JavaScript module. Generated code
+registers its module with the server and embeds it in the Go binary.
 
 ## Requirements
 

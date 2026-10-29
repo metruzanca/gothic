@@ -134,13 +134,17 @@ func (g *gen) emitNode(b *strings.Builder, n parser.Node, inFor bool) error {
 }
 
 func (g *gen) emitEvent(b *strings.Builder, ev *parser.EventAttr) error {
-	if ev.Fn == nil || ev.Fn.Type == nil {
+	fn, ok := ev.Expr.(*ast.FuncLit)
+	if !ok {
+		return fmt.Errorf("event handler must be a func literal for state views")
+	}
+	if fn.Type == nil {
 		return fmt.Errorf("invalid event handler")
 	}
-	if ev.Fn.Type.Params != nil && len(ev.Fn.Type.Params.List) != 0 {
+	if fn.Type.Params != nil && len(fn.Type.Params.List) != 0 {
 		return fmt.Errorf("event handlers must not take parameters")
 	}
-	if ev.Fn.Type.Results != nil && len(ev.Fn.Type.Results.List) != 0 {
+	if fn.Type.Results != nil && len(fn.Type.Results.List) != 0 {
 		return fmt.Errorf("event handlers must not return values")
 	}
 	idx := g.eventN
@@ -148,7 +152,7 @@ func (g *gen) emitEvent(b *strings.Builder, ev *parser.EventAttr) error {
 	event := strings.TrimPrefix(ev.Name, "on")
 	fmt.Fprintf(b, "      on(root, %s, %s, async () => {\n", jsString(fmt.Sprintf("%d", idx)), jsString(event))
 	ctx := &exprCtx{locals: map[string]bool{}, async: true}
-	for _, st := range ev.Fn.Body.List {
+	for _, st := range fn.Body.List {
 		if err := g.stmt(b, st, ctx, 4); err != nil {
 			return err
 		}

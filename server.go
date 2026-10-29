@@ -53,6 +53,16 @@ func (s *Server) Use(middlewares ...func(http.Handler) http.Handler) {
 	s.mux.Use(middlewares...)
 }
 
+// MountApp mounts an application at pattern.
+func (s *Server) MountApp(pattern string, app *App) {
+	s.Get(pattern, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := app.Render(w, r); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+}
+
 // RegisterProcedure registers a server procedure. Generated code calls this
 // from a file-level registrar.
 func (s *Server) RegisterProcedure(name string, fn ProcedureFunc) {

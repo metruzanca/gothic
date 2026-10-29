@@ -241,9 +241,6 @@ func (p *parser) parseFor() (Node, error) {
 	if err != nil {
 		return nil, p.errf("invalid for header %q: %v", header, err)
 	}
-	if _, ok := rs.X.(*ast.Ident); !ok {
-		return nil, p.errf("iteration 1 only supports range over a state identifier")
-	}
 
 	if !p.consume("{") {
 		return nil, p.errf("expected { after for header")
@@ -377,13 +374,9 @@ func (p *parser) parseAttribute() (Attribute, error) {
 		}
 		expr, err := goparser.ParseExpr(inner)
 		if err != nil {
-			return nil, p.errf("invalid event handler for %s: %v", name, err)
+			return nil, p.errf("invalid event expression for %s: %v", name, err)
 		}
-		fn, ok := expr.(*ast.FuncLit)
-		if !ok {
-			return nil, p.errf("event handler for %s must be a func literal", name)
-		}
-		return &EventAttr{Name: name, Fn: fn}, nil
+		return &EventAttr{Name: name, Expr: expr}, nil
 	}
 	if p.peek() != '"' {
 		return nil, p.errf("expected quoted value for attribute %s", name)

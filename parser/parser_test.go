@@ -69,17 +69,21 @@ func TestParseDemo(t *testing.T) {
 		t.Fatal("button not found")
 	}
 	ev, ok := button.Attributes[0].(*parser.EventAttr)
-	if !ok || ev.Name != "onclick" || ev.Fn == nil {
+	if !ok || ev.Name != "onclick" {
 		t.Fatalf("event attr = %#v", button.Attributes[0])
 	}
-	if len(ev.Fn.Body.List) != 4 {
-		t.Fatalf("handler statements = %d", len(ev.Fn.Body.List))
+	fn, ok := ev.Expr.(*ast.FuncLit)
+	if !ok {
+		t.Fatalf("event expression = %T", ev.Expr)
 	}
-	if as, ok := ev.Fn.Body.List[0].(*ast.AssignStmt); !ok || as.Tok.String() != "=" {
-		t.Fatalf("first statement = %T", ev.Fn.Body.List[0])
+	if len(fn.Body.List) != 4 {
+		t.Fatalf("handler statements = %d", len(fn.Body.List))
 	}
-	if _, ok := ev.Fn.Body.List[2].(*ast.IfStmt); !ok {
-		t.Fatalf("third statement = %T", ev.Fn.Body.List[2])
+	if as, ok := fn.Body.List[0].(*ast.AssignStmt); !ok || as.Tok.String() != "=" {
+		t.Fatalf("first statement = %T", fn.Body.List[0])
+	}
+	if _, ok := fn.Body.List[2].(*ast.IfStmt); !ok {
+		t.Fatalf("third statement = %T", fn.Body.List[2])
 	}
 
 	ul := findElement(root, "ul")

@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/metruzanca/gothic/generator"
+	"github.com/metruzanca/gothic/generator/appjs"
 	"github.com/metruzanca/gothic/generator/jsgen"
+	"github.com/metruzanca/gothic/goapp"
 	"github.com/metruzanca/gothic/parser"
 )
 
@@ -85,10 +87,22 @@ func generateFile(path string, out io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	jsSrc, err := jsgen.Generate(f, jsgen.Options{
-		FileName:   path,
-		RuntimeURL: "/_gothic/runtime.js",
-	})
+	var jsSrc []byte
+	if isAppView(f) {
+		app, err := goapp.Parse(filepath.Join(dir, "app.go"))
+		if err != nil {
+			return 0, err
+		}
+		jsSrc, err = appjs.Generate(f, app, appjs.Options{
+			FileName:   path,
+			RuntimeURL: "/_gothic/runtime.js",
+		})
+	} else {
+		jsSrc, err = jsgen.Generate(f, jsgen.Options{
+			FileName:   path,
+			RuntimeURL: "/_gothic/runtime.js",
+		})
+	}
 	if err != nil {
 		return 0, err
 	}
@@ -114,6 +128,17 @@ func generateFile(path string, out io.Writer) (int, error) {
 		}
 	}
 	return written, nil
+}
+
+func isAppView(f *parser.File) bool {
+	if len(f.Templates) != 1 {
+		return false
+	}
+	t := f.Templates[0]
+	params := strings.TrimSpace(t.Params)
+	params = strings.TrimPrefix(params, "(")
+	params = strings.TrimSuffix(params, ")")
+	return len(t.State) == 0 && strings.TrimSpace(params) != ""
 }
 
 func writeIfChanged(path string, data []byte) (bool, error) {

@@ -6,10 +6,15 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/metruzanca/gothic"
 )
 
-func TestPingPongSlice(t *testing.T) {
-	ts := httptest.NewServer(newServer())
+func TestPingPongApp(t *testing.T) {
+	s := gothic.NewServer()
+	RegisterView(s, procedures{})
+	s.MountApp("/", gothic.NewApp(NewModel()))
+	ts := httptest.NewServer(s)
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL + "/")
@@ -20,32 +25,30 @@ func TestPingPongSlice(t *testing.T) {
 	res.Body.Close()
 	html := string(body)
 	for _, want := range []string{
-		`data-gothic-root="pingpong"`,
-		`data-gothic-state="pingpong"`,
-		`"messages":["ready"]`,
+		`data-gothic-root="view"`,
+		`"Messages":["ready"]`,
 		`data-gothic-on="0"`,
 		`<!--g:each:0:open-->`,
 		`<li>ready</li>`,
 		`<!--g:each:0:close-->`,
-		`/_gothic/modules/pingpong_gothic.js`,
+		`/_gothic/modules/view_gothic.js`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/pingpong_gothic.js")
+	res, err = http.Get(ts.URL + "/_gothic/modules/view_gothic.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`messages.push("ping");`,
+		`m.Messages.push("ping");`,
+		`return [m, callPing];`,
 		`pong = await Ping();`,
-		`if (err != null) {`,
-		`messages.push(err.message);`,
-		`messages.push(pong);`,
+		`return {tag: "PongReceived", Text: pong};`,
 	} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("generated JS missing %q", want)

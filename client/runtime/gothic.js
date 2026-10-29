@@ -95,6 +95,30 @@ export function each(root, marker, sig, render) {
   });
 }
 
+export function list(root, marker, render) {
+  const open = findComment(root, `g:each:${marker}:open`);
+  const close = findComment(root, `g:each:${marker}:close`);
+  if (!open || !close) return () => {};
+
+  const nodes = [];
+  for (let node = open.nextSibling; node && node !== close; ) {
+    const next = node.nextSibling;
+    if (node.nodeType === 1) nodes.push(node);
+    node = next;
+  }
+
+  return function update(items) {
+    while (nodes.length > items.length) {
+      nodes.pop().remove();
+    }
+    for (let i = nodes.length; i < items.length; i++) {
+      const node = render(items[i], i);
+      close.parentNode.insertBefore(node, close);
+      nodes.push(node);
+    }
+  };
+}
+
 export function on(root, marker, event, handler) {
   const el = root.querySelector(`[data-gothic-on="${marker}"]`);
   if (!el) return;
