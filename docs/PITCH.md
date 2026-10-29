@@ -12,7 +12,7 @@ gothic closes that gap. Client interactivity becomes part of the component langu
 
 ## What gothic is
 
-gothic is a fullstack Go framework inspired by [templ](https://github.com/a-h/templ) and [Bubble Tea](https://github.com/charmbracelet/bubbletea). It compiles a Go application and a `.gothic` view to two targets:
+gothic is a fullstack Go framework inspired by [templ](https://github.com/a-h/templ) and [Bubble Tea](https://github.com/charmbracelet/bubbletea). It compiles a Go application and a `.gth` view to two targets:
 
 - **Go** that renders HTML on the server, and
 - **JavaScript** that dispatches messages, runs `Update`, and performs fine-grained DOM updates in the browser.
@@ -20,7 +20,7 @@ gothic is a fullstack Go framework inspired by [templ](https://github.com/a-h/te
 No virtual DOM. No hand-written client modules. No npm on the happy path.
 
 ```go
-// pingpong.gothic, Go prelude
+// pingpong.gth, Go prelude
 type Model struct{ Messages []string }
 
 type PingClicked struct{}
@@ -57,7 +57,7 @@ func callPing() gothic.Msg {
 ```
 
 ```gothic
-// pingpong.gothic, view
+// pingpong.gth, view
 view App(model Model) {
 	<div>
 		<button onclick={ PingClicked{} }>Ping</button>
@@ -75,7 +75,7 @@ Application logic is ordinary Go built on Bubble Tea's Model-View-Update pattern
 ## The pipeline
 
 ```
-pingpong.gothic + main.go
+pingpong.gth + main.go
     |
 gothic generate
     |-- pingpong_gothic.go   prelude + server render + View + procedure registrar

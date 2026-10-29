@@ -96,13 +96,13 @@ A separate component file may contain only a package clause and views. It is
 not compiled to a Go file or a JavaScript module. Its views are expanded into
 the app during `gothic generate`.
 
-Directories may contain one app file. Extra `.gothic` files are treated as
+Directories may contain one app file. Extra `.gth` files are treated as
 component libraries when an app file exists in the same directory.
 
 ## Pipeline
 
 ```
-app.gothic + status.gothic
+app.gth + status.gth
     |
 parse and classify files
     |

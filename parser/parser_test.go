@@ -34,7 +34,7 @@ rpc Ping() string
 `
 
 func TestParseDemo(t *testing.T) {
-	f, err := parser.Parse("demo.gothic", []byte(demo))
+	f, err := parser.Parse("demo.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ view Bad() {
 	} }>x</button>
 }
 `
-	if _, err := parser.Parse("bad.gothic", []byte(src)); err == nil {
+	if _, err := parser.Parse("bad.gth", []byte(src)); err == nil {
 		t.Fatal("expected a parse error for await")
 	}
 }

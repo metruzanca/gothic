@@ -2,7 +2,7 @@
 
 gothic is currently a proof of concept. The application model follows
 [Bubble Tea](https://github.com/charmbracelet/bubbletea) and The Elm
-Architecture. A `.gothic` file contains ordinary Go followed by one or more
+Architecture. A `.gth` file contains ordinary Go followed by one or more
 views. One view, `App`, is the root. The others are pure components.
 `main.go` remains the entrypoint.
 
@@ -26,11 +26,11 @@ Following Bubble Tea:
 - `Update` is a method on the model and returns the next model and an optional
   command.
 - `Init` returns an optional command.
-- `View` is generated from the `.gothic` view.
+- `View` is generated from the `.gth` view.
 
 ## Example
 
-`pingpong.gothic` holds the Go prelude, the view, and the procedure contract:
+`pingpong.gth` holds the Go prelude, the view, and the procedure contract:
 
 ```gothic
 package pingpong
@@ -120,7 +120,7 @@ The generator emits:
 
 ## File layout
 
-A `.gothic` app file has two sections:
+A `.gth` app file has two sections:
 
 1. A Go prelude: package, imports, model, messages, `Init`, `Update`,
    commands, and procedure interfaces.
@@ -145,7 +145,7 @@ view Badge(text string) {
 }
 ```
 
-Components can live in the same app file or in a separate `.gothic` file in the
+Components can live in the same app file or in a separate `.gth` file in the
 same directory. A separate component file contains only a package clause and
 views. It has no model and no `Init` or `Update`.
 

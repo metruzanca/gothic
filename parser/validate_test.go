@@ -68,7 +68,7 @@ rpc return() string
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f, err := parser.Parse("test.gothic", []byte(tc.src))
+			f, err := parser.Parse("test.gth", []byte(tc.src))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +81,7 @@ rpc return() string
 }
 
 func TestValidateAcceptsDemo(t *testing.T) {
-	f, err := parser.Parse("demo.gothic", []byte(demo))
+	f, err := parser.Parse("demo.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}

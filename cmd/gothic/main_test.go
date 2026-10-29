@@ -16,7 +16,7 @@ view Hello() {
 	<div>Hi</div>
 }
 `
-	srcPath := filepath.Join(dir, "hello.gothic")
+	srcPath := filepath.Join(dir, "hello.gth")
 	if err := os.WriteFile(srcPath, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ view Hello() {
 
 func TestGenerateAppWithComponents(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "app.gothic", `package main
+	writeFile(t, dir, "app.gth", `package main
 
 type Model struct{ Status string }
 
@@ -60,7 +60,7 @@ view App(model Model) {
 	<div><Card text={ model.Status } /></div>
 }
 `)
-	writeFile(t, dir, "card.gothic", `package main
+	writeFile(t, dir, "card.gth", `package main
 
 view Card(text string) {
 	<p>{ text }</p>
@@ -110,7 +110,7 @@ view Card(text string) {
 
 func TestGenerateRejectsDuplicateComponent(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "app.gothic", `package main
+	writeFile(t, dir, "app.gth", `package main
 
 type Model struct{}
 
@@ -122,7 +122,7 @@ view Card() { <p>one</p> }
 
 view App(model Model) { <div><Card /></div> }
 `)
-	writeFile(t, dir, "other.gothic", `package main
+	writeFile(t, dir, "other.gth", `package main
 
 view Card() { <p>two</p> }
 `)
@@ -135,7 +135,7 @@ view Card() { <p>two</p> }
 
 func TestGenerateRejectsUnknownComponent(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "app.gothic", `package main
+	writeFile(t, dir, "app.gth", `package main
 
 type Model struct{}
 
@@ -154,7 +154,7 @@ view App(model Model) { <div><Missing /></div> }
 
 func TestGenerateRejectsComponentPrelude(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, dir, "app.gothic", `package main
+	writeFile(t, dir, "app.gth", `package main
 
 type Model struct{}
 
@@ -164,7 +164,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 
 view App(model Model) { <div><Card /></div> }
 `)
-	writeFile(t, dir, "card.gothic", `package main
+	writeFile(t, dir, "card.gth", `package main
 
 var X = 1
 
@@ -189,7 +189,7 @@ func TestGenerateReportsNoSources(t *testing.T) {
 	if err := generate(t.TempDir(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "no .gothic files found") {
+	if !strings.Contains(out.String(), "no .gth files found") {
 		t.Fatalf("output = %q", out.String())
 	}
 }

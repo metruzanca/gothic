@@ -3,7 +3,7 @@ package parser
 
 import "go/ast"
 
-// File is a parsed .gothic file.
+// File is a parsed .gth file.
 type File struct {
 	Package    string
 	Procedures []Procedure

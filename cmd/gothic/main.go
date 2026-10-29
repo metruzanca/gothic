@@ -1,4 +1,4 @@
-// Command gothic generates Go and JavaScript from .gothic source files.
+// Command gothic generates Go and JavaScript from .gth source files.
 package main
 
 import (
@@ -46,7 +46,7 @@ func generate(root string, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".gothic") {
+		if d.IsDir() || !strings.HasSuffix(path, ".gth") {
 			return nil
 		}
 		dir := filepath.Dir(path)
@@ -74,7 +74,7 @@ func generate(root string, out io.Writer) error {
 	}
 	switch {
 	case res.sources == 0:
-		fmt.Fprintf(out, "gothic: no .gothic files found under %s\n", root)
+		fmt.Fprintf(out, "gothic: no .gth files found under %s\n", root)
 	case res.written == 0:
 		fmt.Fprintf(out, "gothic: %d source file(s) up to date\n", res.sources)
 	default:
@@ -100,7 +100,7 @@ func loadSource(path string) (*source, error) {
 	s := &source{
 		path: path,
 		dir:  filepath.Dir(path),
-		base: strings.TrimSuffix(filepath.Base(path), ".gothic"),
+		base: strings.TrimSuffix(filepath.Base(path), ".gth"),
 	}
 	if appFile, err := viewparser.ParseApp(path, src); err == nil {
 		s.appFile = appFile

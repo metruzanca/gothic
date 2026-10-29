@@ -36,12 +36,12 @@ rpc Ping() string
 `
 
 func TestGenerate(t *testing.T) {
-	f, err := parser.Parse("pingpong.gothic", []byte(demo))
+	f, err := parser.Parse("pingpong.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}
 	out, err := jsgen.Generate(f, jsgen.Options{
-		FileName:   "pingpong.gothic",
+		FileName:   "pingpong.gth",
 		RuntimeURL: "/_gothic/runtime.js",
 	})
 	if err != nil {
@@ -93,26 +93,26 @@ view T() {
 }
 rpc Ping() string
 `
-	f, err := parser.Parse("test.gothic", []byte(src))
+	f, err := parser.Parse("test.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = jsgen.Generate(f, jsgen.Options{FileName: "test.gothic"})
+	_, err = jsgen.Generate(f, jsgen.Options{FileName: "test.gth"})
 	if err == nil || !strings.Contains(err.Error(), "call procedures directly") {
 		t.Fatalf("Generate() = %v, want a direct-call error", err)
 	}
 }
 
 func TestGenerateIsStableAcrossPaths(t *testing.T) {
-	f, err := parser.Parse("pingpong.gothic", []byte(demo))
+	f, err := parser.Parse("pingpong.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := jsgen.Generate(f, jsgen.Options{FileName: "examples/pingpong/views/pingpong.gothic"})
+	a, err := jsgen.Generate(f, jsgen.Options{FileName: "examples/pingpong/views/pingpong.gth"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := jsgen.Generate(f, jsgen.Options{FileName: "views/pingpong.gothic"})
+	b, err := jsgen.Generate(f, jsgen.Options{FileName: "views/pingpong.gth"})
 	if err != nil {
 		t.Fatal(err)
 	}

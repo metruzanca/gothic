@@ -16,9 +16,9 @@ node --check client/runtime/gothic.js
 node --check examples/pingpong/views/pingpong_gothic.js
 ```
 
-Regenerate `.gothic` artifacts with `go generate ./examples/pingpong` or
+Regenerate `.gth` artifacts with `go generate ./examples/pingpong` or
 `go run ./cmd/gothic generate .` when source changes affect the generated files.
 
 Commit generated files (`*_gothic.go` and `*_gothic.js`) next to their
-`.gothic` source. Generated Go uses `//go:embed` for its sibling JavaScript, so
+`.gth` source. Generated Go uses `//go:embed` for its sibling JavaScript, so
 the generated files must exist at build time.

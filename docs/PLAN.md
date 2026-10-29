@@ -2,13 +2,13 @@
 
 > Status: proof of concept. The current model is Model-View-Update inspired by
 > [Bubble Tea](https://github.com/charmbracelet/bubbletea). Application logic is
-> ordinary Go. Views are `.gothic` files and can be composed from pure
+> ordinary Go. Views are `.gth` files and can be composed from pure
 > components. The phase roadmap will be rewritten after the proof of concept
 > stabilizes.
 
 ## Overview
 
-gothic turns a Go application and a `.gothic` view into:
+gothic turns a Go application and a `.gth` view into:
 
 - Go server code that renders the initial HTML, and
 - JavaScript that dispatches messages, runs `Update`, and patches the DOM
@@ -60,12 +60,12 @@ type Model interface {
 - The model owns `Update`. There is one transition method per model, not one per
   message.
 - `Init` returns an optional command.
-- The `.gothic` view is the source of `View()`. The generator emits the method.
+- The `.gth` view is the source of `View()`. The generator emits the method.
 
 The application is split into ordinary Go and a view:
 
 ```go
-// pingpong.gothic (Go prelude)
+// pingpong.gth (Go prelude)
 type Model struct {
 	Messages []string
 	Status   string
@@ -105,7 +105,7 @@ func callPing() gothic.Msg {
 ```
 
 ```gothic
-// pingpong.gothic (views)
+// pingpong.gth (views)
 view Status(text string) {
 	<p class="status">{ text }</p>
 }
@@ -125,7 +125,7 @@ view App(model Model) {
 
 Components are pure views. The compiler expands them into `App` before it
 generates Go and JavaScript. A component can live in the app file or in a
-separate `.gothic` file in the same package.
+separate `.gth` file in the same package.
 
 ```go
 // main.go
@@ -139,7 +139,7 @@ See [SYNTAX.md](SYNTAX.md) for the current grammar and limits.
 ## Pipeline
 
 ```
-pingpong.gothic + main.go
+pingpong.gth + main.go
     |
 gothic generate
     |-- pingpong_gothic.go   prelude + SSR + View method + registrar + client stubs
@@ -191,7 +191,7 @@ from the server and reconciled. There is no virtual DOM.
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
 
-The CLI detects an app file when the `.gothic` file has a valid Go prelude with
+The CLI detects an app file when the `.gth` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
 
 ## Proof-of-concept scope

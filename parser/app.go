@@ -9,14 +9,14 @@ import (
 
 var viewLine = regexp.MustCompile(`(?m)^view[ \t]+[A-Za-z_]\w*[ \t]*\(`)
 
-// AppFile is a .gothic file split into its Go prelude and its view.
+// AppFile is a .gth file split into its Go prelude and its view.
 type AppFile struct {
 	Package  string
 	GoSource []byte
 	View     *File
 }
 
-// ParseApp parses a .gothic file that starts with a Go prelude and then
+// ParseApp parses a .gth file that starts with a Go prelude and then
 // declares a view.
 func ParseApp(name string, src []byte) (*AppFile, error) {
 	loc := viewLine.FindIndex(src)

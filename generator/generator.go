@@ -17,7 +17,7 @@ import (
 	"github.com/metruzanca/gothic/parser"
 )
 
-// Options controls a single generated .gothic file.
+// Options controls a single generated .gth file.
 type Options struct {
 	// FileName is the source file name, used in the generated header.
 	FileName string

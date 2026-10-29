@@ -25,7 +25,7 @@ view App(model Model) {
 `
 
 func TestParseComponentCall(t *testing.T) {
-	f, err := parser.Parse("component.gothic", []byte(componentDemo))
+	f, err := parser.Parse("component.gth", []byte(componentDemo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ view App(model Model) {
 	<div><Card text="x" active></Card></div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,13 +81,13 @@ view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	if _, err := parser.Parse("component.gothic", []byte(src)); err == nil || !strings.Contains(err.Error(), "cannot have children") {
+	if _, err := parser.Parse("component.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "cannot have children") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestExpandAppSubstitutesProps(t *testing.T) {
-	f, err := parser.Parse("component.gothic", []byte(componentDemo))
+	f, err := parser.Parse("component.gth", []byte(componentDemo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ view App(model Model) {
 	<div><Card item={ model.Item } /></div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ view App(model Model) {
 	<div><Wrapper text="hello" /></div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ view App(model Model) { <div><A model={ model } /></div> }
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, err := parser.Parse("component.gothic", []byte(tt.src))
+			f, err := parser.Parse("component.gth", []byte(tt.src))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -285,7 +285,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +313,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gothic", []byte(src))
+	f, err := parser.Parse("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +338,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("attrs.gothic", []byte(src))
+	f, err := parser.Parse("attrs.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}

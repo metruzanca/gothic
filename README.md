@@ -19,7 +19,7 @@ The syntax is under active development and subject to change. See the
 [TodoMVC app](examples/todo) for working examples.
 
 ```templ
-//app.gothic
+//app.gth
 type Model struct{}
 
 type HelloClicked struct{}

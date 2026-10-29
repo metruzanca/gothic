@@ -16,7 +16,7 @@ view App(model Model) {
 	<div></div>
 }
 `
-	f, err := parser.ParseApp("app.gothic", []byte(src))
+	f, err := parser.ParseApp("app.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ view App(model Model) {
 }
 
 func TestParseAppRequiresTempl(t *testing.T) {
-	if _, err := parser.ParseApp("app.gothic", []byte("package app\n")); err == nil {
+	if _, err := parser.ParseApp("app.gth", []byte("package app\n")); err == nil {
 		t.Fatal("expected an error when no view declaration exists")
 	}
 }

@@ -72,12 +72,12 @@ func TestGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := parser.Parse("view.gothic", []byte(viewSrc))
+	view, err := parser.Parse("view.gth", []byte(viewSrc))
 	if err != nil {
 		t.Fatal(err)
 	}
 	out, err := appjs.Generate(view, app, appjs.Options{
-		FileName:   "view.gothic",
+		FileName:   "view.gth",
 		RuntimeURL: "/_gothic/runtime.js",
 	})
 	if err != nil {
@@ -164,7 +164,7 @@ view App(model Model) {
 `
 
 func TestGenerateCommandClosure(t *testing.T) {
-	view, err := parser.Parse("view.gothic", []byte(commandClosureView))
+	view, err := parser.Parse("view.gth", []byte(commandClosureView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestGenerateCommandClosure(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := appjs.Generate(view, app, appjs.Options{
-		FileName:   "view.gothic",
+		FileName:   "view.gth",
 		RuntimeURL: "/_gothic/runtime.js",
 	})
 	if err != nil {

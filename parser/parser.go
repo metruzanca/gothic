@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Parse parses a .gothic file from src. The name is used in error messages.
+// Parse parses a .gth file from src. The name is used in error messages.
 func Parse(name string, src []byte) (*File, error) {
 	p := &parser{name: name, src: src}
 	return p.parseFile()
@@ -282,7 +282,7 @@ func parseParams(raw string) ([]Param, error) {
 	}
 	src := "package p\nfunc _" + raw + " {}\n"
 	fset := token.NewFileSet()
-	file, err := goparser.ParseFile(fset, "params.gothic", src, 0)
+	file, err := goparser.ParseFile(fset, "params.gth", src, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func exprString(e ast.Expr) string {
 func parseRangeHeader(header string) (*ast.RangeStmt, error) {
 	src := "package p\nfunc _() {\nfor " + header + " {\n}\n}\n"
 	fset := token.NewFileSet()
-	file, err := goparser.ParseFile(fset, "for.gothic", src, 0)
+	file, err := goparser.ParseFile(fset, "for.gth", src, 0)
 	if err != nil {
 		return nil, err
 	}

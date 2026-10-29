@@ -36,12 +36,12 @@ rpc Ping() string
 `
 
 func TestGenerate(t *testing.T) {
-	f, err := parser.Parse("pingpong.gothic", []byte(demo))
+	f, err := parser.Parse("pingpong.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}
 	out, err := generator.Generate(f, generator.Options{
-		FileName:   "pingpong.gothic",
+		FileName:   "pingpong.gth",
 		ModuleBase: "pingpong",
 	})
 	if err != nil {
@@ -107,7 +107,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 `
 
 func TestGenerateAppView(t *testing.T) {
-	f, err := parser.Parse("app.gothic", []byte(appView))
+	f, err := parser.Parse("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestGenerateAppView(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := generator.GenerateSingle(f, app, generator.Options{
-		FileName:   "app.gothic",
+		FileName:   "app.gth",
 		ModuleBase: "app",
 		App:        app,
 	})
@@ -170,7 +170,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 `
 
 func TestGenerateProcedureArgs(t *testing.T) {
-	f, err := parser.Parse("app.gothic", []byte(appView))
+	f, err := parser.Parse("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestGenerateProcedureArgs(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := generator.GenerateSingle(f, app, generator.Options{
-		FileName:   "app.gothic",
+		FileName:   "app.gth",
 		ModuleBase: "app",
 		App:        app,
 	})
@@ -217,7 +217,7 @@ view App(model Model) {
 `
 
 func TestGenerateAppExpandsComponents(t *testing.T) {
-	f, err := parser.Parse("app.gothic", []byte(componentView))
+	f, err := parser.Parse("app.gth", []byte(componentView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestGenerateAppExpandsComponents(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := generator.GenerateSingle(expanded, app, generator.Options{
-		FileName:   "app.gothic",
+		FileName:   "app.gth",
 		ModuleBase: "app",
 		App:        app,
 	})
@@ -274,7 +274,7 @@ func (m Model) Init() g.Cmd { return nil }
 
 func (m Model) Update(msg g.Msg) (g.Model, g.Cmd) { return m, nil }
 `
-	f, err := parser.Parse("app.gothic", []byte(appView))
+	f, err := parser.Parse("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func (m Model) Update(msg g.Msg) (g.Model, g.Cmd) { return m, nil }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "app.gothic", ModuleBase: "app", App: app}); err == nil {
+	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "app.gth", ModuleBase: "app", App: app}); err == nil {
 		t.Fatal("expected an alias error")
 	}
 }
@@ -294,11 +294,11 @@ view Bad() {
 	<div></div>
 }
 `
-	f, err := parser.Parse("bad.gothic", []byte(src))
+	f, err := parser.Parse("bad.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := generator.Generate(f, generator.Options{FileName: "bad.gothic", ModuleBase: "bad"}); err == nil {
+	if _, err := generator.Generate(f, generator.Options{FileName: "bad.gth", ModuleBase: "bad"}); err == nil {
 		t.Fatal("expected an error for multiple root elements")
 	}
 }

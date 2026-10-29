@@ -7,7 +7,7 @@ grammar.
 
 ## Goal
 
-Prove that one `.gothic` app file and one `main.go` can produce:
+Prove that one `.gth` app file and one `main.go` can produce:
 
 - a server-rendered page,
 - a client that dispatches messages, runs `Update`, and patches the DOM directly,
@@ -25,11 +25,11 @@ The demo is a Ping button. Clicking it:
 
 ```
 examples/pingpong/
-  pingpong.gothic  Go prelude, view, procedure interface
+  pingpong.gth  Go prelude, view, procedure interface
   main.go          entrypoint and Ping implementation
 ```
 
-`pingpong.gothic` starts with ordinary Go:
+`pingpong.gth` starts with ordinary Go:
 
 ```go
 type Model struct {
@@ -116,7 +116,7 @@ ping failed
 
 | Path | Purpose |
 |---|---|
-| `parser/` | Parses `.gothic` files, splits the Go prelude from the view, and parses markup and Go expressions. |
+| `parser/` | Parses `.gth` files, splits the Go prelude from the view, and parses markup and Go expressions. |
 | `goapp/` | Extracts the model, messages, `Init`, `Update`, commands, and procedure interface from the Go prelude. |
 | `generator/` | Emits the Go view, the `View` method, the registrar, client stubs, and the app Go file. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view to JavaScript. |
