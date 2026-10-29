@@ -125,11 +125,11 @@ ping failed
 
 ## Generated contract
 
-The generator emits three files:
+The generator emits two files:
 
-- `pingpong_gothic.go`: the view function, the generated `View` method, the
-  procedure registrar, client-only procedure stubs, and the embedded module.
-- `pingpong_app_gothic.go`: the Go prelude from `pingpong.gothic`.
+- `pingpong_gothic.go`: the Go prelude, the view function, the generated `View`
+  method, the procedure registrar, client-only procedure stubs, and the embedded
+  module.
 - `pingpong_gothic.js`: the compiled app and view module.
 
 The SSR output contains:

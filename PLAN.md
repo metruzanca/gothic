@@ -131,9 +131,8 @@ See [SYNTAX.md](SYNTAX.md) for the current grammar and limits.
 pingpong.gothic + main.go
     |
 gothic generate
-    |-- pingpong_gothic.go      SSR + View method + registrar + client stubs
-    |-- pingpong_app_gothic.go  the Go prelude
-    |-- pingpong_gothic.js      compiled Init/Update/commands + render + dispatch
+    |-- pingpong_gothic.go   prelude + SSR + View method + registrar + client stubs
+    |-- pingpong_gothic.js   compiled Init/Update/commands + render + dispatch
     |
 go build / go run
     |-- serves HTML, the runtime, generated modules, and RPC endpoints

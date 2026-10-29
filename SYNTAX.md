@@ -113,9 +113,8 @@ func main() {
 
 The generator emits:
 
-- `pingpong_gothic.go`: the view, the generated `View` method, the registrar,
-  procedure client stubs, and the embedded module.
-- `pingpong_app_gothic.go`: the Go prelude.
+- `pingpong_gothic.go`: the Go prelude, the view, the generated `View` method,
+  the registrar, procedure client stubs, and the embedded module.
 - `pingpong_gothic.js`: the compiled app and view module.
 
 ## File layout

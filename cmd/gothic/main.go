@@ -107,15 +107,11 @@ func generateFile(path string, out io.Writer) (int, error) {
 }
 
 func generateAppFile(path, dir, base string, appFile *parser.AppFile, app *goapp.App, out io.Writer) (int, error) {
-	goSrc, err := generator.Generate(appFile.View, generator.Options{
+	goSrc, err := generator.GenerateSingle(appFile.View, app, generator.Options{
 		FileName:   path,
 		ModuleBase: base,
 		App:        app,
 	})
-	if err != nil {
-		return 0, err
-	}
-	appSrc, err := generator.GenerateAppSource(app, generator.Options{FileName: path})
 	if err != nil {
 		return 0, err
 	}
@@ -126,9 +122,13 @@ func generateAppFile(path, dir, base string, appFile *parser.AppFile, app *goapp
 	if err != nil {
 		return 0, err
 	}
+	// Remove the old split app file if it exists.
+	legacy := filepath.Join(dir, base+"_app_gothic.go")
+	if _, err := os.Stat(legacy); err == nil {
+		_ = os.Remove(legacy)
+	}
 	return writeArtifacts(out, path, []artifact{
 		{filepath.Join(dir, base+"_gothic.go"), goSrc},
-		{filepath.Join(dir, base+"_app_gothic.go"), appSrc},
 		{filepath.Join(dir, base+"_gothic.js"), jsSrc},
 	})
 }

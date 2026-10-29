@@ -22,9 +22,8 @@ is listening on:
 ```
 gothic: examples/pingpong/pingpong.gothic
   -> examples/pingpong/pingpong_gothic.go
-  -> examples/pingpong/pingpong_app_gothic.go
   -> examples/pingpong/pingpong_gothic.js
-gothic: wrote 3 artifact(s) from 1 source file(s)
+gothic: wrote 2 artifact(s) from 1 source file(s)
 
 2026/10/29 11:33:10 gothic: listening on http://localhost:8080
 ```
@@ -80,7 +79,7 @@ gothic generate ./path/to/app
 
 The generator reads `.gothic` files and writes generated Go and JavaScript
 beside each source. When the `.gothic` file starts with a Go prelude and then a
-`templ` view, the generator also writes `<name>_app_gothic.go` for the prelude
+`templ` view, the generator merges the prelude and view into `<name>_gothic.go`
 and compiles the `Model`, messages, `Update`, and commands into the JavaScript
 module. Generated code registers its module with the server and embeds it in the
 Go binary.

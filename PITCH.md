@@ -78,9 +78,8 @@ Application logic is ordinary Go built on Bubble Tea's Model-View-Update pattern
 pingpong.gothic + main.go
     |
 gothic generate
-    |-- pingpong_gothic.go      server render, View method, procedure registrar
-    |-- pingpong_app_gothic.go  the Go prelude
-    |-- pingpong_gothic.js      compiled Init/Update/commands, render, dispatch
+    |-- pingpong_gothic.go   prelude + server render + View + procedure registrar
+    |-- pingpong_gothic.js   compiled Init/Update/commands, render, dispatch
     |
 go build / go run
     |-- serves HTML and assets

@@ -86,6 +86,12 @@ templ View(model Model) {
 
 const appSource = `package app
 
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+)
+
 type Model struct{ Messages []string }
 
 type Procedures interface {
@@ -109,7 +115,7 @@ func TestGenerateAppView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := generator.Generate(f, generator.Options{
+	out, err := generator.GenerateSingle(f, app, generator.Options{
 		FileName:   "app.gothic",
 		ModuleBase: "app",
 		App:        app,
@@ -119,6 +125,9 @@ func TestGenerateAppView(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
+		`type Model struct`,
+		`type Procedures interface`,
+		`func (m Model) Update`,
 		`func View(model Model) gothic.Component`,
 		`func (m Model) View() gothic.Component`,
 		`stateJSON, err := json.Marshal(model)`,
@@ -129,6 +138,35 @@ func TestGenerateAppView(t *testing.T) {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated Go missing %q\n\n%s", want, src)
 		}
+	}
+	for _, path := range []string{`"context"`, `"github.com/metruzanca/gothic"`} {
+		if got := strings.Count(src, path); got != 1 {
+			t.Errorf("import %s appears %d times\n\n%s", path, got, src)
+		}
+	}
+}
+
+func TestGenerateSingleRejectsAliasedGothic(t *testing.T) {
+	src := `package app
+
+import g "github.com/metruzanca/gothic"
+
+type Model struct{}
+
+func (m Model) Init() g.Cmd { return nil }
+
+func (m Model) Update(msg g.Msg) (g.Model, g.Cmd) { return m, nil }
+`
+	f, err := parser.Parse("app.gothic", []byte(appView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "app.gothic", ModuleBase: "app", App: app}); err == nil {
+		t.Fatal("expected an alias error")
 	}
 }
 

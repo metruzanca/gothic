@@ -7,17 +7,51 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/metruzanca/gothic"
 	"html"
 	"io"
-
-	"github.com/metruzanca/gothic"
 )
 
-//go:embed pingpong_gothic.js
-var pingpongJS []byte
+type Model struct {
+	Messages []string
+}
 
-func init() {
-	gothic.RegisterModule("/_gothic/modules/pingpong_gothic.js", pingpongJS)
+func NewModel() Model {
+	return Model{Messages: []string{"ready"}}
+}
+
+type PingClicked struct{}
+type PongReceived struct{ Text string }
+type PingFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case PingClicked:
+		m.Messages = append(m.Messages, "ping")
+		return m, callPing
+	case PongReceived:
+		m.Messages = append(m.Messages, msg.Text)
+	case PingFailed:
+		m.Messages = append(m.Messages, msg.Message)
+	}
+	return m, nil
+}
+
+func callPing() gothic.Msg {
+	pong, err := Ping()
+	if err != nil {
+		return PingFailed{Message: err.Error()}
+	}
+	return PongReceived{Text: pong}
 }
 
 func View(model Model) gothic.Component {
@@ -90,6 +124,13 @@ func View(model Model) gothic.Component {
 // View implements gothic.Model for Model.
 func (m Model) View() gothic.Component {
 	return View(m)
+}
+
+//go:embed pingpong_gothic.js
+var pingpongJS []byte
+
+func init() {
+	gothic.RegisterModule("/_gothic/modules/pingpong_gothic.js", pingpongJS)
 }
 
 // RegisterProcedures mounts the declared procedures on s.
