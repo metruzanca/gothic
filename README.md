@@ -1,89 +1,73 @@
 # gothic
 
-A fullstack framework that compiles `.gothic` views to Go server code and to
-fine-grained JavaScript DOM updates, with application logic written in ordinary
-Go.
+**Fullstack Go. One language. Server-rendered. No JavaScript to write.**
 
-Status: proof of concept. The current model follows
-[Bubble Tea](https://github.com/charmbracelet/bubbletea): a `Model` with
-`Init`, `Update`, and a generated `View`, messages as `any`, and commands as
-`func() Msg`. No hand-written JavaScript and no WebAssembly.
+gothic lets you build modern web apps in Go. You write Go for the application
+and declarative views for the UI. gothic compiles them to server-rendered HTML
+and small, direct JavaScript DOM updates.
 
-## Quick start
+No WebAssembly. No hand-written client code. No npm.
 
-```sh
-go generate ./examples/pingpong
-go run ./examples/pingpong
-```
+## Goals
 
-The generator reports each artifact it writes, and the server prints the URL it
-is listening on:
+- **Fullstack Go.** Go is the only language you write for the backend and the
+  frontend.
+- **No WebAssembly.** Go on the server, plain JavaScript on the client.
+- **Idiomatic Go, modern views.** Application logic reads like normal Go.
+  Views stay concise and declarative.
+- **Direct DOM updates.** No virtual DOM. Only the parts that change are touched.
 
-```
-gothic: examples/pingpong/pingpong.gothic
-  -> examples/pingpong/pingpong_gothic.go
-  -> examples/pingpong/pingpong_gothic.js
-gothic: wrote 2 artifact(s) from 1 source file(s)
-
-2026/10/29 11:33:10 gothic: listening on http://localhost:8080
-```
-
-Open the printed URL and click Ping. Set `PORT` to use a different port.
-
-The example has one app file and one entrypoint:
-
-- `examples/pingpong/pingpong.gothic`: the Go prelude (model, messages,
-  `Init`, `Update`, commands, procedure interface) and the view.
-- `examples/pingpong/main.go`: server wiring and the procedure implementation.
-
-## Install as a dependency
-
-```sh
-go get github.com/metruzanca/gothic@v0.2.0
-go install github.com/metruzanca/gothic/cmd/gothic@v0.2.0
-```
-
-In an application, wires the generator into `go generate`. The in-repo
-`../../cmd/gothic` form only works inside this repository, so use the published
-module path:
+## A taste
 
 ```go
-//go:generate go run github.com/metruzanca/gothic/cmd/gothic@v0.2.0 generate .
+type Model struct{}
+
+type HelloClicked struct{}
+type HelloReceived struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Hello(ctx context.Context) (string, error)
+}
+
+func (m Model) Init() gothic.Cmd { return nil }
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case HelloClicked:
+		return m, callHello
+	case HelloReceived:
+		window.alert(msg.Message)
+	}
+	return m, nil
+}
+
+func callHello() gothic.Msg {
+	message, err := Hello()
+	if err != nil {
+		return HelloReceived{Message: err.Error()}
+	}
+	return HelloReceived{Message: message}
+}
+
+templ View(model Model) {
+	<button onclick={ HelloClicked{} }>Say hello</button>
+}
 ```
 
-Or, on Go 1.24 and newer, add the CLI as a tool dependency:
+`window.alert` is a browser-side call compiled to JavaScript. The syntax is
+under active development and subject to change. See the
+[examples directory](examples/pingpong) for the current working app.
 
-```sh
-go get -tool github.com/metruzanca/gothic/cmd/gothic@v0.2.0
-```
+## Status
 
-```go
-//go:generate go tool gothic generate .
-```
+Early, working proof of concept. The ping/pong example runs end to end with
+server rendering, hydration, a Bubble Tea-style update loop, and a typed server
+call.
 
-Run `go generate` before `go build`. Generated Go embeds its sibling JavaScript
-with `//go:embed`, so the JavaScript file must exist at build time.
+## Learn more
 
-## Documentation
-
-- [PLAN.md](PLAN.md): architecture, decisions, and full roadmap.
-- [SYNTAX.md](SYNTAX.md): the Go-first component syntax and its current limits.
-- [ITERATION_1.md](ITERATION_1.md): what iteration 1 implements, how it works,
-  how it is verified, and what is deferred.
-
-## Usage
-
-```sh
-gothic generate ./path/to/app
-```
-
-The generator reads `.gothic` files and writes generated Go and JavaScript
-beside each source. When the `.gothic` file starts with a Go prelude and then a
-`templ` view, the generator merges the prelude and view into `<name>_gothic.go`
-and compiles the `Model`, messages, `Update`, and commands into the JavaScript
-module. Generated code registers its module with the server and embeds it in the
-Go binary.
-
-## Requirements
-
-Go 1.26 or newer. No Node.js, npm, or wasm is required to build or run an app.
+- [Syntax](docs/SYNTAX.md)
+- [Roadmap](docs/PLAN.md)
+- [Proof of concept](docs/ITERATION_1.md)
+- [Pitch](docs/PITCH.md)
