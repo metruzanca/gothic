@@ -98,7 +98,13 @@ func App(model Model) gothic.Component {
 			if err := write("<li>"); err != nil {
 				return err
 			}
+			if err := write("<!--g:text:0:open-->"); err != nil {
+				return err
+			}
 			if err := write(html.EscapeString(fmt.Sprint(m))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:close-->"); err != nil {
 				return err
 			}
 			if err := write("</li>"); err != nil {

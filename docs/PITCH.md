@@ -112,7 +112,8 @@ The ping/pong proof of concept runs end to end.
 - The application is Bubble Tea-style MVU: `Model`, `Msg`, `Cmd`, `Init`, `Update`, and a generated `View`.
 - Messages are ordinary Go values. Commands are `func() Msg`.
 - The Go server renders the initial model with hydration markers and serialized state.
-- The client adopts the server list, binds message-valued events, runs `Update`, and patches the DOM.
+- The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
+- Pure components compose views with typed props, in the app file or separate files.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
 - Failure handling produces `ready`, `ping`, `ping failed`.
 - No hand-written JavaScript. No wasm. No npm.
@@ -122,8 +123,8 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 
 ## What comes next
 
-1. Keyed lists, item updates, and conditionals in views.
-2. Multiple components and message mapping between them.
+1. Stateful child components and message mapping between them.
+2. Keyed lists, item updates, and conditionals in views.
 3. `Batch` and `Sequence` commands.
 4. Typed procedure arguments, validation, and the no-JS form fallback.
 5. `go/packages` type information for stronger compiler checks.

@@ -14,7 +14,8 @@ It prioritizes simplicity and productivity.
 ## A taste
 
 The syntax is under active development and subject to change. See the
-[examples directory](examples/pingpong) for the current working app.
+[ping/pong app](examples/pingpong) and the
+[component demo](examples/components) for working examples.
 
 ```templ
 //app.gothic
@@ -50,8 +51,15 @@ func callHello() gothic.Msg {
 	return HelloReceived{Message: message}
 }
 
+view Badge(text string) {
+	<span class="badge">{ text }</span>
+}
+
 view App(model Model) {
-	<button onclick={ HelloClicked{} }>Say hello</button>
+	<button onclick={ HelloClicked{} }>
+		Say hello
+		<Badge text="from Go" />
+	</button>
 }
 ```
 
@@ -74,12 +82,13 @@ func main() {
 ## Status
 
 Early, working proof of concept. The ping/pong example runs end to end with
-server rendering, hydration, a Bubble Tea-style update loop, and a typed server
-call.
+server rendering, hydration, a Bubble Tea-style update loop, a typed server
+call, and composable pure view components.
 
 ## Learn more
 
 - [Syntax](docs/SYNTAX.md)
 - [Roadmap](docs/PLAN.md)
 - [Proof of concept](docs/ITERATION_1.md)
+- [Components](docs/ITERATION_2.md)
 - [Pitch](docs/PITCH.md)

@@ -16,12 +16,19 @@ type Procedure struct {
 	ResultType string
 }
 
+// Param is a named view parameter.
+type Param struct {
+	Name string
+	Type string
+}
+
 // Template is a view declared with view.
 type Template struct {
-	Name     string
-	Params   string
-	State    []StateDecl
-	Children []Node
+	Name      string
+	Params    string
+	ParamList []Param
+	State     []StateDecl
+	Children  []Node
 }
 
 // StateDecl declares component state. Init is a real Go expression.
@@ -67,6 +74,20 @@ type For struct {
 }
 
 func (*For) node() {}
+
+// ComponentCall invokes a component view with named props.
+type ComponentCall struct {
+	Name  string
+	Props []Prop
+}
+
+func (*ComponentCall) node() {}
+
+// Prop is a component prop.
+type Prop struct {
+	Name  string
+	Value ast.Expr
+}
 
 // Attribute is an element attribute.
 type Attribute interface {

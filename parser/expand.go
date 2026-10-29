@@ -1,0 +1,238 @@
+package parser
+
+import (
+	"fmt"
+	"go/ast"
+)
+
+// ComponentSet maps component names to their declarations.
+type ComponentSet map[string]*Template
+
+// ExpandApp returns a copy of f with only the App view, with component calls
+// expanded inline. Component declarations are resolved from components.
+func ExpandApp(f *File, components ComponentSet) (*File, error) {
+	var app *Template
+	for _, t := range f.Templates {
+		if t.Name != "App" {
+			continue
+		}
+		if app != nil {
+			return nil, fmt.Errorf("duplicate App view")
+		}
+		app = t
+	}
+	if app == nil {
+		return nil, fmt.Errorf("App view not found")
+	}
+	expanded, err := expandTemplate(app, nil, nil, components)
+	if err != nil {
+		return nil, err
+	}
+	return &File{
+		Package:    f.Package,
+		Procedures: f.Procedures,
+		Templates:  []*Template{expanded},
+	}, nil
+}
+
+func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, components ComponentSet) (*Template, error) {
+	out := &Template{
+		Name:      t.Name,
+		Params:    t.Params,
+		ParamList: append([]Param(nil), t.ParamList...),
+		State:     append([]StateDecl(nil), t.State...),
+	}
+	for _, child := range t.Children {
+		n, err := expandNode(child, env, stack, components)
+		if err != nil {
+			return nil, err
+		}
+		if n != nil {
+			out.Children = append(out.Children, n)
+		}
+	}
+	return out, nil
+}
+
+func expandNode(n Node, env map[string]ast.Expr, stack []string, components ComponentSet) (Node, error) {
+	switch n := n.(type) {
+	case *Text:
+		return &Text{Value: n.Value}, nil
+	case *Interpolation:
+		return &Interpolation{Expr: substExpr(n.Expr, env)}, nil
+	case *Element:
+		el := &Element{Name: n.Name}
+		for _, attr := range n.Attributes {
+			switch a := attr.(type) {
+			case *ConstantAttr:
+				el.Attributes = append(el.Attributes, &ConstantAttr{Name: a.Name, Value: a.Value})
+			case *EventAttr:
+				el.Attributes = append(el.Attributes, &EventAttr{Name: a.Name, Expr: substExpr(a.Expr, env)})
+			}
+		}
+		for _, child := range n.Children {
+			expanded, err := expandNode(child, env, stack, components)
+			if err != nil {
+				return nil, err
+			}
+			if expanded != nil {
+				el.Children = append(el.Children, expanded)
+			}
+		}
+		return el, nil
+	case *For:
+		childEnv := cloneEnv(env)
+		delete(childEnv, n.Key)
+		delete(childEnv, n.Value)
+		loop := &For{
+			Key:   n.Key,
+			Value: n.Value,
+			X:     substExpr(n.X, env),
+		}
+		for _, child := range n.Children {
+			expanded, err := expandNode(child, childEnv, stack, components)
+			if err != nil {
+				return nil, err
+			}
+			if expanded != nil {
+				loop.Children = append(loop.Children, expanded)
+			}
+		}
+		return loop, nil
+	case *ComponentCall:
+		return expandComponentCall(n, env, stack, components)
+	default:
+		return nil, fmt.Errorf("unsupported node type %T", n)
+	}
+}
+
+func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []string, components ComponentSet) (Node, error) {
+	component, ok := components[call.Name]
+	if !ok {
+		return nil, fmt.Errorf("unknown component %s", call.Name)
+	}
+	for _, name := range stack {
+		if name == call.Name {
+			return nil, fmt.Errorf("component cycle: %s", componentCycle(stack, call.Name))
+		}
+	}
+	if len(component.Children) != 1 {
+		return nil, fmt.Errorf("component %s must have exactly one root element", call.Name)
+	}
+
+	props := map[string]ast.Expr{}
+	for _, prop := range call.Props {
+		if _, exists := props[prop.Name]; exists {
+			return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
+		}
+		props[prop.Name] = substExpr(prop.Value, env)
+	}
+	childEnv := map[string]ast.Expr{}
+	for _, param := range component.ParamList {
+		value, ok := props[param.Name]
+		if !ok {
+			return nil, fmt.Errorf("component %s: missing prop %q", call.Name, param.Name)
+		}
+		childEnv[param.Name] = value
+		delete(props, param.Name)
+	}
+	for name := range props {
+		return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+	}
+
+	expanded, err := expandTemplate(component, childEnv, append(stack, call.Name), components)
+	if err != nil {
+		return nil, err
+	}
+	if len(expanded.Children) != 1 {
+		return nil, fmt.Errorf("component %s must expand to one root element", call.Name)
+	}
+	if _, ok := expanded.Children[0].(*Element); !ok {
+		return nil, fmt.Errorf("component %s root must be an element", call.Name)
+	}
+	return expanded.Children[0], nil
+}
+
+func componentCycle(stack []string, name string) string {
+	out := ""
+	for _, item := range stack {
+		if out != "" {
+			out += " -> "
+		}
+		out += item
+	}
+	if out != "" {
+		out += " -> "
+	}
+	return out + name
+}
+
+func cloneEnv(env map[string]ast.Expr) map[string]ast.Expr {
+	out := make(map[string]ast.Expr, len(env))
+	for k, v := range env {
+		out[k] = v
+	}
+	return out
+}
+
+func substExpr(e ast.Expr, env map[string]ast.Expr) ast.Expr {
+	if e == nil {
+		return nil
+	}
+	if len(env) == 0 {
+		return e
+	}
+	switch e := e.(type) {
+	case *ast.Ident:
+		if value, ok := env[e.Name]; ok {
+			return &ast.ParenExpr{X: value}
+		}
+		return &ast.Ident{Name: e.Name}
+	case *ast.BasicLit:
+		return &ast.BasicLit{Kind: e.Kind, Value: e.Value}
+	case *ast.SelectorExpr:
+		return &ast.SelectorExpr{X: substExpr(e.X, env), Sel: &ast.Ident{Name: e.Sel.Name}}
+	case *ast.CallExpr:
+		args := make([]ast.Expr, len(e.Args))
+		for i, arg := range e.Args {
+			args[i] = substExpr(arg, env)
+		}
+		return &ast.CallExpr{Fun: substExpr(e.Fun, env), Args: args, Ellipsis: e.Ellipsis}
+	case *ast.BinaryExpr:
+		return &ast.BinaryExpr{X: substExpr(e.X, env), Op: e.Op, Y: substExpr(e.Y, env)}
+	case *ast.UnaryExpr:
+		return &ast.UnaryExpr{Op: e.Op, X: substExpr(e.X, env)}
+	case *ast.ParenExpr:
+		return &ast.ParenExpr{X: substExpr(e.X, env)}
+	case *ast.StarExpr:
+		return &ast.StarExpr{X: substExpr(e.X, env)}
+	case *ast.IndexExpr:
+		return &ast.IndexExpr{X: substExpr(e.X, env), Index: substExpr(e.Index, env)}
+	case *ast.SliceExpr:
+		return &ast.SliceExpr{
+			X:      substExpr(e.X, env),
+			Low:    substExpr(e.Low, env),
+			High:   substExpr(e.High, env),
+			Max:    substExpr(e.Max, env),
+			Slice3: e.Slice3,
+		}
+	case *ast.TypeAssertExpr:
+		return &ast.TypeAssertExpr{X: substExpr(e.X, env), Type: e.Type}
+	case *ast.CompositeLit:
+		elts := make([]ast.Expr, len(e.Elts))
+		for i, elt := range e.Elts {
+			elts[i] = substExpr(elt, env)
+		}
+		return &ast.CompositeLit{Type: e.Type, Elts: elts, Incomplete: e.Incomplete}
+	case *ast.KeyValueExpr:
+		key := e.Key
+		if _, ok := e.Key.(*ast.Ident); !ok {
+			key = substExpr(e.Key, env)
+		}
+		return &ast.KeyValueExpr{Key: key, Value: substExpr(e.Value, env)}
+	case *ast.FuncLit:
+		return e
+	default:
+		return e
+	}
+}

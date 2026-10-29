@@ -92,7 +92,7 @@ import (
 	"github.com/metruzanca/gothic"
 )
 
-type Model struct{ Messages []string }
+type Model struct{ Messages []string; Status string }
 
 type Procedures interface {
 	gothic.RPCService
@@ -143,6 +143,65 @@ func TestGenerateAppView(t *testing.T) {
 		if got := strings.Count(src, path); got != 1 {
 			t.Errorf("import %s appears %d times\n\n%s", path, got, src)
 		}
+	}
+}
+
+const componentView = `package app
+
+view Status(text string) {
+	<p class="status">{ text }</p>
+}
+
+view App(model Model) {
+	<div>
+		<Status text={ model.Status } />
+	</div>
+}
+`
+
+func TestGenerateAppExpandsComponents(t *testing.T) {
+	f, err := parser.Parse("app.gothic", []byte(componentView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	components := parser.ComponentSet{}
+	for _, t := range f.Templates {
+		if t.Name != "App" {
+			components[t.Name] = t
+		}
+	}
+	expanded, err := parser.ExpandApp(f, components)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(appSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(expanded, app, generator.Options{
+		FileName:   "app.gothic",
+		ModuleBase: "app",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`func App(model Model) gothic.Component`,
+		`write("<p class=\"status\">")`,
+		`<!--g:text:0:open-->`,
+		`(model.Status)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+	if strings.Contains(src, "func Status(") {
+		t.Errorf("component should be expanded, not generated as a function\n\n%s", src)
+	}
+	if got := strings.Count(src, `data-gothic-root`); got != 1 {
+		t.Errorf("root marker count = %d\n\n%s", got, src)
 	}
 }
 

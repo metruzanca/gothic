@@ -2,8 +2,9 @@
 
 > Status: proof of concept. The current model is Model-View-Update inspired by
 > [Bubble Tea](https://github.com/charmbracelet/bubbletea). Application logic is
-> ordinary Go. Views are `.gothic` files. The phase roadmap will be rewritten
-> after the proof of concept stabilizes.
+> ordinary Go. Views are `.gothic` files and can be composed from pure
+> components. The phase roadmap will be rewritten after the proof of concept
+> stabilizes.
 
 ## Overview
 
@@ -67,6 +68,7 @@ The application is split into ordinary Go and a view:
 // pingpong.gothic (Go prelude)
 type Model struct {
 	Messages []string
+	Status   string
 }
 
 type PingClicked struct{}
@@ -103,18 +105,27 @@ func callPing() gothic.Msg {
 ```
 
 ```gothic
-// pingpong.gothic (view)
+// pingpong.gothic (views)
+view Status(text string) {
+	<p class="status">{ text }</p>
+}
+
 view App(model Model) {
 	<div class="app">
+		<Status text={ model.Status } />
 		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>
 			for _, m := range model.Messages {
-				<li>{ m }</li>
+				<MessageItem message={ m } />
 			}
 		</ul>
 	</div>
 }
 ```
+
+Components are pure views. The compiler expands them into `App` before it
+generates Go and JavaScript. A component can live in the app file or in a
+separate `.gothic` file in the same package.
 
 ```go
 // main.go
@@ -167,16 +178,17 @@ from the server and reconciled. There is no virtual DOM.
 
 | Path | Purpose |
 |---|---|
-| `parser/` | Splits the Go prelude from the view and parses markup and Go expressions. |
+| `parser/` | Splits the Go prelude from the views, parses markup and Go expressions, and expands components. |
 | `goapp/` | Extracts `Model`, messages, `Init`, `Update`, commands, and the procedure interface from the Go prelude. |
 | `generator/` | Emits Go SSR code, the generated `View` method, registrars, and client stubs. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view into a JavaScript module. |
 | `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
-| `client/runtime/` | Embedded runtime helpers: `list`, `on`, `readState`, `rpc`. |
+| `client/runtime/` | Embedded runtime helpers: `list`, `text`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/pingpong/` | The proof-of-concept app. |
+| `examples/components/` | The pure-component demo. |
 
 The CLI detects an app file when the `.gothic` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -186,7 +198,9 @@ a `Model` type and a view whose start line begins with `view`.
 Supported now:
 
 - one application model per package,
-- one view template with a single model parameter,
+- one `App` view with a single model parameter,
+- pure components with props, in the app file or separate files,
+- compile-time component expansion and nested components,
 - `Msg = any` with messages as ordinary Go structs,
 - `Update` with a type switch,
 - `append`, field access, assignments, `if err != nil`, and returns,
@@ -202,11 +216,14 @@ Supported now:
 
 Not supported yet:
 
+- stateful child components, child models, and message mapping,
+- multiple app models,
+- component children and slots,
+- Go-callable component functions,
 - keyed lists and list item updates,
 - conditionals in views,
-- nested stateful components and multiple app models,
 - expression-valued attributes,
-- multiple view parameters,
+- multiple `App` parameters,
 - `Batch` and `Sequence`,
 - message serialization or logging,
 - `go/packages` type information,
@@ -222,10 +239,10 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Keyed list reconciliation and item updates.
-2. Conditionals in views.
-3. More Go statements and expressions in `Update` and commands.
-4. Nested components and message mapping.
+1. Stateful child components and message mapping.
+2. Keyed list reconciliation and item updates.
+3. Conditionals in views.
+4. More Go statements and expressions in `Update` and commands.
 5. `Batch` and `Sequence` commands.
 6. Procedure arguments, typed validation, and the no-JS fallback.
 7. `go/packages` for type information and stronger validation.
@@ -239,6 +256,10 @@ These will be planned in detail after the proof of concept is evaluated:
 - Client-only Go stubs for procedures are a prototype shortcut.
 - `Msg = any` gives up compile-time exhaustiveness. Bubble Tea accepts this; we
   can add optional validation later.
+- Pure components are compile-time expanded, so reuse duplicates generated
+  markup and components are not callable from Go.
+- Stateful child components need a runtime component instance model that pure
+  expansion does not provide.
 - Keyed list reconciliation and conditional rendering are not yet designed.
 - The model is serialized whole. Large models may need selective state later.
 - Markup correctness is now ours. Selective vendoring and golden tests are the

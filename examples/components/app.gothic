@@ -1,0 +1,47 @@
+package main
+
+import "github.com/metruzanca/gothic"
+
+type Model struct {
+	Count   int
+	History []string
+}
+
+func NewModel() Model {
+	return Model{History: []string{"ready"}}
+}
+
+type AddClicked struct{}
+type RepeatClicked struct{ Text string }
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case AddClicked:
+		m.Count = m.Count + 1
+		m.History = append(m.History, "tick")
+	case RepeatClicked:
+		m.Count = m.Count + 1
+		m.History = append(m.History, msg.Text)
+	}
+	return m, nil
+}
+
+view Status(count int) {
+	<p class="count">{ count }</p>
+}
+
+view App(model Model) {
+	<div class="app">
+		<Status count={ model.Count } />
+		<button class="add" onclick={ AddClicked{} }>Add</button>
+		<ul>
+			for _, item := range model.History {
+				<HistoryItem text={ item } />
+			}
+		</ul>
+	</div>
+}

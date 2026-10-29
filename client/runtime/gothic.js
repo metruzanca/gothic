@@ -95,7 +95,7 @@ export function each(root, marker, sig, render) {
   });
 }
 
-export function list(root, marker, render) {
+export function list(root, marker, render, hydrate) {
   const open = findComment(root, `g:each:${marker}:open`);
   const close = findComment(root, `g:each:${marker}:close`);
   if (!open || !close) return () => {};
@@ -107,7 +107,16 @@ export function list(root, marker, render) {
     node = next;
   }
 
+  let hydrated = false;
   return function update(items) {
+    if (!hydrated) {
+      hydrated = true;
+      if (hydrate) {
+        for (let i = 0; i < nodes.length && i < items.length; i++) {
+          hydrate(nodes[i], items[i], i);
+        }
+      }
+    }
     while (nodes.length > items.length) {
       nodes.pop().remove();
     }
@@ -119,8 +128,25 @@ export function list(root, marker, render) {
   };
 }
 
+export function text(root, marker, value) {
+  const open = findComment(root, `g:text:${marker}:open`);
+  const close = findComment(root, `g:text:${marker}:close`);
+  if (!open || !close) return;
+
+  let node = open.nextSibling;
+  while (node && node !== close && node.nodeType !== 3) {
+    node = node.nextSibling;
+  }
+  if (!node || node === close) {
+    node = document.createTextNode("");
+    close.parentNode.insertBefore(node, close);
+  }
+  node.nodeValue = String(value);
+}
+
 export function on(root, marker, event, handler) {
-  const el = root.querySelector(`[data-gothic-on="${marker}"]`);
+  const selector = `[data-gothic-on="${marker}"]`;
+  const el = root.matches?.(selector) ? root : root.querySelector(selector);
   if (!el) return;
   el.removeAttribute("data-gothic-on");
   el.addEventListener(event, handler);

@@ -1,7 +1,9 @@
 # Iteration 1: the ping/pong proof of concept
 
 Status: working proof of concept. The application model follows Bubble Tea and
-The Elm Architecture. See [SYNTAX.md](SYNTAX.md) for the current grammar.
+The Elm Architecture. Iteration 2 adds pure components, see
+[ITERATION_2.md](ITERATION_2.md). See [SYNTAX.md](SYNTAX.md) for the current
+grammar.
 
 ## Goal
 
@@ -118,7 +120,7 @@ ping failed
 | `goapp/` | Extracts the model, messages, `Init`, `Update`, commands, and procedure interface from the Go prelude. |
 | `generator/` | Emits the Go view, the `View` method, the registrar, client stubs, and the app Go file. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view to JavaScript. |
-| `client/runtime/gothic.js` | `list`, `on`, `readState`, `rpc`. |
+| `client/runtime/gothic.js` | `list`, `text`, `on`, `readState`, `rpc`. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |

@@ -2,7 +2,8 @@
 
 gothic is currently a proof of concept. The application model follows
 [Bubble Tea](https://github.com/charmbracelet/bubbletea) and The Elm
-Architecture. A `.gothic` file contains ordinary Go followed by one view.
+Architecture. A `.gothic` file contains ordinary Go followed by one or more
+views. One view, `App`, is the root. The others are pure components.
 `main.go` remains the entrypoint.
 
 ## Model-View-Update
@@ -123,10 +124,30 @@ A `.gothic` app file has two sections:
 
 1. A Go prelude: package, imports, model, messages, `Init`, `Update`,
    commands, and procedure interfaces.
-2. A view, starting with a line that begins with `view`.
+2. One or more views, starting with a line that begins with `view`.
 
 Everything before the first top-level `view` line is parsed as Go. Everything
 from that line onward is parsed as gothic markup.
+
+The app view is named `App`:
+
+```gothic
+view App(model Model) {
+	...
+}
+```
+
+Any other view is a component:
+
+```gothic
+view Badge(text string) {
+	<span class="badge">{ text }</span>
+}
+```
+
+Components can live in the same app file or in a separate `.gothic` file in the
+same directory. A separate component file contains only a package clause and
+views. It has no model and no `Init` or `Update`.
 
 ## View language
 
@@ -138,8 +159,45 @@ view App(model Model) {
 }
 ```
 
-The view is a pure function of the model. The model parameter name and type are
-used to generate the Go `View` method and the JavaScript renderer.
+The app view is a pure function of the model. The model parameter name and type
+are used to generate the Go `View` method and the JavaScript renderer.
+
+### Components
+
+A component is a pure view function with named props:
+
+```gothic
+view Badge(text string) {
+	<span class="badge">{ text }</span>
+}
+```
+
+Invoke a component with a capitalized tag. Props use string literals,
+expressions, or boolean shorthand:
+
+```gothic
+<Badge text={ model.Status } />
+<Badge text="ready" />
+```
+
+A bare prop passes `true`, for example `<Card hidden />` when `Card` declares a
+`hidden bool` parameter.
+
+The compiler expands components into the app before generating Go and
+JavaScript. Props are substituted directly into the component body. Components
+can call other components, including components from other files in the same
+package.
+
+Rules:
+
+- `App` is the only root and the only view with a model parameter.
+- Components are stateless. They cannot declare `state`.
+- Components render exactly one root element.
+- Components should reference only their props and package-level declarations.
+- Component children and slots are not supported yet.
+- Components cannot be called from Go code yet.
+- Capitalized tags are always components, so camelCase SVG tags are not
+  supported yet.
 
 ### Markup
 
@@ -248,10 +306,13 @@ updates visible before the asynchronous work completes.
 ## Rendering
 
 - The server renders the initial model and serializes it into the page.
-- The client reads the model, adopts the server-rendered list nodes, and binds
-  event attributes.
-- On dispatch, the runtime calls `Update`, replaces the model, renders again,
-  and runs the returned command.
+- Components are expanded into the app before either target is generated.
+- Interpolated text is wrapped in comment markers. The client updates the text
+  node in place.
+- The client reads the model, adopts the server-rendered list nodes, hydrates
+  their events, and binds event attributes.
+- On dispatch, the runtime calls `Update`, replaces the model, updates text and
+  lists, and runs the returned command.
 - Rendering is direct DOM updates. There is no virtual DOM.
 
 ## Current limits
@@ -259,23 +320,29 @@ updates visible before the asynchronous work completes.
 The proof of concept supports:
 
 - one application model per package,
-- one view template with a single model parameter,
+- one `App` view with a single model parameter,
+- pure components with multiple named props,
+- components in the same file or separate files in the same package,
+- nested pure components and components inside lists,
 - message structs with zero or simple fields,
 - `Update` with a type switch,
 - `append` and assignments,
 - `if err != nil`,
 - commands with procedure calls,
 - lists over a model field,
-- message-valued event bindings,
+- reactive interpolated text and message-valued event bindings,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 
 Not supported yet:
 
-- multiple app models or stateful child components,
-- keyed lists,
+- stateful child components, child models, and message mapping,
+- multiple app models,
+- component children and slots,
+- Go-callable component functions,
+- keyed lists and item updates,
 - conditionals in views,
 - expression-valued attributes,
-- multiple view parameters,
+- multiple `App` parameters,
 - `Batch` and `Sequence`,
 - procedure arguments and typed validation,
 - message serialization,

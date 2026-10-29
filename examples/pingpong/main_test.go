@@ -29,7 +29,8 @@ func TestPingPongApp(t *testing.T) {
 		`"Messages":["ready"]`,
 		`data-gothic-on="0"`,
 		`<!--g:each:0:open-->`,
-		`<li>ready</li>`,
+		`<li>`,
+		`<!--g:text:0:open-->ready<!--g:text:0:close-->`,
 		`<!--g:each:0:close-->`,
 		`/_gothic/modules/pingpong_gothic.js`,
 	} {
@@ -49,6 +50,8 @@ func TestPingPongApp(t *testing.T) {
 		`return [m, callPing];`,
 		`pong = await Ping();`,
 		`return {tag: "PongReceived", Text: pong};`,
+		`text(e0, "0", m);`,
+		`text(node, "0", m);`,
 	} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("generated JS missing %q", want)

@@ -66,6 +66,9 @@ func Generate(f *parser.File, opts Options) ([]byte, error) {
 
 // GenerateSingle merges the Go prelude and the generated view into one file.
 func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error) {
+	if len(f.Templates) != 1 {
+		return nil, fmt.Errorf("%s: GenerateSingle expects one expanded App view", opts.FileName)
+	}
 	body, usesHTML, usesFmt, err := generateBody(f, opts)
 	if err != nil {
 		return nil, err
@@ -268,6 +271,7 @@ type templateGen struct {
 	moduleURL string
 	eachN     int
 	eventN    int
+	textN     int
 	usesHTML  bool
 	usesFmt   bool
 }
@@ -376,7 +380,11 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 	case *parser.Interpolation:
 		g.usesHTML = true
 		g.usesFmt = true
+		idx := g.textN
+		g.textN++
+		g.emitWrite(b, fmt.Sprintf("<!--g:text:%d:open-->", idx))
 		fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", goExpr(n.Expr))
+		g.emitWrite(b, fmt.Sprintf("<!--g:text:%d:close-->", idx))
 	case *parser.Element:
 		return g.writeElement(b, n, false)
 	case *parser.For:

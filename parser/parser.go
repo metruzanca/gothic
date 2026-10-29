@@ -1,10 +1,13 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/format"
 	goparser "go/parser"
 	"go/token"
+	"strconv"
 	"strings"
 )
 
@@ -69,6 +72,11 @@ func (p *parser) parseTemplate() (*Template, error) {
 	if p.peek() == '(' {
 		t.Params = p.readBalanced('(', ')')
 	}
+	params, err := parseParams(t.Params)
+	if err != nil {
+		return nil, p.errf("invalid parameters for %s: %v", t.Name, err)
+	}
+	t.ParamList = params
 	p.skipSpace()
 	if !p.consume("{") {
 		return nil, p.errf("expected { after template name")
@@ -267,6 +275,51 @@ func (p *parser) parseFor() (Node, error) {
 	return &For{Key: key, Value: value, X: rs.X, Children: children}, nil
 }
 
+func parseParams(raw string) ([]Param, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	src := "package p\nfunc _" + raw + " {}\n"
+	fset := token.NewFileSet()
+	file, err := goparser.ParseFile(fset, "params.gothic", src, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(file.Decls) != 1 {
+		return nil, fmt.Errorf("unexpected declaration shape")
+	}
+	fn, ok := file.Decls[0].(*ast.FuncDecl)
+	if !ok || fn.Type.Params == nil {
+		return nil, fmt.Errorf("unexpected parameter shape")
+	}
+	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
+		return nil, fmt.Errorf("views cannot declare results")
+	}
+	var params []Param
+	for _, field := range fn.Type.Params.List {
+		if _, ok := field.Type.(*ast.Ellipsis); ok {
+			return nil, fmt.Errorf("variadic parameters are not supported")
+		}
+		if len(field.Names) == 0 {
+			return nil, fmt.Errorf("parameters must be named")
+		}
+		typ := exprString(field.Type)
+		for _, name := range field.Names {
+			params = append(params, Param{Name: name.Name, Type: typ})
+		}
+	}
+	return params, nil
+}
+
+func exprString(e ast.Expr) string {
+	var b bytes.Buffer
+	if err := format.Node(&b, token.NewFileSet(), e); err != nil {
+		return ""
+	}
+	return b.String()
+}
+
 func parseRangeHeader(header string) (*ast.RangeStmt, error) {
 	src := "package p\nfunc _() {\nfor " + header + " {\n}\n}\n"
 	fset := token.NewFileSet()
@@ -298,6 +351,9 @@ func (p *parser) parseElement() (Node, error) {
 	name := p.readTagName()
 	if name == "" {
 		return nil, p.errf("expected element name")
+	}
+	if isComponentName(name) {
+		return p.parseComponent(name)
 	}
 	el := &Element{Name: name}
 
@@ -352,6 +408,101 @@ func (p *parser) parseElement() (Node, error) {
 		return nil, p.errf("expected > to close </%s>", name)
 	}
 	return el, nil
+}
+
+func (p *parser) parseComponent(name string) (Node, error) {
+	call := &ComponentCall{Name: name}
+	for {
+		p.skipSpace()
+		if p.eof() {
+			return nil, p.errf("unexpected end of file in <%s>", name)
+		}
+		if p.consume("/>") {
+			return call, nil
+		}
+		if p.consume(">") {
+			break
+		}
+		prop, err := p.parseProp()
+		if err != nil {
+			return nil, err
+		}
+		call.Props = append(call.Props, prop)
+	}
+
+	var children []Node
+	for {
+		p.skipSpace()
+		if p.eof() {
+			return nil, p.errf("unexpected end of file in <%s>", name)
+		}
+		if p.startsWith("</") {
+			break
+		}
+		child, err := p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		if child != nil {
+			children = append(children, child)
+		}
+	}
+	if len(children) > 0 {
+		return nil, p.errf("component <%s> cannot have children yet", name)
+	}
+	if !p.consume("</") {
+		return nil, p.errf("expected closing tag for <%s>", name)
+	}
+	closing := p.readTagName()
+	if closing != name {
+		return nil, p.errf("expected </%s>, got </%s>", name, closing)
+	}
+	p.skipSpace()
+	if !p.consume(">") {
+		return nil, p.errf("expected > to close </%s>", name)
+	}
+	return call, nil
+}
+
+func (p *parser) parseProp() (Prop, error) {
+	var prop Prop
+	prop.Name = p.readAttrName()
+	if prop.Name == "" {
+		return prop, p.errf("expected prop name")
+	}
+	if !token.IsIdentifier(prop.Name) {
+		return prop, p.errf("invalid prop name %q", prop.Name)
+	}
+	p.skipSpace()
+	if !p.consume("=") {
+		prop.Value = ast.NewIdent("true")
+		return prop, nil
+	}
+	p.skipSpace()
+	if p.peek() == '{' {
+		inner, err := p.readBalancedBraces()
+		if err != nil {
+			return prop, err
+		}
+		if strings.TrimSpace(inner) == "" {
+			return prop, p.errf("empty prop expression")
+		}
+		expr, err := goparser.ParseExpr(inner)
+		if err != nil {
+			return prop, p.errf("invalid prop expression for %s: %v", prop.Name, err)
+		}
+		prop.Value = expr
+		return prop, nil
+	}
+	if p.peek() != '"' {
+		return prop, p.errf("expected quoted value or expression for prop %s", prop.Name)
+	}
+	v, err := p.readQuoted()
+	if err != nil {
+		return prop, err
+	}
+	prop.Value = &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(v)}
+	return prop, nil
 }
 
 func (p *parser) parseAttribute() (Attribute, error) {
@@ -656,6 +807,10 @@ func (p *parser) errf(format string, args ...any) error {
 		}
 	}
 	return fmt.Errorf("%s:%d:%d: %s", p.name, line, col, fmt.Sprintf(format, args...))
+}
+
+func isComponentName(name string) bool {
+	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
 }
 
 func isIdentStart(c byte) bool {

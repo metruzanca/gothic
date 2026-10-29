@@ -1,0 +1,8 @@
+package main
+
+view HistoryItem(text string) {
+	<li class="history">
+		{ text }
+		<button class="repeat" onclick={ RepeatClicked{Text: text} }>repeat</button>
+	</li>
+}

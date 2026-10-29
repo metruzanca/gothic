@@ -8,6 +8,7 @@ import (
 // clientReservedNames are identifiers that generated JavaScript already uses.
 var clientReservedNames = map[string]bool{
 	"readState": true,
+	"text":      true,
 	"signal":    true,
 	"each":      true,
 	"on":        true,
