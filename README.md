@@ -25,6 +25,8 @@ type Model struct{}
 type HelloClicked struct{}
 type HelloReceived struct{ Message string }
 
+// Procedures declares the RPC calls available to the client.
+// The embedded gothic.RPCService marks it for code generation.
 type Procedures interface {
 	gothic.RPCService
 	Hello(ctx context.Context) (string, error)
@@ -52,6 +54,27 @@ func callHello() gothic.Msg {
 
 templ View(model Model) {
 	<button onclick={ HelloClicked{} }>Say hello</button>
+}
+```
+
+The interface name is arbitrary. The compiler looks for the embedded
+`gothic.RPCService`, then generates the client-side `Hello()` call and the
+server-side `RegisterProcedures` registrar. The `procedures` struct in `main.go`
+implements the interface, and `RegisterProcedures` requires it:
+
+```go
+// procedures implements the Procedures contract.
+type procedures struct{}
+
+func (procedures) Hello(ctx context.Context) (string, error) {
+	return "Hello from the server!", nil
+}
+
+func main() {
+	s := gothic.NewServer()
+	RegisterProcedures(s, procedures{})
+	s.MountApp("/", gothic.NewApp(Model{}))
+	s.ListenAndServe(":8080")
 }
 ```
 

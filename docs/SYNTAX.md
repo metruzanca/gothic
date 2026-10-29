@@ -190,6 +190,10 @@ type Procedures interface {
 }
 ```
 
+The interface name is arbitrary. The compiler looks for the embedded
+`gothic.RPCService`, then generates the registrar and the client stubs from the
+interface methods.
+
 The generator emits:
 
 - a registrar `RegisterProcedures(s, impl)`,
