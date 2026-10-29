@@ -16,7 +16,7 @@ It prioritizes simplicity and productivity.
 The syntax is under active development and subject to change. See the
 [examples directory](examples/pingpong) for the current working app.
 
-```go
+```templ
 //app.gothic
 type Model struct{}
 
