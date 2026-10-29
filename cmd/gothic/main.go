@@ -73,13 +73,19 @@ func generateFile(path string, out io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	base := strings.TrimSuffix(filepath.Base(path), ".gothic")
+	dir := filepath.Dir(path)
+
+	if appFile, err := parser.ParseApp(path, src); err == nil {
+		if app, err := goapp.ParseSource(path, appFile.GoSource); err == nil {
+			return generateAppFile(path, dir, base, appFile, app, out)
+		}
+	}
+
 	f, err := parser.Parse(path, src)
 	if err != nil {
 		return 0, err
 	}
-	base := strings.TrimSuffix(filepath.Base(path), ".gothic")
-	dir := filepath.Dir(path)
-
 	goSrc, err := generator.Generate(f, generator.Options{
 		FileName:   path,
 		ModuleBase: base,
@@ -87,58 +93,67 @@ func generateFile(path string, out io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	var jsSrc []byte
-	if isAppView(f) {
-		app, err := goapp.Parse(filepath.Join(dir, "app.go"))
-		if err != nil {
-			return 0, err
-		}
-		jsSrc, err = appjs.Generate(f, app, appjs.Options{
-			FileName:   path,
-			RuntimeURL: "/_gothic/runtime.js",
-		})
-	} else {
-		jsSrc, err = jsgen.Generate(f, jsgen.Options{
-			FileName:   path,
-			RuntimeURL: "/_gothic/runtime.js",
-		})
-	}
+	jsSrc, err := jsgen.Generate(f, jsgen.Options{
+		FileName:   path,
+		RuntimeURL: "/_gothic/runtime.js",
+	})
 	if err != nil {
 		return 0, err
 	}
-
-	fmt.Fprintf(out, "gothic: %s\n", path)
-	written := 0
-	for _, artifact := range []struct {
-		name string
-		data []byte
-	}{
+	return writeArtifacts(out, path, []artifact{
 		{filepath.Join(dir, base+"_gothic.go"), goSrc},
 		{filepath.Join(dir, base+"_gothic.js"), jsSrc},
-	} {
-		changed, err := writeIfChanged(artifact.name, artifact.data)
+	})
+}
+
+func generateAppFile(path, dir, base string, appFile *parser.AppFile, app *goapp.App, out io.Writer) (int, error) {
+	goSrc, err := generator.Generate(appFile.View, generator.Options{
+		FileName:   path,
+		ModuleBase: base,
+		App:        app,
+	})
+	if err != nil {
+		return 0, err
+	}
+	appSrc, err := generator.GenerateAppSource(app, generator.Options{FileName: path})
+	if err != nil {
+		return 0, err
+	}
+	jsSrc, err := appjs.Generate(appFile.View, app, appjs.Options{
+		FileName:   path,
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		return 0, err
+	}
+	return writeArtifacts(out, path, []artifact{
+		{filepath.Join(dir, base+"_gothic.go"), goSrc},
+		{filepath.Join(dir, base+"_app_gothic.go"), appSrc},
+		{filepath.Join(dir, base+"_gothic.js"), jsSrc},
+	})
+}
+
+type artifact struct {
+	name string
+	data []byte
+}
+
+func writeArtifacts(out io.Writer, source string, artifacts []artifact) (int, error) {
+	fmt.Fprintf(out, "gothic: %s\n", source)
+	written := 0
+	for _, a := range artifacts {
+		changed, err := writeIfChanged(a.name, a.data)
 		if err != nil {
 			return written, err
 		}
 		if changed {
 			written++
-			fmt.Fprintf(out, "  -> %s\n", artifact.name)
+			fmt.Fprintf(out, "  -> %s\n", a.name)
 		} else {
-			fmt.Fprintf(out, "  = %s (unchanged)\n", artifact.name)
+			fmt.Fprintf(out, "  = %s (unchanged)\n", a.name)
 		}
 	}
 	return written, nil
-}
-
-func isAppView(f *parser.File) bool {
-	if len(f.Templates) != 1 {
-		return false
-	}
-	t := f.Templates[0]
-	params := strings.TrimSpace(t.Params)
-	params = strings.TrimPrefix(params, "(")
-	params = strings.TrimSuffix(params, ")")
-	return len(t.State) == 0 && strings.TrimSpace(params) != ""
 }
 
 func writeIfChanged(path string, data []byte) (bool, error) {

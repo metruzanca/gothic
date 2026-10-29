@@ -64,7 +64,7 @@ type Model interface {
 The application is split into ordinary Go and a view:
 
 ```go
-// app.go
+// pingpong.gothic (Go prelude)
 type Model struct {
 	Messages []string
 }
@@ -72,6 +72,11 @@ type Model struct {
 type PingClicked struct{}
 type PongReceived struct{ Text string }
 type PingFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
 
 func (m Model) Init() gothic.Cmd { return nil }
 
@@ -98,9 +103,7 @@ func callPing() gothic.Msg {
 ```
 
 ```gothic
-// view.gothic
-package main
-
+// pingpong.gothic (view)
 templ View(model Model) {
 	<div class="app">
 		<button onclick={ PingClicked{} }>Ping</button>
@@ -111,16 +114,13 @@ templ View(model Model) {
 		</ul>
 	</div>
 }
-
-rpc Ping() string
 ```
 
 ```go
 // main.go
-app := gothic.NewApp(NewModel())
 s := gothic.NewServer()
-RegisterView(s, procedures{})
-s.MountApp("/", app)
+RegisterProcedures(s, procedures{})
+s.MountApp("/", gothic.NewApp(NewModel()))
 ```
 
 See [SYNTAX.md](SYNTAX.md) for the current grammar and limits.
@@ -128,11 +128,12 @@ See [SYNTAX.md](SYNTAX.md) for the current grammar and limits.
 ## Pipeline
 
 ```
-app.go + view.gothic
+pingpong.gothic + main.go
     |
 gothic generate
-    |-- view_gothic.go   SSR + View method + procedure registrar + client stubs
-    |-- view_gothic.js   compiled Init/Update/commands + render + dispatch loop
+    |-- pingpong_gothic.go      SSR + View method + registrar + client stubs
+    |-- pingpong_app_gothic.go  the Go prelude
+    |-- pingpong_gothic.js      compiled Init/Update/commands + render + dispatch
     |
 go build / go run
     |-- serves HTML, the runtime, generated modules, and RPC endpoints
@@ -167,19 +168,19 @@ from the server and reconciled. There is no virtual DOM.
 
 | Path | Purpose |
 |---|---|
-| `parser/` | Parses `.gothic` views, markup, Go expressions, and `rpc` declarations. |
-| `goapp/` | Extracts `Model`, messages, `Init`, `Update`, and commands from Go app files. |
+| `parser/` | Splits the Go prelude from the view and parses markup and Go expressions. |
+| `goapp/` | Extracts `Model`, messages, `Init`, `Update`, commands, and the procedure interface from the Go prelude. |
 | `generator/` | Emits Go SSR code, the generated `View` method, registrars, and client stubs. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view into a JavaScript module. |
 | `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
 | `client/runtime/` | Embedded runtime helpers: `list`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
-| `gothic.go` | `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
+| `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/pingpong/` | The proof-of-concept app. |
 
-The CLI detects an app view when a `.gothic` file has a template with a model
-parameter, no legacy `state` declarations, and an `app.go` beside it.
+The CLI detects an app file when the `.gothic` file has a valid Go prelude with
+a `Model` type and a view whose start line begins with `templ`.
 
 ## Proof-of-concept scope
 
@@ -197,6 +198,7 @@ Supported now:
 - message-valued event bindings,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
+- procedure contracts through an interface embedding `gothic.RPCService`,
 - a generated client-only Go stub for each procedure.
 
 Not supported yet:

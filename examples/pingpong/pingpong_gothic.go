@@ -13,11 +13,11 @@ import (
 	"github.com/metruzanca/gothic"
 )
 
-//go:embed view_gothic.js
-var viewJS []byte
+//go:embed pingpong_gothic.js
+var pingpongJS []byte
 
 func init() {
-	gothic.RegisterModule("/_gothic/modules/view_gothic.js", viewJS)
+	gothic.RegisterModule("/_gothic/modules/pingpong_gothic.js", pingpongJS)
 }
 
 func View(model Model) gothic.Component {
@@ -80,7 +80,7 @@ func View(model Model) gothic.Component {
 		if err := write("</div>"); err != nil {
 			return err
 		}
-		if err := write("\n<script type=\"module\" src=\"/_gothic/modules/view_gothic.js\"></script>\n"); err != nil {
+		if err := write("\n<script type=\"module\" src=\"/_gothic/modules/pingpong_gothic.js\"></script>\n"); err != nil {
 			return err
 		}
 		return nil
@@ -92,13 +92,8 @@ func (m Model) View() gothic.Component {
 	return View(m)
 }
 
-// ViewProcedures is implemented by the application to serve this file's procedures.
-type ViewProcedures interface {
-	Ping(ctx context.Context) (string, error)
-}
-
-// RegisterView mounts this file's procedures on s.
-func RegisterView(s *gothic.Server, impl ViewProcedures) {
+// RegisterProcedures mounts the declared procedures on s.
+func RegisterProcedures(s *gothic.Server, impl Procedures) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return impl.Ping(ctx)
 	})

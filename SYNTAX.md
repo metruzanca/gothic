@@ -2,7 +2,8 @@
 
 gothic is currently a proof of concept. The application model follows
 [Bubble Tea](https://github.com/charmbracelet/bubbletea) and The Elm
-Architecture. Views are `.gothic` files. Application logic is ordinary Go.
+Architecture. A `.gothic` file contains ordinary Go followed by one view.
+`main.go` remains the entrypoint.
 
 ## Model-View-Update
 
@@ -28,21 +29,32 @@ Following Bubble Tea:
 
 ## Example
 
-`app.go`:
+`pingpong.gothic` holds the Go prelude, the view, and the procedure contract:
 
-```go
+```gothic
 package pingpong
+
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+)
 
 type Model struct {
 	Messages []string
+}
+
+func NewModel() Model {
+	return Model{Messages: []string{"ready"}}
 }
 
 type PingClicked struct{}
 type PongReceived struct{ Text string }
 type PingFailed struct{ Message string }
 
-func NewModel() Model {
-	return Model{Messages: []string{"ready"}}
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
 }
 
 func (m Model) Init() gothic.Cmd {
@@ -69,12 +81,6 @@ func callPing() gothic.Msg {
 	}
 	return PongReceived{Text: pong}
 }
-```
-
-`view.gothic`:
-
-```gothic
-package pingpong
 
 templ View(model Model) {
 	<div class="app">
@@ -86,24 +92,44 @@ templ View(model Model) {
 		</ul>
 	</div>
 }
-
-rpc Ping() string
 ```
 
-`main.go`:
+`main.go` stays the entrypoint:
 
 ```go
-app := gothic.NewApp(NewModel())
-s := gothic.NewServer()
-RegisterView(s, procedures{})
-s.MountApp("/", app)
-s.ListenAndServe(":8080")
+type procedures struct{}
+
+func (procedures) Ping(ctx context.Context) (string, error) {
+	return "pong", nil
+}
+
+func main() {
+	s := gothic.NewServer()
+	RegisterProcedures(s, procedures{})
+	s.MountApp("/", gothic.NewApp(NewModel()))
+	s.ListenAndServe(":8080")
+}
 ```
 
-## View language
+The generator emits:
 
-A `.gothic` file contains a package declaration, one view function, and
-optional `rpc` declarations.
+- `pingpong_gothic.go`: the view, the generated `View` method, the registrar,
+  procedure client stubs, and the embedded module.
+- `pingpong_app_gothic.go`: the Go prelude.
+- `pingpong_gothic.js`: the compiled app and view module.
+
+## File layout
+
+A `.gothic` app file has two sections:
+
+1. A Go prelude: package, imports, model, messages, `Init`, `Update`,
+   commands, and procedure interfaces.
+2. A view, starting with a line that begins with `templ`.
+
+Everything before the first top-level `templ` line is parsed as Go. Everything
+from that line onward is parsed as gothic markup.
+
+## View language
 
 ### View signature
 
@@ -155,17 +181,24 @@ handler block in the application model.
 
 ### Procedures
 
-Declare client-callable procedures in the view file:
+Declare client-callable procedures as a Go interface that embeds
+`gothic.RPCService`:
 
-```gothic
-rpc Ping() string
+```go
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
 ```
 
 The generator emits:
 
-- a Go interface and registrar for the server implementation,
+- a registrar `RegisterProcedures(s, impl)`,
 - a client-side Go stub used to compile commands,
 - a JavaScript RPC function.
+
+The first parameter must be `context.Context`. The result must be `(T, error)`
+or `error`. The client stub drops the context.
 
 Commands call procedures directly:
 
@@ -181,6 +214,9 @@ func callPing() gothic.Msg {
 
 The Go stub panics if it is called on the server. The server never runs
 commands, so this is safe for the proof of concept.
+
+An interface without `gothic.RPCService` is an ordinary Go interface and is not
+treated as a procedure contract.
 
 ## Commands
 
@@ -227,7 +263,8 @@ The proof of concept supports:
 - `if err != nil`,
 - commands with procedure calls,
 - lists over a model field,
-- message-valued event bindings.
+- message-valued event bindings,
+- procedure contracts through an interface embedding `gothic.RPCService`.
 
 Not supported yet:
 
@@ -237,8 +274,9 @@ Not supported yet:
 - expression-valued attributes,
 - multiple view parameters,
 - `Batch` and `Sequence`,
+- procedure arguments and typed validation,
 - message serialization,
 - `go/packages` type information.
 
-The earlier `state` and imperative handler syntax still exists in the compiler
-as a legacy path, but it is not the direction of the proof of concept.
+The earlier `state`, `rpc`, and imperative handler syntax still exists in the
+compiler as a legacy path, but it is not the direction of the proof of concept.

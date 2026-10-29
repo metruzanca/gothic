@@ -20,21 +20,22 @@ The generator reports each artifact it writes, and the server prints the URL it
 is listening on:
 
 ```
-gothic: examples/pingpong/view.gothic
-  -> examples/pingpong/view_gothic.go
-  -> examples/pingpong/view_gothic.js
-gothic: wrote 2 artifact(s) from 1 source file(s)
+gothic: examples/pingpong/pingpong.gothic
+  -> examples/pingpong/pingpong_gothic.go
+  -> examples/pingpong/pingpong_app_gothic.go
+  -> examples/pingpong/pingpong_gothic.js
+gothic: wrote 3 artifact(s) from 1 source file(s)
 
 2026/10/29 11:33:10 gothic: listening on http://localhost:8080
 ```
 
 Open the printed URL and click Ping. Set `PORT` to use a different port.
 
-The example splits application logic and markup:
+The example has one app file and one entrypoint:
 
-- `examples/pingpong/app.go`: model, messages, `Init`, `Update`, and commands.
-- `examples/pingpong/view.gothic`: a pure view of the model.
-- `examples/pingpong/main.go`: `gothic.NewApp` and server wiring.
+- `examples/pingpong/pingpong.gothic`: the Go prelude (model, messages,
+  `Init`, `Update`, commands, procedure interface) and the view.
+- `examples/pingpong/main.go`: server wiring and the procedure implementation.
 
 ## Install as a dependency
 
@@ -77,11 +78,12 @@ with `//go:embed`, so the JavaScript file must exist at build time.
 gothic generate ./path/to/app
 ```
 
-The generator reads `.gothic` files and writes `<name>_gothic.go` and
-`<name>_gothic.js` beside each source. When the `.gothic` file is an app view
-and an `app.go` sits beside it, the generator also compiles the Go `Model`,
-messages, `Update`, and commands into the JavaScript module. Generated code
-registers its module with the server and embeds it in the Go binary.
+The generator reads `.gothic` files and writes generated Go and JavaScript
+beside each source. When the `.gothic` file starts with a Go prelude and then a
+`templ` view, the generator also writes `<name>_app_gothic.go` for the prelude
+and compiles the `Model`, messages, `Update`, and commands into the JavaScript
+module. Generated code registers its module with the server and embeds it in the
+Go binary.
 
 ## Requirements
 

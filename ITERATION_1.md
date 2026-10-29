@@ -5,7 +5,7 @@ The Elm Architecture. See [SYNTAX.md](SYNTAX.md) for the current grammar.
 
 ## Goal
 
-Prove that one Go application and one `.gothic` view can produce:
+Prove that one `.gothic` app file and one `main.go` can produce:
 
 - a server-rendered page,
 - a client that dispatches messages, runs `Update`, and patches the DOM directly,
@@ -23,14 +23,22 @@ The demo is a Ping button. Clicking it:
 
 ```
 examples/pingpong/
-  app.go       Model, messages, Init, Update, command
-  view.gothic  pure view of the model
-  main.go      gothic.NewApp, server wiring, Ping implementation
+  pingpong.gothic  Go prelude, view, procedure interface
+  main.go          entrypoint and Ping implementation
 ```
 
-`Update` is a method on `Model`:
+`pingpong.gothic` starts with ordinary Go:
 
 ```go
+type Model struct {
+	Messages []string
+}
+
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
+
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case PingClicked:
@@ -45,10 +53,34 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 }
 ```
 
-The view binds a message value:
+Then the view:
 
 ```gothic
-<button onclick={ PingClicked{} }>Ping</button>
+templ View(model Model) {
+	<div class="app">
+		<button onclick={ PingClicked{} }>Ping</button>
+		<ul>
+			for _, m := range model.Messages {
+				<li>{ m }</li>
+			}
+		</ul>
+	</div>
+}
+```
+
+`main.go` wires the app and implements the procedure interface:
+
+```go
+func (procedures) Ping(ctx context.Context) (string, error) {
+	return "pong", nil
+}
+
+func main() {
+	s := gothic.NewServer()
+	RegisterProcedures(s, procedures{})
+	s.MountApp("/", gothic.NewApp(NewModel()))
+	s.ListenAndServe(":8080")
+}
 ```
 
 ## Run it
@@ -58,9 +90,9 @@ go generate ./examples/pingpong
 go run ./examples/pingpong
 ```
 
-`go generate` reports the generated Go and JavaScript. `go run` prints the URL,
-for example `gothic: listening on http://localhost:8080`. Set `PORT` to use a
-different port.
+`go generate` reports the generated files. `go run` prints the URL, for example
+`gothic: listening on http://localhost:8080`. Set `PORT` to use a different
+port.
 
 Open the printed URL and click Ping. The list becomes:
 
@@ -82,24 +114,23 @@ ping failed
 
 | Path | Purpose |
 |---|---|
-| `parser/` | Parses `.gothic` views, markup, Go expressions, and `rpc` declarations. |
-| `goapp/` | Extracts the model, messages, `Init`, `Update`, and commands from Go. |
-| `generator/` | Emits Go SSR code, the `View` method, registrars, and client stubs. |
+| `parser/` | Parses `.gothic` files, splits the Go prelude from the view, and parses markup and Go expressions. |
+| `goapp/` | Extracts the model, messages, `Init`, `Update`, commands, and procedure interface from the Go prelude. |
+| `generator/` | Emits the Go view, the `View` method, the registrar, client stubs, and the app Go file. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view to JavaScript. |
 | `client/runtime/gothic.js` | `list`, `on`, `readState`, `rpc`. |
-| `gothic.go` | `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
+| `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 
 ## Generated contract
 
-The Go generator emits:
+The generator emits three files:
 
-- `func View(model Model) gothic.Component` for SSR,
-- `func (m Model) View() gothic.Component`,
-- a procedure interface and registrar,
-- client-only procedure stubs used to compile commands,
-- an embedded `view_gothic.js` and module registration.
+- `pingpong_gothic.go`: the view function, the generated `View` method, the
+  procedure registrar, client-only procedure stubs, and the embedded module.
+- `pingpong_app_gothic.go`: the Go prelude from `pingpong.gothic`.
+- `pingpong_gothic.js`: the compiled app and view module.
 
 The SSR output contains:
 
@@ -139,11 +170,12 @@ Automated:
 go build ./...
 go vet ./...
 go test -count=1 ./...
-node --check examples/pingpong/view_gothic.js
+node --check examples/pingpong/pingpong_gothic.js
 ```
 
-Tests cover the parser, Go app extraction, JavaScript generation, SSR output,
-procedure registration, and the example integration.
+Tests cover the parser and prelude split, Go app extraction, procedure
+interface extraction, JavaScript generation, SSR output, and the example
+integration.
 
 Browser verification:
 
@@ -162,9 +194,9 @@ Browser verification:
 - No conditionals, expression attributes, nested components, or multiple view
   parameters.
 - No `Batch` or `Sequence`.
-- Procedure arguments, CSRF, the no-JS fallback, and typed validation are not
-  implemented.
+- Procedure methods must have no extra arguments yet. CSRF, the no-JS fallback,
+  and typed validation are not implemented.
 - Client-only procedure stubs panic if called on the server.
 - No manifest, content hashing, formatter, LSP, or source maps.
-- The legacy `state` and `func()` handler syntax still exists but is not the
+- The legacy `state`, `rpc`, and `func()` syntax still exists but is not the
   direction.

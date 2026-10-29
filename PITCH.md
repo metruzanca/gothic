@@ -20,12 +20,17 @@ gothic is a fullstack Go framework inspired by [templ](https://github.com/a-h/te
 No virtual DOM. No hand-written client modules. No npm on the happy path.
 
 ```go
-// app.go
+// pingpong.gothic, Go prelude
 type Model struct{ Messages []string }
 
 type PingClicked struct{}
 type PongReceived struct{ Text string }
 type PingFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
 
 func (m Model) Init() gothic.Cmd { return nil }
 
@@ -52,7 +57,7 @@ func callPing() gothic.Msg {
 ```
 
 ```gothic
-// view.gothic
+// pingpong.gothic, view
 templ View(model Model) {
 	<div>
 		<button onclick={ PingClicked{} }>Ping</button>
@@ -63,20 +68,19 @@ templ View(model Model) {
 		</ul>
 	</div>
 }
-
-rpc Ping() string
 ```
 
-Application logic is ordinary Go built on Bubble Tea's Model-View-Update pattern. Events dispatch messages. `Update` returns the next model and an optional command. The view is a pure function of the model. Clicking Ping appends `ping` immediately, runs the command, receives `pong` or an error message, and updates the DOM. There is no `await`, no JavaScript array syntax, and no separate client dialect.
+Application logic is ordinary Go built on Bubble Tea's Model-View-Update pattern. Events dispatch messages. `Update` returns the next model and an optional command. The view is a pure function of the model. Procedures are declared as Go interfaces that embed `gothic.RPCService`, so there is no `rpc` keyword. Clicking Ping appends `ping` immediately, runs the command, receives `pong` or an error message, and updates the DOM. There is no `await`, no JavaScript array syntax, and no separate client dialect.
 
 ## The pipeline
 
 ```
-app.go + view.gothic
+pingpong.gothic + main.go
     |
 gothic generate
-    |-- view_gothic.go   server render, View method, procedure registrar
-    |-- view_gothic.js   compiled Init/Update/commands, render, dispatch loop
+    |-- pingpong_gothic.go      server render, View method, procedure registrar
+    |-- pingpong_app_gothic.go  the Go prelude
+    |-- pingpong_gothic.js      compiled Init/Update/commands, render, dispatch
     |
 go build / go run
     |-- serves HTML and assets

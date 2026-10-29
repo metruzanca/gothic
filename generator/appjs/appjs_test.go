@@ -19,6 +19,11 @@ type PingClicked struct{}
 type PongReceived struct{ Text string }
 type PingFailed struct{ Message string }
 
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
+
 func (m Model) Init() Cmd { return nil }
 
 func (m Model) Update(msg Msg) (Model, Cmd) {
@@ -55,8 +60,6 @@ templ View(model Model) {
 		</ul>
 	</div>
 }
-
-rpc Ping() string
 `
 
 func TestGenerate(t *testing.T) {

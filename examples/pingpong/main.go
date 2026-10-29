@@ -25,9 +25,8 @@ func main() {
 	if port := os.Getenv("PORT"); port != "" {
 		addr = ":" + port
 	}
-	app := gothic.NewApp(NewModel())
 	s := gothic.NewServer()
-	RegisterView(s, procedures{})
-	s.MountApp("/", app)
+	RegisterProcedures(s, procedures{})
+	s.MountApp("/", gothic.NewApp(NewModel()))
 	log.Fatal(s.ListenAndServe(addr))
 }

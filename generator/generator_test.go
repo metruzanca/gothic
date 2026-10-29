@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/metruzanca/gothic/generator"
+	"github.com/metruzanca/gothic/goapp"
 	"github.com/metruzanca/gothic/parser"
 )
 
@@ -69,6 +70,65 @@ func TestGenerate(t *testing.T) {
 	}
 	if strings.Contains(src, "await") {
 		t.Errorf("generated Go must not contain await\n\n%s", src)
+	}
+}
+
+const appView = `package app
+
+templ View(model Model) {
+	<div>
+		for _, m := range model.Messages {
+			<li>{ m }</li>
+		}
+	</div>
+}
+`
+
+const appSource = `package app
+
+type Model struct{ Messages []string }
+
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	return m, nil
+}
+`
+
+func TestGenerateAppView(t *testing.T) {
+	f, err := parser.Parse("app.gothic", []byte(appView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(appSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.Generate(f, generator.Options{
+		FileName:   "app.gothic",
+		ModuleBase: "app",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`func View(model Model) gothic.Component`,
+		`func (m Model) View() gothic.Component`,
+		`stateJSON, err := json.Marshal(model)`,
+		`for _, m := range model.Messages`,
+		`func RegisterProcedures(s *gothic.Server, impl Procedures)`,
+		`func Ping() (string, error)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 
 func TestPingPongApp(t *testing.T) {
 	s := gothic.NewServer()
-	RegisterView(s, procedures{})
+	RegisterProcedures(s, procedures{})
 	s.MountApp("/", gothic.NewApp(NewModel()))
 	ts := httptest.NewServer(s)
 	defer ts.Close()
@@ -31,14 +31,14 @@ func TestPingPongApp(t *testing.T) {
 		`<!--g:each:0:open-->`,
 		`<li>ready</li>`,
 		`<!--g:each:0:close-->`,
-		`/_gothic/modules/view_gothic.js`,
+		`/_gothic/modules/pingpong_gothic.js`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/view_gothic.js")
+	res, err = http.Get(ts.URL + "/_gothic/modules/pingpong_gothic.js")
 	if err != nil {
 		t.Fatal(err)
 	}

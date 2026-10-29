@@ -6,9 +6,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 )
 
-// App is the parsed application model, messages, Update method, and commands.
+// App is the parsed application model, messages, Update method, commands, and
+// procedure interface.
 type App struct {
 	Package   string
 	ModelType string
@@ -18,6 +20,11 @@ type App struct {
 	Commands  map[string]*ast.FuncDecl
 	// ReferencedCommands are the command functions returned by Init or Update.
 	ReferencedCommands map[string]bool
+	// ProceduresType is the interface that embeds gothic.RPCService.
+	ProceduresType string
+	Procedures     []Procedure
+	// Source is the Go prelude, used to generate the app Go file.
+	Source []byte
 }
 
 // Field is a struct field.
@@ -26,10 +33,25 @@ type Field struct {
 	Type string
 }
 
+// Procedure is a method declared on the procedure interface.
+type Procedure struct {
+	Name       string
+	ResultType string
+}
+
 // Parse reads a Go app file and extracts the Bubble Tea-style declarations.
 func Parse(path string) (*App, error) {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSource(path, src)
+}
+
+// ParseSource extracts the declarations from a Go source.
+func ParseSource(name string, src []byte) (*App, error) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, nil, 0)
+	f, err := parser.ParseFile(fset, name, src, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +60,7 @@ func Parse(path string) (*App, error) {
 		Messages:           map[string][]Field{},
 		Commands:           map[string]*ast.FuncDecl{},
 		ReferencedCommands: map[string]bool{},
+		Source:             src,
 	}
 	for _, decl := range f.Decls {
 		switch d := decl.(type) {
@@ -50,15 +73,20 @@ func Parse(path string) (*App, error) {
 				if !ok {
 					continue
 				}
-				st, ok := ts.Type.(*ast.StructType)
-				if !ok {
-					continue
+				switch t := ts.Type.(type) {
+				case *ast.StructType:
+					if ts.Name.Name == "Model" {
+						app.ModelType = ts.Name.Name
+						continue
+					}
+					app.Messages[ts.Name.Name] = fieldsOf(t)
+				case *ast.InterfaceType:
+					if !embedsRPCService(t) {
+						continue
+					}
+					app.ProceduresType = ts.Name.Name
+					app.Procedures = proceduresOf(t)
 				}
-				if ts.Name.Name == "Model" {
-					app.ModelType = ts.Name.Name
-					continue
-				}
-				app.Messages[ts.Name.Name] = fieldsOf(st)
 			}
 		case *ast.FuncDecl:
 			if d.Recv != nil {
@@ -77,10 +105,10 @@ func Parse(path string) (*App, error) {
 		}
 	}
 	if app.ModelType == "" {
-		return nil, fmt.Errorf("%s: Model type not found", path)
+		return nil, fmt.Errorf("%s: Model type not found", name)
 	}
 	if app.Update == nil {
-		return nil, fmt.Errorf("%s: Model.Update not found", path)
+		return nil, fmt.Errorf("%s: Model.Update not found", name)
 	}
 	app.collectCommands()
 	return app, nil
@@ -106,6 +134,48 @@ func (a *App) collectCommands() {
 			return true
 		})
 	}
+}
+
+func embedsRPCService(it *ast.InterfaceType) bool {
+	if it.Methods == nil {
+		return false
+	}
+	for _, m := range it.Methods.List {
+		if len(m.Names) != 0 {
+			continue
+		}
+		sel, ok := m.Type.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		id, ok := sel.X.(*ast.Ident)
+		if ok && id.Name == "gothic" && sel.Sel.Name == "RPCService" {
+			return true
+		}
+	}
+	return false
+}
+
+func proceduresOf(it *ast.InterfaceType) []Procedure {
+	if it.Methods == nil {
+		return nil
+	}
+	var procedures []Procedure
+	for _, m := range it.Methods.List {
+		if len(m.Names) != 1 {
+			continue
+		}
+		ft, ok := m.Type.(*ast.FuncType)
+		if !ok {
+			continue
+		}
+		p := Procedure{Name: m.Names[0].Name}
+		if ft.Results != nil && len(ft.Results.List) > 0 {
+			p.ResultType = exprString(ft.Results.List[0].Type)
+		}
+		procedures = append(procedures, p)
+	}
+	return procedures
 }
 
 func fieldsOf(st *ast.StructType) []Field {

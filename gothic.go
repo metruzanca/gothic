@@ -26,6 +26,10 @@ func Render(w http.ResponseWriter, r *http.Request, c Component) error {
 	return c.Render(r.Context(), w)
 }
 
+// RPCService is a marker interface. Embed it in an interface to declare the
+// methods that gothic should expose as client-callable procedures.
+type RPCService interface{}
+
 // Msg is an application message. Following Bubble Tea, it is any value and is
 // usually inspected with a type switch.
 type Msg = any

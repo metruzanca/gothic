@@ -1,32 +1,32 @@
 package main
 
-import "github.com/metruzanca/gothic"
+import (
+	"context"
 
-// Model is the application state.
+	"github.com/metruzanca/gothic"
+)
+
 type Model struct {
 	Messages []string
 }
 
-// NewModel returns the initial model.
 func NewModel() Model {
 	return Model{Messages: []string{"ready"}}
 }
 
-// PingClicked is dispatched when the user clicks Ping.
 type PingClicked struct{}
-
-// PongReceived carries the procedure result.
 type PongReceived struct{ Text string }
-
-// PingFailed carries the procedure error.
 type PingFailed struct{ Message string }
 
-// Init starts no commands.
+type Procedures interface {
+	gothic.RPCService
+	Ping(ctx context.Context) (string, error)
+}
+
 func (m Model) Init() gothic.Cmd {
 	return nil
 }
 
-// Update handles messages and returns the next model and command.
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case PingClicked:
@@ -46,4 +46,15 @@ func callPing() gothic.Msg {
 		return PingFailed{Message: err.Error()}
 	}
 	return PongReceived{Text: pong}
+}
+
+templ View(model Model) {
+	<div class="app">
+		<button onclick={ PingClicked{} }>Ping</button>
+		<ul>
+			for _, m := range model.Messages {
+				<li>{ m }</li>
+			}
+		</ul>
+	</div>
 }
