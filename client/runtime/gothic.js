@@ -127,7 +127,15 @@ export function list(root, marker, render, hydrate, key) {
         next.push(node);
       }
       for (const node of byKey.values()) node.remove();
-      for (const node of next) close.parentNode.insertBefore(node, close);
+
+      let ref = close;
+      for (let i = next.length - 1; i >= 0; i--) {
+        const node = next[i];
+        if (node.nextSibling !== ref) {
+          close.parentNode.insertBefore(node, ref);
+        }
+        ref = node;
+      }
       nodes.length = 0;
       nodes.push(...next);
       return;
@@ -169,10 +177,18 @@ export function text(root, marker, value) {
 }
 
 export function on(root, marker, event, handler) {
-  const selector = `[data-gothic-on="${marker}"]`;
+  const selector = `[data-gothic-on~="${marker}"]`;
   const el = root.matches?.(selector) ? root : root.querySelector(selector);
   if (!el) return;
-  el.removeAttribute("data-gothic-on");
+
+  const markers = (el.getAttribute("data-gothic-on") || "")
+    .split(/\s+/)
+    .filter((value) => value && value !== String(marker));
+  if (markers.length > 0) {
+    el.setAttribute("data-gothic-on", markers.join(" "));
+  } else {
+    el.removeAttribute("data-gothic-on");
+  }
   el.addEventListener(event, handler);
 }
 
@@ -205,5 +221,56 @@ export function readState(id) {
     return JSON.parse(el.textContent || "{}");
   } catch (_) {
     return {};
+  }
+}
+
+export function attr(root, marker, value) {
+  const key = `data-gothic-attr-${marker}`;
+  const selector = `[${key}]`;
+  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  if (!el) return;
+
+  const name = el.getAttribute(key);
+  if (name === "checked") {
+    el.checked = !!value;
+    return;
+  }
+  if (name === "value") {
+    const next = value == null ? "" : String(value);
+    if (el.value !== next) el.value = next;
+    return;
+  }
+  if (value === false || value == null) {
+    el.removeAttribute(name);
+  } else {
+    el.setAttribute(name, String(value));
+  }
+}
+
+export function classToggle(root, marker, active) {
+  const key = `data-gothic-class-${marker}`;
+  const selector = `[${key}]`;
+  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  if (!el) return;
+
+  const name = el.getAttribute(key);
+  if (name) el.classList.toggle(name, !!active);
+}
+
+export function focus(root, marker, active) {
+  const selector = `[data-gothic-focus="${marker}"]`;
+  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  if (!el) return;
+
+  if (active) {
+    if (!el.__gothicFocused) {
+      el.__gothicFocused = true;
+      setTimeout(() => {
+        if (el.__gothicFocused) el.focus();
+      }, 0);
+    }
+  } else {
+    if (el.__gothicFocused) el.blur();
+    el.__gothicFocused = false;
   }
 }

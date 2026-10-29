@@ -68,6 +68,10 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 				el.Attributes = append(el.Attributes, &ConstantAttr{Name: a.Name, Value: a.Value})
 			case *EventAttr:
 				el.Attributes = append(el.Attributes, &EventAttr{Name: a.Name, Expr: substExpr(a.Expr, env)})
+			case *ExprAttr:
+				el.Attributes = append(el.Attributes, &ExprAttr{Name: a.Name, Expr: substExpr(a.Expr, env)})
+			case *ClassToggleAttr:
+				el.Attributes = append(el.Attributes, &ClassToggleAttr{Name: a.Name, Expr: substExpr(a.Expr, env)})
 			}
 		}
 		for _, child := range n.Children {

@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestTodoApp(t *testing.T) {
 	ctx := context.Background()
-	st, err := openStore(filepath.Join(t.TempDir(), "todo.db"))
+	st, err := openStore(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,12 +25,8 @@ func TestTodoApp(t *testing.T) {
 	if err := st.add(ctx, "write tests"); err != nil {
 		t.Fatal(err)
 	}
-	todos, err := st.list(ctx)
-	if err != nil {
+	if err := st.add(ctx, "ship it"); err != nil {
 		t.Fatal(err)
-	}
-	if len(todos) != 1 || todos[0].Text != "write tests" || todos[0].Status != "open" {
-		t.Fatalf("todos = %#v", todos)
 	}
 
 	s := gothic.NewServer()
@@ -46,17 +43,33 @@ func TestTodoApp(t *testing.T) {
 	res.Body.Close()
 	html := string(body)
 	for _, want := range []string{
-		`data-gothic-root="app"`,
-		`"Todos":[{"ID":1,"Text":"write tests","Done":false,"Status":"open"}]`,
+		`<!doctype html>`,
+		`class="todoapp"`,
+		`"Todos":[{"ID":1,"Title":"write tests","Completed":false},{"ID":2,"Title":"ship it","Completed":false}]`,
 		`data-gothic-key="1"`,
-		`data-gothic-on="0"`,
-		`data-gothic-on="2"`,
-		`data-gothic-on="3"`,
-		`/_gothic/modules/app_gothic.js`,
+		`data-gothic-attr-2="checked"`,
+		`data-gothic-class-2="completed"`,
+		`data-gothic-focus="0"`,
+		`class="new-todo"`,
+		`data-gothic-on="0 1"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
+	}
+	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(html, "")
+	if !strings.Contains(stripped, "<strong>2</strong> items left") {
+		t.Errorf("SSR missing pluralized count\n\n%s", stripped)
+	}
+
+	res, err = http.Get(ts.URL + "/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(css), ".todoapp") || !strings.Contains(string(css), ".hidden") {
+		t.Fatalf("css response is not TodoMVC CSS")
 	}
 
 	res, err = http.Get(ts.URL + "/_gothic/modules/app_gothic.js")
@@ -66,12 +79,17 @@ func TestTodoApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
+		`import { attr, classToggle, focus, list, on, readState, rpc, text }`,
+		`window.addEventListener("hashchange"`,
+		`{tag: "HashChanged", Hash: window.location.hash}`,
 		`list(root, "0", (todo) => {`,
 		`(todo) => String(todo.ID)`,
-		`await AddTodo(text)`,
+		`event.key === "Enter"`,
+		`event.key === "Escape"`,
+		`await AddTodo(title)`,
+		`await SetTodoTitle(id, title)`,
 		`await ToggleTodo(id)`,
-		`await DeleteTodo(id)`,
-		`event.target.value`,
+		`await SetAllCompleted(checked)`,
 	} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, js)
@@ -79,45 +97,70 @@ func TestTodoApp(t *testing.T) {
 	}
 
 	postRPC(t, ts.URL, "AddTodo", `["buy milk"]`)
-	todos, err = st.list(ctx)
-	if err != nil {
-		t.Fatal(err)
+	data := mustList(t, ts.URL)
+	if len(data.Todos) != 3 || data.Todos[2].Title != "buy milk" {
+		t.Fatalf("after add: %#v", data)
 	}
-	if len(todos) != 2 || todos[1].Text != "buy milk" {
-		t.Fatalf("after add: %#v", todos)
+
+	postRPC(t, ts.URL, "SetTodoTitle", `[1,"updated title"]`)
+	data = mustList(t, ts.URL)
+	if data.Todos[0].Title != "updated title" {
+		t.Fatalf("after title edit: %#v", data.Todos[0])
 	}
 
 	postRPC(t, ts.URL, "ToggleTodo", `[1]`)
-	todos, err = st.list(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !todos[0].Done || todos[0].Status != "done" {
-		t.Fatalf("after toggle: %#v", todos[0])
+	data = mustList(t, ts.URL)
+	if !data.Todos[0].Completed || data.ActiveCount != 2 || data.CompletedCount != 1 {
+		t.Fatalf("after toggle: %#v", data)
 	}
 
-	postRPC(t, ts.URL, "DeleteTodo", `[1]`)
-	todos, err = st.list(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(todos) != 1 || todos[0].Text != "buy milk" {
-		t.Fatalf("after delete: %#v", todos)
+	postRPC(t, ts.URL, "SetAllCompleted", `[true]`)
+	data = mustList(t, ts.URL)
+	if data.ActiveCount != 0 || !data.AllDone || data.ItemWord != "items" {
+		t.Fatalf("after mark all: %#v", data)
 	}
 
-	// All users share the same store, so a second app sees the same list.
+	postRPC(t, ts.URL, "ClearCompleted", `[]`)
+	data = mustList(t, ts.URL)
+	if len(data.Todos) != 0 || data.HasTodos {
+		t.Fatalf("after clear completed: %#v", data)
+	}
+
+	postRPC(t, ts.URL, "AddTodo", `["shared item"]`)
 	res, err = http.Get(ts.URL + "/")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ = io.ReadAll(res.Body)
 	res.Body.Close()
-	if !strings.Contains(string(body), "buy milk") {
+	if !strings.Contains(string(body), "shared item") {
 		t.Fatalf("shared list missing added todo\n\n%s", body)
 	}
 }
 
-func postRPC(t *testing.T, base, name, args string) {
+type listResponse struct {
+	Todos          []Todo `json:"Todos"`
+	ActiveCount    int    `json:"ActiveCount"`
+	CompletedCount int    `json:"CompletedCount"`
+	HasTodos       bool   `json:"HasTodos"`
+	HasCompleted   bool   `json:"HasCompleted"`
+	AllDone        bool   `json:"AllDone"`
+	ItemWord       string `json:"ItemWord"`
+}
+
+func mustList(t *testing.T, base string) listResponse {
+	t.Helper()
+	body := postRPC(t, base, "ListTodos", `[]`)
+	var envelope struct {
+		Result listResponse `json:"result"`
+	}
+	if err := jsonUnmarshal(body, &envelope); err != nil {
+		t.Fatalf("decode list: %v\n\n%s", err, body)
+	}
+	return envelope.Result
+}
+
+func postRPC(t *testing.T, base, name, args string) []byte {
 	t.Helper()
 	body := fmt.Sprintf(`{"args":%s}`, args)
 	res, err := http.Post(base+"/_gothic/rpc/"+name, "application/json", strings.NewReader(body))
@@ -125,8 +168,13 @@ func postRPC(t *testing.T, base, name, args string) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
+	data, _ := io.ReadAll(res.Body)
 	if res.StatusCode != http.StatusOK {
-		data, _ := io.ReadAll(res.Body)
 		t.Fatalf("%s returned %d: %s", name, res.StatusCode, data)
 	}
+	return data
+}
+
+func jsonUnmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
 }

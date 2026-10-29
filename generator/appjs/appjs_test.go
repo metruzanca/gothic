@@ -85,7 +85,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, focus, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m) => {`,

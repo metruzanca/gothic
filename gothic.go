@@ -75,9 +75,14 @@ func NewApp(initial Model) *App {
 	return &App{initial: initial}
 }
 
+// RenderTo writes the application's initial view to w.
+func (a *App) RenderTo(ctx context.Context, w io.Writer) error {
+	return a.initial.View().Render(ctx, w)
+}
+
 // Render writes the application's initial view to the response.
 func (a *App) Render(w http.ResponseWriter, r *http.Request) error {
-	return a.initial.View().Render(r.Context(), w)
+	return a.RenderTo(r.Context(), w)
 }
 
 var (

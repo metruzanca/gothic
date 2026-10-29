@@ -53,7 +53,16 @@ func App(model Model) gothic.Component {
 		if err != nil {
 			return err
 		}
-		if err := write("<div data-gothic-root=\"app\" class=\"app\">"); err != nil {
+		if err := write("<div data-gothic-root=\"app\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"app"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
 			return err
 		}
 		if err := write("<script type=\"application/json\" data-gothic-state=\"app\">"); err != nil {
@@ -65,7 +74,16 @@ func App(model Model) gothic.Component {
 		if err := write("</script>\n"); err != nil {
 			return err
 		}
-		if err := write("<p class=\"count\">"); err != nil {
+		if err := write("<p"); err != nil {
+			return err
+		}
+		if err := write(" class=\"count"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:open-->"); err != nil {
@@ -80,7 +98,16 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := write("<button class=\"add\" data-gothic-on=\"0\">"); err != nil {
+		if err := write("<button data-gothic-on=\"0\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"add"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
 			return err
 		}
 		if err := write("Add"); err != nil {
@@ -96,7 +123,16 @@ func App(model Model) gothic.Component {
 			return err
 		}
 		for _, item := range model.History {
-			if err := write("<li class=\"history\">"); err != nil {
+			if err := write("<li"); err != nil {
+				return err
+			}
+			if err := write(" class=\"history"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:1:open-->"); err != nil {
@@ -108,7 +144,16 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:1:close-->"); err != nil {
 				return err
 			}
-			if err := write("<button class=\"repeat\" data-gothic-on=\"1\">"); err != nil {
+			if err := write("<button data-gothic-on=\"1\""); err != nil {
+				return err
+			}
+			if err := write(" class=\"repeat"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
 				return err
 			}
 			if err := write("repeat"); err != nil {

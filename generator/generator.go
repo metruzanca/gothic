@@ -272,6 +272,9 @@ type templateGen struct {
 	eachN     int
 	eventN    int
 	textN     int
+	attrN     int
+	classN    int
+	focusN    int
 	usesHTML  bool
 	usesFmt   bool
 }
@@ -337,39 +340,112 @@ func singleModelParam(params string) (name, typ string, ok bool) {
 }
 
 func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoot bool) error {
-	var open strings.Builder
-	open.WriteString("<" + el.Name)
-	if isRoot {
-		open.WriteString(" data-gothic-root=\"" + g.rootID + "\"")
+	var static strings.Builder
+	flush := func() {
+		if static.Len() == 0 {
+			return
+		}
+		g.emitWrite(b, static.String())
+		static.Reset()
 	}
+
+	static.WriteString("<" + el.Name)
+	if isRoot {
+		static.WriteString(" data-gothic-root=\"" + g.rootID + "\"")
+	}
+
+	var classToggles []classToggle
+	var eventMarkers []string
+	classValue := ""
+	hasClass := false
 	for _, attr := range el.Attributes {
 		switch a := attr.(type) {
 		case *parser.ConstantAttr:
+			if a.Name == "class" {
+				classValue = a.Value
+				hasClass = true
+				continue
+			}
 			if a.Value == "" {
-				open.WriteString(" " + a.Name)
+				static.WriteString(" " + a.Name)
 			} else {
-				open.WriteString(" " + a.Name + "=\"" + html.EscapeString(a.Value) + "\"")
+				static.WriteString(" " + a.Name + "=\"" + html.EscapeString(a.Value) + "\"")
 			}
 		case *parser.EventAttr:
-			open.WriteString(fmt.Sprintf(" data-gothic-on=\"%d\"", g.eventN))
+			eventMarkers = append(eventMarkers, fmt.Sprintf("%d", g.eventN))
 			g.eventN++
+		case *parser.ExprAttr:
+			switch a.Name {
+			case "focus":
+				idx := g.focusN
+				g.focusN++
+				static.WriteString(fmt.Sprintf(" data-gothic-focus=\"%d\"", idx))
+			case "checked":
+				idx := g.attrN
+				g.attrN++
+				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=\"checked\"", idx))
+				flush()
+				fmt.Fprintf(b, "\t\tif %s {\n", goExpr(a.Expr))
+				g.emitWrite(b, " checked")
+				b.WriteString("\t\t}\n")
+			case "value":
+				idx := g.attrN
+				g.attrN++
+				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=\"value\"", idx))
+				flush()
+				g.emitWrite(b, " value=\"")
+				g.emitEscapedExpr(b, a.Expr)
+				g.emitWrite(b, "\"")
+			default:
+				idx := g.attrN
+				g.attrN++
+				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=%q", idx, a.Name))
+				flush()
+				g.emitWrite(b, " "+a.Name+"=\"")
+				g.emitEscapedExpr(b, a.Expr)
+				g.emitWrite(b, "\"")
+			}
+		case *parser.ClassToggleAttr:
+			idx := g.classN
+			g.classN++
+			static.WriteString(fmt.Sprintf(" data-gothic-class-%d=%q", idx, a.Name))
+			classToggles = append(classToggles, classToggle{Name: a.Name, Expr: a.Expr, Marker: idx})
 		}
 	}
-	if el.Key == nil {
-		open.WriteString(">")
-		g.emitWrite(b, open.String())
-	} else {
-		g.usesHTML = true
-		g.usesFmt = true
-		g.emitWrite(b, open.String()+` data-gothic-key="`)
-		fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", goExpr(el.Key))
-		g.emitWrite(b, `">`)
+
+	if len(eventMarkers) > 0 {
+		static.WriteString(" data-gothic-on=\"" + strings.Join(eventMarkers, " ") + "\"")
 	}
+
+	if hasClass || len(classToggles) > 0 {
+		flush()
+		g.emitWrite(b, " class=\""+html.EscapeString(classValue))
+		for _, ct := range classToggles {
+			fmt.Fprintf(b, "\t\tif %s {\n", goExpr(ct.Expr))
+			g.emitWrite(b, " "+ct.Name)
+			b.WriteString("\t\t}\n")
+		}
+		g.emitWrite(b, "\"")
+	}
+
+	if el.Key != nil {
+		flush()
+		g.emitWrite(b, " data-gothic-key=\"")
+		g.emitEscapedExpr(b, el.Key)
+		g.emitWrite(b, "\"")
+	}
+
+	static.WriteString(">")
+	flush()
 
 	if isRoot {
 		fmt.Fprintf(b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<script type=\"application/json\" data-gothic-state=\""+g.rootID+"\">"))
 		b.WriteString("\t\tif _, err := w.Write(stateJSON); err != nil {\n\t\t\treturn err\n\t\t}\n")
 		g.emitWrite(b, "</script>\n")
+	}
+
+	if parser.IsVoidElement(el.Name) {
+		return nil
 	}
 
 	for _, child := range el.Children {
@@ -379,6 +455,18 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 	}
 	g.emitWrite(b, "</"+el.Name+">")
 	return nil
+}
+
+type classToggle struct {
+	Name   string
+	Expr   ast.Expr
+	Marker int
+}
+
+func (g *templateGen) emitEscapedExpr(b *strings.Builder, expr ast.Expr) {
+	g.usesHTML = true
+	g.usesFmt = true
+	fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", goExpr(expr))
 }
 
 func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {

@@ -328,3 +328,39 @@ view App(model Model) {
 		t.Fatalf("expanded key = %q", got)
 	}
 }
+
+func TestParseDynamicAttributes(t *testing.T) {
+	src := `package views
+view App(model Model) {
+	<div>
+		<input value={ model.Draft } checked={ model.Done } focus={ model.Editing } />
+		<li class:completed={ model.Done } class:hidden={ model.Hidden }></li>
+	</div>
+}
+`
+	f, err := parser.Parse("attrs.gothic", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := f.Templates[0].Children[0].(*parser.Element)
+	input := root.Children[0].(*parser.Element)
+	if len(input.Attributes) != 3 {
+		t.Fatalf("input attrs = %#v", input.Attributes)
+	}
+	for i, name := range []string{"value", "checked", "focus"} {
+		attr, ok := input.Attributes[i].(*parser.ExprAttr)
+		if !ok || attr.Name != name {
+			t.Fatalf("attr %d = %#v", i, input.Attributes[i])
+		}
+	}
+	li := root.Children[1].(*parser.Element)
+	if len(li.Attributes) != 2 {
+		t.Fatalf("li attrs = %#v", li.Attributes)
+	}
+	for i, name := range []string{"completed", "hidden"} {
+		attr, ok := li.Attributes[i].(*parser.ClassToggleAttr)
+		if !ok || attr.Name != name {
+			t.Fatalf("class attr %d = %#v", i, li.Attributes[i])
+		}
+	}
+}

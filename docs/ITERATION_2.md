@@ -134,7 +134,7 @@ Component declarations do not produce artifacts.
 - Props may be evaluated more than once if used in multiple expressions.
 - No component state, child models, or message mapping yet.
 - No children or slots yet.
-- No conditionals or expression-valued attributes at the time of this iteration.
+- No conditionals. Dynamic attributes and class toggles were added in iteration 3.
 - One app per directory.
 
 ## Verification

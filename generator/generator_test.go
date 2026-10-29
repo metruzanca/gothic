@@ -246,7 +246,8 @@ func TestGenerateAppExpandsComponents(t *testing.T) {
 	src := string(out)
 	for _, want := range []string{
 		`func App(model Model) gothic.Component`,
-		`write("<p class=\"status\">")`,
+		`write("<p")`,
+		`write(" class=\"status")`,
 		`<!--g:text:0:open-->`,
 		`(model.Status)`,
 	} {

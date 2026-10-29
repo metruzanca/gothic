@@ -67,7 +67,16 @@ func App(model Model) gothic.Component {
 		if err != nil {
 			return err
 		}
-		if err := write("<div data-gothic-root=\"app\" class=\"app\">"); err != nil {
+		if err := write("<div data-gothic-root=\"app\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"app"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
 			return err
 		}
 		if err := write("<script type=\"application/json\" data-gothic-state=\"app\">"); err != nil {

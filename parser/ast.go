@@ -118,3 +118,19 @@ type EventAttr struct {
 }
 
 func (*EventAttr) attr() {}
+
+// ExprAttr is a dynamic attribute such as value={ expr } or checked={ expr }.
+type ExprAttr struct {
+	Name string
+	Expr ast.Expr
+}
+
+func (*ExprAttr) attr() {}
+
+// ClassToggleAttr is a class:name={ expression } attribute.
+type ClassToggleAttr struct {
+	Name string
+	Expr ast.Expr
+}
+
+func (*ClassToggleAttr) attr() {}

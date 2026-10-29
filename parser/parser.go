@@ -549,18 +549,25 @@ func (p *parser) parseAttribute() (Attribute, error) {
 	}
 	p.skipSpace()
 	if p.peek() == '{' {
-		if !isEventAttribute(name) {
-			return nil, p.errf("expression attributes are not supported in iteration 1")
-		}
 		inner, err := p.readBalancedBraces()
 		if err != nil {
 			return nil, err
 		}
 		expr, err := goparser.ParseExpr(inner)
 		if err != nil {
-			return nil, p.errf("invalid event expression for %s: %v", name, err)
+			return nil, p.errf("invalid expression for attribute %s: %v", name, err)
 		}
-		return &EventAttr{Name: name, Expr: expr}, nil
+		if isEventAttribute(name) {
+			return &EventAttr{Name: name, Expr: expr}, nil
+		}
+		if strings.HasPrefix(name, "class:") {
+			className := strings.TrimPrefix(name, "class:")
+			if className == "" {
+				return nil, p.errf("expected class name after class:")
+			}
+			return &ClassToggleAttr{Name: className, Expr: expr}, nil
+		}
+		return &ExprAttr{Name: name, Expr: expr}, nil
 	}
 	if p.peek() != '"' {
 		return nil, p.errf("expected quoted value for attribute %s", name)
@@ -856,6 +863,11 @@ func isIdentPart(c byte) bool {
 
 func isEventAttribute(name string) bool {
 	return strings.HasPrefix(name, "on") && len(name) > 2
+}
+
+// IsVoidElement reports whether name is an HTML void element.
+func IsVoidElement(name string) bool {
+	return isVoidElement(name)
 }
 
 func isVoidElement(name string) bool {

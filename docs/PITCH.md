@@ -115,6 +115,7 @@ The ping/pong proof of concept runs end to end.
 - The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
 - Pure components compose views with typed props, in the app file or separate files.
 - Procedures accept JSON arguments, and keyed lists update in place.
+- The SQLite TodoMVC example supports filters, inline editing, mark-all, and clear-completed.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
 - Failure handling produces `ready`, `ping`, `ping failed`.
 - No hand-written JavaScript. No wasm. No npm.

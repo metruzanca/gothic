@@ -183,7 +183,7 @@ from the server and reconciled. There is no virtual DOM.
 | `generator/` | Emits Go SSR code, the generated `View` method, registrars, and client stubs. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view into a JavaScript module. |
 | `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
-| `client/runtime/` | Embedded runtime helpers: `list`, `text`, `on`, `readState`, `rpc`. |
+| `client/runtime/` | Embedded runtime helpers: `list`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
@@ -211,7 +211,9 @@ Supported now:
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
+- dynamic attributes, class toggles, and focus bindings,
 - message-valued event bindings and event values,
+- hash routing through a `HashChanged` message,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
 - procedure contracts through an interface embedding `gothic.RPCService`,
@@ -224,7 +226,6 @@ Not supported yet:
 - component children and slots,
 - Go-callable component functions,
 - conditionals in views,
-- expression-valued attributes,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - message serialization or logging,

@@ -247,6 +247,39 @@ Event handlers receive the DOM event as `event`. This is useful for inputs:
 <input oninput={ DraftChanged{Text: event.target.value} } />
 ```
 
+`onenter` and `onescape` are shortcuts for keydown handlers:
+
+```gothic
+<input onenter={ SaveEdit{ID: todo.ID} } onescape={ CancelEdit{ID: todo.ID} } />
+```
+
+### Attributes and classes
+
+Expression attributes update a DOM property or attribute:
+
+```gothic
+<input value={ model.Draft } checked={ todo.Completed } />
+```
+
+`class:name={ expr }` adds or removes a class when the expression changes:
+
+```gothic
+<li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ hidden }>
+```
+
+`focus={ expr }` focuses the element when the expression becomes true.
+
+### Routing
+
+If the app defines a `HashChanged` message with a `Hash` field, the client
+dispatches it on load and on every hashchange:
+
+```go
+type HashChanged struct{ Hash string }
+```
+
+Use it to map `#/`, `#/active`, and `#/completed` to a model field.
+
 ### Procedures
 
 Declare client-callable procedures as a Go interface that embeds
@@ -367,6 +400,8 @@ The proof of concept supports:
 - lists over a model field and keyed list reconciliation,
 - reactive interpolated text and message-valued event bindings,
 - event values such as `event.target.value`,
+- dynamic attributes, class toggles, and focus bindings,
+- hash-based route changes through a `HashChanged` message,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 
 Not supported yet:
@@ -376,7 +411,6 @@ Not supported yet:
 - component children and slots,
 - Go-callable component functions,
 - conditionals in views,
-- expression-valued attributes,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - typed procedure argument validation,
