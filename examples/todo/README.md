@@ -1,5 +1,8 @@
 # TodoMVC example
 
+[todomvc demo.webm](https://github.com/user-attachments/assets/c687ac0c-6dcd-418e-83a9-be360f889042)
+
+
 A classic TodoMVC app backed by SQLite. There is no login. Every visitor reads
 and writes the same list.
 
