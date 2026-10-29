@@ -32,6 +32,44 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 func callPing() Msg { return PongReceived{Text: "pong"} }
 `
 
+func TestParseProcedureParams(t *testing.T) {
+	src := `package app
+
+type Model struct{}
+type Todo struct{ ID int64 }
+
+type Procedures interface {
+	gothic.RPCService
+	AddTodo(ctx context.Context, text string) error
+	ToggleTodo(ctx context.Context, id int64) error
+	ListTodos(ctx context.Context) ([]Todo, error)
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`
+	app, err := goapp.ParseSource("app.go", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(app.Procedures) != 3 {
+		t.Fatalf("procedures = %#v", app.Procedures)
+	}
+	add := app.Procedures[0]
+	if add.Name != "AddTodo" || len(add.Params) != 1 || add.Params[0].Name != "text" || add.Params[0].Type != "string" || add.ResultType != "" {
+		t.Fatalf("AddTodo = %#v", add)
+	}
+	toggle := app.Procedures[1]
+	if toggle.Name != "ToggleTodo" || len(toggle.Params) != 1 || toggle.Params[0].Type != "int64" {
+		t.Fatalf("ToggleTodo = %#v", toggle)
+	}
+	list := app.Procedures[2]
+	if list.Name != "ListTodos" || len(list.Params) != 0 || list.ResultType != "[]Todo" {
+		t.Fatalf("ListTodos = %#v", list)
+	}
+}
+
 func TestParseSource(t *testing.T) {
 	app, err := goapp.ParseSource("app.go", []byte(appSrc))
 	if err != nil {

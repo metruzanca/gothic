@@ -95,7 +95,7 @@ export function each(root, marker, sig, render) {
   });
 }
 
-export function list(root, marker, render, hydrate) {
+export function list(root, marker, render, hydrate, key) {
   const open = findComment(root, `g:each:${marker}:open`);
   const close = findComment(root, `g:each:${marker}:close`);
   if (!open || !close) return () => {};
@@ -109,6 +109,30 @@ export function list(root, marker, render, hydrate) {
 
   let hydrated = false;
   return function update(items) {
+    items = items || [];
+    if (key) {
+      const byKey = new Map();
+      for (const node of nodes) byKey.set(node.getAttribute("data-gothic-key"), node);
+
+      const next = [];
+      for (let i = 0; i < items.length; i++) {
+        const itemKey = String(key(items[i], i));
+        let node = byKey.get(itemKey);
+        if (node) {
+          byKey.delete(itemKey);
+          if (hydrate) hydrate(node, items[i], i);
+        } else {
+          node = render(items[i], i);
+        }
+        next.push(node);
+      }
+      for (const node of byKey.values()) node.remove();
+      for (const node of next) close.parentNode.insertBefore(node, close);
+      nodes.length = 0;
+      nodes.push(...next);
+      return;
+    }
+
     if (!hydrated) {
       hydrated = true;
       if (hydrate) {

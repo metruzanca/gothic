@@ -46,7 +46,7 @@ func TestComponentsApp(t *testing.T) {
 	res.Body.Close()
 	for _, want := range []string{
 		`text(root, "0", (model.Count));`,
-		`on(node, "1", "click", () => dispatch({tag: "RepeatClicked", Text: (item)}));`,
+		`on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));`,
 		`m.History.push(msg.Text);`,
 	} {
 		if !strings.Contains(string(js), want) {

@@ -5,22 +5,24 @@ import { list, on, readState, rpc, text } from "/_gothic/runtime.js";
 const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
-on(root, "0", "click", () => dispatch({tag: "AddClicked"}));
+on(root, "0", "click", (event) => dispatch({tag: "AddClicked"}));
 const renderList0 = list(root, "0", (item) => {
   const e0 = document.createElement("li");
   e0.setAttribute("class", "history");
+  e0.appendChild(document.createComment("g:text:1:open"));
   e0.appendChild(document.createTextNode(String((item))));
+  e0.appendChild(document.createComment("g:text:1:close"));
   const e1 = document.createElement("button");
   e1.setAttribute("class", "repeat");
   e1.setAttribute("data-gothic-on", "1");
   e1.appendChild(document.createTextNode("repeat"));
   e0.appendChild(e1);
   text(e0, "1", (item));
-  on(e0, "1", "click", () => dispatch({tag: "RepeatClicked", Text: (item)}));
+  on(e0, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
   return e0;
 }, (node, item) => {
   text(node, "1", (item));
-  on(node, "1", "click", () => dispatch({tag: "RepeatClicked", Text: (item)}));
+  on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
 });
 
 function render(model) {
@@ -48,13 +50,17 @@ function init() {
 function update(m, msg) {
   switch (msg.tag) {
   case "AddClicked":
+  {
     m.Count = m.Count + 1;
     m.History.push("tick");
     break;
+  }
   case "RepeatClicked":
+  {
     m.Count = m.Count + 1;
     m.History.push(msg.Text);
     break;
+  }
   }
   return [m, null];
 }

@@ -3,6 +3,8 @@ package gothic
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -29,6 +31,25 @@ func Render(w http.ResponseWriter, r *http.Request, c Component) error {
 // RPCService is a marker interface. Embed it in an interface to declare the
 // methods that gothic should expose as client-callable procedures.
 type RPCService interface{}
+
+// UnmarshalArgs decodes the JSON argument array sent by the client runtime.
+func UnmarshalArgs(body []byte, dst ...any) error {
+	var payload struct {
+		Args []json.RawMessage `json:"args"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return fmt.Errorf("gothic: decode arguments: %w", err)
+	}
+	if len(payload.Args) != len(dst) {
+		return fmt.Errorf("gothic: got %d arguments, want %d", len(payload.Args), len(dst))
+	}
+	for i := range dst {
+		if err := json.Unmarshal(payload.Args[i], dst[i]); err != nil {
+			return fmt.Errorf("gothic: argument %d: %w", i, err)
+		}
+	}
+	return nil
+}
 
 // Msg is an application message. Following Bubble Tea, it is any value and is
 // usually inspected with a type switch.

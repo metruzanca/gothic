@@ -146,6 +146,63 @@ func TestGenerateAppView(t *testing.T) {
 	}
 }
 
+const procedureAppSource = `package app
+
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+)
+
+type Model struct{ Messages []string }
+type Todo struct{ ID int64 }
+
+type Procedures interface {
+	gothic.RPCService
+	AddTodo(ctx context.Context, text string) error
+	ToggleTodo(ctx context.Context, id int64) error
+	ListTodos(ctx context.Context) ([]Todo, error)
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`
+
+func TestGenerateProcedureArgs(t *testing.T) {
+	f, err := parser.Parse("app.gothic", []byte(appView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(procedureAppSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(f, app, generator.Options{
+		FileName:   "app.gothic",
+		ModuleBase: "app",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`var arg0 string`,
+		`if err := gothic.UnmarshalArgs(body, &arg0); err != nil`,
+		`if err := impl.AddTodo(ctx, arg0); err != nil`,
+		`var arg0 int64`,
+		`if err := gothic.UnmarshalArgs(body, &arg0); err != nil`,
+		`func AddTodo(text string) error`,
+		`func ToggleTodo(id int64) error`,
+		`func ListTodos() ([]Todo, error)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+}
+
 const componentView = `package app
 
 view Status(text string) {

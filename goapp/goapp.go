@@ -36,7 +36,14 @@ type Field struct {
 // Procedure is a method declared on the procedure interface.
 type Procedure struct {
 	Name       string
+	Params     []Param
 	ResultType string
+}
+
+// Param is a procedure argument, excluding the leading context.Context.
+type Param struct {
+	Name string
+	Type string
 }
 
 // Parse reads a Go app file and extracts the Bubble Tea-style declarations.
@@ -84,8 +91,12 @@ func ParseSource(name string, src []byte) (*App, error) {
 					if !embedsRPCService(t) {
 						continue
 					}
+					procedures, err := proceduresOf(t)
+					if err != nil {
+						return nil, fmt.Errorf("%s: %w", name, err)
+					}
 					app.ProceduresType = ts.Name.Name
-					app.Procedures = proceduresOf(t)
+					app.Procedures = procedures
 				}
 			}
 		case *ast.FuncDecl:
@@ -156,9 +167,9 @@ func embedsRPCService(it *ast.InterfaceType) bool {
 	return false
 }
 
-func proceduresOf(it *ast.InterfaceType) []Procedure {
+func proceduresOf(it *ast.InterfaceType) ([]Procedure, error) {
 	if it.Methods == nil {
-		return nil
+		return nil, nil
 	}
 	var procedures []Procedure
 	for _, m := range it.Methods.List {
@@ -170,12 +181,81 @@ func proceduresOf(it *ast.InterfaceType) []Procedure {
 			continue
 		}
 		p := Procedure{Name: m.Names[0].Name}
-		if ft.Results != nil && len(ft.Results.List) > 0 {
-			p.ResultType = exprString(ft.Results.List[0].Type)
+		params, err := procedureParams(ft)
+		if err != nil {
+			return nil, fmt.Errorf("procedure %s: %w", p.Name, err)
+		}
+		p.Params = params
+		if err := procedureResults(ft, &p); err != nil {
+			return nil, fmt.Errorf("procedure %s: %w", p.Name, err)
 		}
 		procedures = append(procedures, p)
 	}
-	return procedures
+	return procedures, nil
+}
+
+func procedureParams(ft *ast.FuncType) ([]Param, error) {
+	if ft.Params == nil || len(ft.Params.List) == 0 {
+		return nil, fmt.Errorf("must take context.Context as its first parameter")
+	}
+	first := ft.Params.List[0]
+	if len(first.Names) > 1 || !isContextType(first.Type) {
+		return nil, fmt.Errorf("must take context.Context as its first parameter")
+	}
+	var params []Param
+	index := 0
+	for _, field := range ft.Params.List[1:] {
+		if _, ok := field.Type.(*ast.Ellipsis); ok {
+			return nil, fmt.Errorf("variadic parameters are not supported")
+		}
+		typ := exprString(field.Type)
+		if len(field.Names) == 0 {
+			params = append(params, Param{Name: fmt.Sprintf("arg%d", index), Type: typ})
+			index++
+			continue
+		}
+		for _, name := range field.Names {
+			params = append(params, Param{Name: name.Name, Type: typ})
+			index++
+		}
+	}
+	return params, nil
+}
+
+func procedureResults(ft *ast.FuncType, p *Procedure) error {
+	if ft.Results == nil || len(ft.Results.List) == 0 {
+		return fmt.Errorf("must return (T, error) or error")
+	}
+	results := ft.Results.List
+	switch len(results) {
+	case 1:
+		if !isErrorType(results[0].Type) {
+			return fmt.Errorf("must return (T, error) or error")
+		}
+		p.ResultType = ""
+	case 2:
+		if !isErrorType(results[1].Type) {
+			return fmt.Errorf("second result must be error")
+		}
+		p.ResultType = exprString(results[0].Type)
+	default:
+		return fmt.Errorf("must return (T, error) or error")
+	}
+	return nil
+}
+
+func isContextType(e ast.Expr) bool {
+	sel, ok := e.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	id, ok := sel.X.(*ast.Ident)
+	return ok && id.Name == "context" && sel.Sel.Name == "Context"
+}
+
+func isErrorType(e ast.Expr) bool {
+	id, ok := e.(*ast.Ident)
+	return ok && id.Name == "error"
 }
 
 func fieldsOf(st *ast.StructType) []Field {

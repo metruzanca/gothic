@@ -372,6 +372,10 @@ func (p *parser) parseElement() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if key, ok := attr.(*KeyAttr); ok {
+			el.Key = key.Expr
+			continue
+		}
 		el.Attributes = append(el.Attributes, attr)
 	}
 
@@ -426,6 +430,10 @@ func (p *parser) parseComponent(name string) (Node, error) {
 		prop, err := p.parseProp()
 		if err != nil {
 			return nil, err
+		}
+		if prop.Name == "key" {
+			call.Key = prop.Value
+			continue
 		}
 		call.Props = append(call.Props, prop)
 	}
@@ -511,6 +519,31 @@ func (p *parser) parseAttribute() (Attribute, error) {
 		return nil, p.errf("expected attribute name")
 	}
 	p.skipSpace()
+	if name == "key" {
+		if !p.consume("=") {
+			return nil, p.errf("expected = after key")
+		}
+		p.skipSpace()
+		if p.peek() == '{' {
+			inner, err := p.readBalancedBraces()
+			if err != nil {
+				return nil, err
+			}
+			expr, err := goparser.ParseExpr(inner)
+			if err != nil {
+				return nil, p.errf("invalid key expression: %v", err)
+			}
+			return &KeyAttr{Expr: expr}, nil
+		}
+		if p.peek() != '"' {
+			return nil, p.errf("expected string or expression for key")
+		}
+		v, err := p.readQuoted()
+		if err != nil {
+			return nil, err
+		}
+		return &KeyAttr{Expr: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(v)}}, nil
+	}
 	if !p.consume("=") {
 		return &ConstantAttr{Name: name}, nil
 	}

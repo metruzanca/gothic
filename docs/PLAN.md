@@ -189,6 +189,7 @@ from the server and reconciled. There is no virtual DOM.
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/pingpong/` | The proof-of-concept app. |
 | `examples/components/` | The pure-component demo. |
+| `examples/todo/` | The SQLite todo demo. |
 
 The CLI detects an app file when the `.gothic` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -204,11 +205,13 @@ Supported now:
 - `Msg = any` with messages as ordinary Go structs,
 - `Update` with a type switch,
 - `append`, field access, assignments, `if err != nil`, and returns,
-- commands as functions returning messages,
+- commands as functions or closures returning messages,
 - procedure calls inside commands, awaited in JavaScript,
+- procedure arguments decoded from JSON,
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
-- message-valued event bindings,
+- keyed list reconciliation by `key={ expr }`,
+- message-valued event bindings and event values,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
 - procedure contracts through an interface embedding `gothic.RPCService`,
@@ -220,14 +223,13 @@ Not supported yet:
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- keyed lists and list item updates,
 - conditionals in views,
 - expression-valued attributes,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - message serialization or logging,
 - `go/packages` type information,
-- procedure arguments and typed validation,
+- typed procedure argument validation,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps.
@@ -240,15 +242,14 @@ compiler as a legacy path. It is not the direction of the project.
 These will be planned in detail after the proof of concept is evaluated:
 
 1. Stateful child components and message mapping.
-2. Keyed list reconciliation and item updates.
-3. Conditionals in views.
-4. More Go statements and expressions in `Update` and commands.
-5. `Batch` and `Sequence` commands.
-6. Procedure arguments, typed validation, and the no-JS fallback.
-7. `go/packages` for type information and stronger validation.
-8. Manifest, content hashing, and production serving.
-9. Formatter, LSP, and source maps.
-10. Selective vendoring of templ's HTML and whitespace handling with tests.
+2. Conditionals in views.
+3. More Go statements and expressions in `Update` and commands.
+4. `Batch` and `Sequence` commands.
+5. Typed procedure argument validation and the no-JS fallback.
+6. `go/packages` for type information and stronger validation.
+7. Manifest, content hashing, and production serving.
+8. Formatter, LSP, and source maps.
+9. Selective vendoring of templ's HTML and whitespace handling with tests.
 
 ## Risks
 
@@ -260,7 +261,7 @@ These will be planned in detail after the proof of concept is evaluated:
   markup and components are not callable from Go.
 - Stateful child components need a runtime component instance model that pure
   expansion does not provide.
-- Keyed list reconciliation and conditional rendering are not yet designed.
+- Conditional rendering is not yet designed.
 - The model is serialized whole. Large models may need selective state later.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.

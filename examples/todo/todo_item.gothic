@@ -1,0 +1,10 @@
+package main
+
+view TodoItem(todo Todo) {
+	<li class="todo">
+		<span class="status">{ todo.Status }</span>
+		<span class="text">{ todo.Text }</span>
+		<button class="toggle" onclick={ ToggleClicked{ID: todo.ID} }>toggle</button>
+		<button class="delete" onclick={ DeleteClicked{ID: todo.ID} }>delete</button>
+	</li>
+}

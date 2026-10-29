@@ -271,3 +271,60 @@ func exprText(t *testing.T, e ast.Expr) string {
 	}
 	return b.String()
 }
+
+func TestParseListKey(t *testing.T) {
+	src := `package views
+view Item(item Model) {
+	<li>{ item.Name }</li>
+}
+view App(model Model) {
+	<div>
+		for _, item := range model.Items {
+			<Item key={ item.ID } item={ item } />
+		}
+	</div>
+}
+`
+	f, err := parser.Parse("component.gothic", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := f.Templates[1].Children[0].(*parser.Element)
+	loop := root.Children[0].(*parser.For)
+	call := loop.Children[0].(*parser.ComponentCall)
+	if got := exprText(t, call.Key); got != "item.ID" {
+		t.Fatalf("key = %q", got)
+	}
+	if len(call.Props) != 1 || call.Props[0].Name != "item" {
+		t.Fatalf("props = %#v", call.Props)
+	}
+}
+
+func TestExpandComponentKey(t *testing.T) {
+	src := `package views
+view Item(item Model) {
+	<li>{ item.Name }</li>
+}
+view App(model Model) {
+	<div>
+		for _, item := range model.Items {
+			<Item key={ item.ID } item={ item } />
+		}
+	</div>
+}
+`
+	f, err := parser.Parse("component.gothic", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := expanded.Templates[0].Children[0].(*parser.Element)
+	loop := root.Children[0].(*parser.For)
+	li := loop.Children[0].(*parser.Element)
+	if got := exprText(t, li.Key); got != "item.ID" {
+		t.Fatalf("expanded key = %q", got)
+	}
+}

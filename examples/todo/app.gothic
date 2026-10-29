@@ -1,0 +1,114 @@
+package main
+
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+)
+
+type Todo struct {
+	ID     int64
+	Text   string
+	Done   bool
+	Status string
+}
+
+type Model struct {
+	Draft string
+	Todos []Todo
+	Failure string
+}
+
+func NewModel(todos []Todo) Model {
+	return Model{Todos: todos}
+}
+
+type DraftChanged struct{ Text string }
+type AddClicked struct{}
+type ToggleClicked struct{ ID int64 }
+type DeleteClicked struct{ ID int64 }
+type TodosLoaded struct{ Todos []Todo }
+type TodoFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	ListTodos(ctx context.Context) ([]Todo, error)
+	AddTodo(ctx context.Context, text string) error
+	ToggleTodo(ctx context.Context, id int64) error
+	DeleteTodo(ctx context.Context, id int64) error
+}
+
+func (m Model) Init() gothic.Cmd {
+	return loadTodos
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case DraftChanged:
+		m.Draft = msg.Text
+	case AddClicked:
+		text := m.Draft
+		if text == "" {
+			return m, nil
+		}
+		return m, func() gothic.Msg {
+			err := AddTodo(text)
+			if err != nil {
+				return TodoFailed{Message: err.Error()}
+			}
+			return loadTodos()
+		}
+	case ToggleClicked:
+		id := msg.ID
+		return m, func() gothic.Msg {
+			err := ToggleTodo(id)
+			if err != nil {
+				return TodoFailed{Message: err.Error()}
+			}
+			return loadTodos()
+		}
+	case DeleteClicked:
+		id := msg.ID
+		return m, func() gothic.Msg {
+			err := DeleteTodo(id)
+			if err != nil {
+				return TodoFailed{Message: err.Error()}
+			}
+			return loadTodos()
+		}
+	case TodosLoaded:
+		m.Todos = msg.Todos
+		m.Failure = ""
+	case TodoFailed:
+		m.Failure = msg.Message
+	}
+	return m, nil
+}
+
+func loadTodos() gothic.Msg {
+	todos, err := ListTodos()
+	if err != nil {
+		return TodoFailed{Message: err.Error()}
+	}
+	return TodosLoaded{Todos: todos}
+}
+
+view ErrorText(message string) {
+	<p class="error">{ message }</p>
+}
+
+view App(model Model) {
+	<div class="app">
+		<h1>Todos</h1>
+		<ErrorText message={ model.Failure } />
+		<div class="new">
+			<input class="draft" placeholder="What needs doing?" oninput={ DraftChanged{Text: event.target.value} } />
+			<button class="add" onclick={ AddClicked{} }>Add</button>
+		</div>
+		<ul class="todos">
+			for _, todo := range model.Todos {
+				<TodoItem key={ todo.ID } todo={ todo } />
+			}
+		</ul>
+	</div>
+}

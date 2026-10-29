@@ -14,8 +14,9 @@ It prioritizes simplicity and productivity.
 ## A taste
 
 The syntax is under active development and subject to change. See the
-[ping/pong app](examples/pingpong) and the
-[component demo](examples/components) for working examples.
+[ping/pong app](examples/pingpong), the
+[component demo](examples/components), and the
+[SQLite todo app](examples/todo) for working examples.
 
 ```templ
 //app.gothic
@@ -91,4 +92,5 @@ call, and composable pure view components.
 - [Roadmap](docs/PLAN.md)
 - [Proof of concept](docs/ITERATION_1.md)
 - [Components](docs/ITERATION_2.md)
+- [SQLite todo](docs/ITERATION_3.md)
 - [Pitch](docs/PITCH.md)

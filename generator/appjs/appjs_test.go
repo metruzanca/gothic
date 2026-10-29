@@ -87,7 +87,7 @@ func TestGenerate(t *testing.T) {
 	for _, want := range []string{
 		`import { list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
-		`on(root, "0", "click", () => dispatch({tag: "PingClicked"}));`,
+		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m) => {`,
 		`text(e0, "0", m);`,
 		`}, (node, m) => {`,
@@ -110,6 +110,81 @@ func TestGenerate(t *testing.T) {
 		`return {tag: "PongReceived", Text: pong};`,
 		`render(model);`,
 		`run(init());`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+const commandClosureApp = `package app
+
+type Model struct{ Text string; Todos []string }
+type AddClicked struct{}
+type Added struct{ Todos []string }
+type AddFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	AddTodo(ctx context.Context, text string) error
+	ListTodos(ctx context.Context) ([]string, error)
+}
+
+func (m Model) Init() Cmd { return loadTodos }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg := msg.(type) {
+	case AddClicked:
+		text := m.Text
+		return m, func() Msg {
+			err := AddTodo(text)
+			if err != nil {
+				return AddFailed{Message: err.Error()}
+			}
+			return loadTodos()
+		}
+	}
+	return m, nil
+}
+
+func loadTodos() Msg {
+	todos, err := ListTodos()
+	if err != nil {
+		return AddFailed{Message: err.Error()}
+	}
+	return Added{Todos: todos}
+}
+`
+
+const commandClosureView = `package app
+
+view App(model Model) {
+	<div>{ model.Text }</div>
+}
+`
+
+func TestGenerateCommandClosure(t *testing.T) {
+	view, err := parser.Parse("view.gothic", []byte(commandClosureView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(commandClosureApp))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "view.gothic",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`return [m, async () => {`,
+		`let err = null;`,
+		`err = await AddTodo(text);`,
+		`return await loadTodos();`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)

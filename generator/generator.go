@@ -355,8 +355,16 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 			g.eventN++
 		}
 	}
-	open.WriteString(">")
-	g.emitWrite(b, open.String())
+	if el.Key == nil {
+		open.WriteString(">")
+		g.emitWrite(b, open.String())
+	} else {
+		g.usesHTML = true
+		g.usesFmt = true
+		g.emitWrite(b, open.String()+` data-gothic-key="`)
+		fmt.Fprintf(b, "\t\tif err := write(html.EscapeString(fmt.Sprint(%s))); err != nil {\n\t\t\treturn err\n\t\t}\n", goExpr(el.Key))
+		g.emitWrite(b, `">`)
+	}
 
 	if isRoot {
 		fmt.Fprintf(b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<script type=\"application/json\" data-gothic-state=\""+g.rootID+"\">"))
@@ -452,21 +460,48 @@ func writeAppRegistrar(b *strings.Builder, app *goapp.App) {
 	fmt.Fprintf(b, "func Register%s(s *gothic.Server, impl %s) {\n", iface, iface)
 	for _, p := range app.Procedures {
 		fmt.Fprintf(b, "\ts.RegisterProcedure(%s, func(ctx context.Context, body []byte) (any, error) {\n", strconv.Quote(p.Name))
-		fmt.Fprintf(b, "\t\treturn impl.%s(ctx)\n", p.Name)
+		if len(p.Params) > 0 {
+			refs := make([]string, len(p.Params))
+			for i, param := range p.Params {
+				name := fmt.Sprintf("arg%d", i)
+				fmt.Fprintf(b, "\t\tvar %s %s\n", name, param.Type)
+				refs[i] = "&" + name
+			}
+			fmt.Fprintf(b, "\t\tif err := gothic.UnmarshalArgs(body, %s); err != nil {\n\t\t\treturn nil, err\n\t\t}\n", strings.Join(refs, ", "))
+		}
+		args := []string{"ctx"}
+		for i := range p.Params {
+			args = append(args, fmt.Sprintf("arg%d", i))
+		}
+		if p.ResultType == "" {
+			fmt.Fprintf(b, "\t\tif err := impl.%s(%s); err != nil {\n\t\t\treturn nil, err\n\t\t}\n", p.Name, strings.Join(args, ", "))
+			b.WriteString("\t\treturn nil, nil\n")
+		} else {
+			fmt.Fprintf(b, "\t\treturn impl.%s(%s)\n", p.Name, strings.Join(args, ", "))
+		}
 		b.WriteString("\t})\n")
 	}
 	b.WriteString("}\n")
 
 	for _, p := range app.Procedures {
 		fmt.Fprintf(b, "\n// %s is the client-side stub for the %s procedure.\n", p.Name, p.Name)
+		sig := procedureParamsSig(p)
 		if p.ResultType == "" {
-			fmt.Fprintf(b, "func %s() error {\n", p.Name)
+			fmt.Fprintf(b, "func %s(%s) error {\n", p.Name, sig)
 		} else {
-			fmt.Fprintf(b, "func %s() (%s, error) {\n", p.Name, p.ResultType)
+			fmt.Fprintf(b, "func %s(%s) (%s, error) {\n", p.Name, sig, p.ResultType)
 		}
 		fmt.Fprintf(b, "\tpanic(%s)\n", strconv.Quote("gothic: "+p.Name+" is a client-only procedure"))
 		b.WriteString("}\n")
 	}
+}
+
+func procedureParamsSig(p goapp.Procedure) string {
+	parts := make([]string, len(p.Params))
+	for i, param := range p.Params {
+		parts[i] = param.Name + " " + param.Type
+	}
+	return strings.Join(parts, ", ")
 }
 
 func paramsOrEmpty(t *parser.Template) string {

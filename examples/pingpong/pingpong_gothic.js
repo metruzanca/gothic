@@ -7,10 +7,12 @@ const Ping = (...args) => rpc("Ping", ...args);
 const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
-on(root, "0", "click", () => dispatch({tag: "PingClicked"}));
+on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));
 const renderList0 = list(root, "0", (m) => {
   const e0 = document.createElement("li");
+  e0.appendChild(document.createComment("g:text:0:open"));
   e0.appendChild(document.createTextNode(String(m)));
+  e0.appendChild(document.createComment("g:text:0:close"));
   text(e0, "0", m);
   return e0;
 }, (node, m) => {
@@ -41,15 +43,21 @@ function init() {
 function update(m, msg) {
   switch (msg.tag) {
   case "PingClicked":
+  {
     m.Messages.push("ping");
     return [m, callPing];
     break;
+  }
   case "PongReceived":
+  {
     m.Messages.push(msg.Text);
     break;
+  }
   case "PingFailed":
+  {
     m.Messages.push(msg.Message);
     break;
+  }
   }
   return [m, null];
 }

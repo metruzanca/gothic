@@ -45,6 +45,7 @@ type Node interface {
 // Element is an HTML element.
 type Element struct {
 	Name       string
+	Key        ast.Expr
 	Attributes []Attribute
 	Children   []Node
 }
@@ -78,6 +79,7 @@ func (*For) node() {}
 // ComponentCall invokes a component view with named props.
 type ComponentCall struct {
 	Name  string
+	Key   ast.Expr
 	Props []Prop
 }
 
@@ -101,6 +103,13 @@ type ConstantAttr struct {
 }
 
 func (*ConstantAttr) attr() {}
+
+// KeyAttr declares a list key for an element.
+type KeyAttr struct {
+	Expr ast.Expr
+}
+
+func (*KeyAttr) attr() {}
 
 // EventAttr is an on<event>={ expression } attribute.
 type EventAttr struct {

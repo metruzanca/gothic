@@ -216,13 +216,18 @@ Interpolation takes a Go expression. It is parsed with `go/parser`.
 
 ```gothic
 for _, item := range model.Items {
-	<li>{ item }</li>
+	<Item key={ item.ID } item={ item } />
 }
 ```
 
-The range source is a Go expression, normally a model field. The server renders
-the initial children. The client adopts them and appends or removes nodes as the
-model changes.
+The range source is a Go expression, normally a model field. Add `key={ expr }`
+to the root of the loop body, or to a component call, to enable keyed list
+reconciliation. Keyed lists reuse nodes by key, update their text, and reorder
+or remove them as the model changes. Lists without a key append and remove from
+the end only. `key` is reserved and is not passed to components as a prop.
+
+The server renders the initial children. The client adopts them and hydrates
+their events.
 
 ### Events
 
@@ -236,6 +241,12 @@ An event attribute is a Go expression that produces a message:
 The generated JavaScript dispatches the message value. There is no imperative
 handler block in the application model.
 
+Event handlers receive the DOM event as `event`. This is useful for inputs:
+
+```gothic
+<input oninput={ DraftChanged{Text: event.target.value} } />
+```
+
 ### Procedures
 
 Declare client-callable procedures as a Go interface that embeds
@@ -245,6 +256,9 @@ Declare client-callable procedures as a Go interface that embeds
 type Procedures interface {
 	gothic.RPCService
 	Ping(ctx context.Context) (string, error)
+	AddTodo(ctx context.Context, text string) error
+	ToggleTodo(ctx context.Context, id int64) error
+	ListTodos(ctx context.Context) ([]Todo, error)
 }
 ```
 
@@ -258,8 +272,9 @@ The generator emits:
 - a client-side Go stub used to compile commands,
 - a JavaScript RPC function.
 
-The first parameter must be `context.Context`. The result must be `(T, error)`
-or `error`. The client stub drops the context.
+The first parameter must be `context.Context`. Remaining parameters are
+arguments sent by the client as JSON. The result must be `(T, error)` or
+`error`. The client stub drops the context.
 
 Commands call procedures directly:
 
@@ -270,6 +285,13 @@ func callPing() gothic.Msg {
 		return PingFailed{Message: err.Error()}
 	}
 	return PongReceived{Text: pong}
+}
+
+func callAdd(text string) gothic.Msg {
+	if err := AddTodo(text); err != nil {
+		return TodoFailed{Message: err.Error()}
+	}
+	return TodosLoaded{}
 }
 ```
 
@@ -297,6 +319,18 @@ func loadItems() gothic.Msg {
 
 ```go
 return m, loadItems
+```
+
+A command can also be a closure, which is useful when it needs values from the
+message or model:
+
+```go
+return m, func() gothic.Msg {
+	if err := AddTodo(m.Draft); err != nil {
+		return TodoFailed{Message: err.Error()}
+	}
+	return loadTodos()
+}
 ```
 
 The runtime renders the new model first, then runs the command. When the
@@ -328,9 +362,11 @@ The proof of concept supports:
 - `Update` with a type switch,
 - `append` and assignments,
 - `if err != nil`,
-- commands with procedure calls,
-- lists over a model field,
+- commands with procedure calls and command closures,
+- procedure arguments,
+- lists over a model field and keyed list reconciliation,
 - reactive interpolated text and message-valued event bindings,
+- event values such as `event.target.value`,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 
 Not supported yet:
@@ -339,12 +375,11 @@ Not supported yet:
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- keyed lists and item updates,
 - conditionals in views,
 - expression-valued attributes,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
-- procedure arguments and typed validation,
+- typed procedure argument validation,
 - message serialization,
 - `go/packages` type information.
 

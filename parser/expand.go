@@ -61,7 +61,7 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 	case *Interpolation:
 		return &Interpolation{Expr: substExpr(n.Expr, env)}, nil
 	case *Element:
-		el := &Element{Name: n.Name}
+		el := &Element{Name: n.Name, Key: substExpr(n.Key, env)}
 		for _, attr := range n.Attributes {
 			switch a := attr.(type) {
 			case *ConstantAttr:
@@ -147,10 +147,14 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	if len(expanded.Children) != 1 {
 		return nil, fmt.Errorf("component %s must expand to one root element", call.Name)
 	}
-	if _, ok := expanded.Children[0].(*Element); !ok {
+	root, ok := expanded.Children[0].(*Element)
+	if !ok {
 		return nil, fmt.Errorf("component %s root must be an element", call.Name)
 	}
-	return expanded.Children[0], nil
+	if call.Key != nil {
+		root.Key = substExpr(call.Key, env)
+	}
+	return root, nil
 }
 
 func componentCycle(stack []string, name string) string {

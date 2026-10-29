@@ -124,8 +124,7 @@ Component declarations do not produce artifacts.
 - List-item events are hydrated before the first render, so buttons inside
   server-rendered items work immediately.
 - New list items are built and bound by the generated renderer.
-- Lists remain unkeyed. Existing item text is not patched when the underlying
-  item changes.
+- Lists remain unkeyed. Iteration 3 adds keyed lists.
 
 ## Limits
 
@@ -135,7 +134,7 @@ Component declarations do not produce artifacts.
 - Props may be evaluated more than once if used in multiple expressions.
 - No component state, child models, or message mapping yet.
 - No children or slots yet.
-- No keyed list updates, conditionals, or expression-valued attributes.
+- No conditionals or expression-valued attributes at the time of this iteration.
 - One app per directory.
 
 ## Verification

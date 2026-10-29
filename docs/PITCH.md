@@ -114,6 +114,7 @@ The ping/pong proof of concept runs end to end.
 - The Go server renders the initial model with hydration markers and serialized state.
 - The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
 - Pure components compose views with typed props, in the app file or separate files.
+- Procedures accept JSON arguments, and keyed lists update in place.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
 - Failure handling produces `ready`, `ping`, `ping failed`.
 - No hand-written JavaScript. No wasm. No npm.
@@ -124,9 +125,9 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 ## What comes next
 
 1. Stateful child components and message mapping between them.
-2. Keyed lists, item updates, and conditionals in views.
+2. Conditionals in views.
 3. `Batch` and `Sequence` commands.
-4. Typed procedure arguments, validation, and the no-JS form fallback.
+4. Typed procedure argument validation and the no-JS form fallback.
 5. `go/packages` type information for stronger compiler checks.
 6. Manifest, content hashing, formatter, LSP, and source maps.
 

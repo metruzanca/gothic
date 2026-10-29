@@ -129,7 +129,7 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 			return err
 		}
 		event := strings.TrimPrefix(ev.Name, "on")
-		fmt.Fprintf(b, "on(root, %s, %s, () => dispatch(%s));\n", jsString(fmt.Sprintf("%d", idx)), jsString(event), msg)
+		fmt.Fprintf(b, "on(root, %s, %s, (event) => dispatch(%s));\n", jsString(fmt.Sprintf("%d", idx)), jsString(event), msg)
 	}
 	for _, child := range el.Children {
 		switch c := child.(type) {
@@ -166,11 +166,13 @@ func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
 	var bindings []itemBinding
 	g.varN = 0
 	var rootVar string
+	var keyExpr ast.Expr
 	for _, child := range f.Children {
 		el, ok := child.(*parser.Element)
 		if !ok {
 			continue
 		}
+		keyExpr = el.Key
 		var err error
 		rootVar, err = g.emitDOM(&item, el, map[string]bool{f.Value: true}, &bindings)
 		if err != nil {
@@ -188,10 +190,16 @@ func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
 	if len(bindings) > 0 {
 		fmt.Fprintf(b, ", (node, %s) => {\n", f.Value)
 		emitItemBindings(b, "node", bindings)
-		b.WriteString("});\n")
-	} else {
-		b.WriteString(");\n")
+		b.WriteString("}")
 	}
+	if keyExpr != nil {
+		key, err := g.expr(keyExpr, exprCtx{locals: map[string]bool{f.Value: true}})
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(b, ", (%s) => String(%s)", f.Value, key)
+	}
+	b.WriteString(");\n")
 
 	itemsExpr, err := g.expr(f.X, exprCtx{})
 	if err != nil {
@@ -207,7 +215,7 @@ func emitItemBindings(b *strings.Builder, root string, bindings []itemBinding) {
 		case "text":
 			fmt.Fprintf(b, "  text(%s, %s, %s);\n", root, jsString(fmt.Sprintf("%d", binding.marker)), binding.expr)
 		case "event":
-			fmt.Fprintf(b, "  on(%s, %s, %s, () => dispatch(%s));\n", root, jsString(fmt.Sprintf("%d", binding.marker)), jsString(binding.event), binding.expr)
+			fmt.Fprintf(b, "  on(%s, %s, %s, (event) => dispatch(%s));\n", root, jsString(fmt.Sprintf("%d", binding.marker)), jsString(binding.event), binding.expr)
 		}
 	}
 }
@@ -216,6 +224,13 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 	v := fmt.Sprintf("e%d", g.varN)
 	g.varN++
 	fmt.Fprintf(sb, "  const %s = document.createElement(%s);\n", v, jsString(el.Name))
+	if el.Key != nil {
+		key, err := g.expr(el.Key, exprCtx{locals: locals})
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(sb, "  %s.setAttribute(\"data-gothic-key\", String(%s));\n", v, key)
+	}
 	for _, attr := range el.Attributes {
 		switch a := attr.(type) {
 		case *parser.ConstantAttr:
@@ -249,7 +264,9 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 			if err != nil {
 				return "", err
 			}
+			fmt.Fprintf(sb, "  %s.appendChild(document.createComment(%s));\n", v, jsString(fmt.Sprintf("g:text:%d:open", idx)))
 			fmt.Fprintf(sb, "  %s.appendChild(document.createTextNode(String(%s)));\n", v, e)
+			fmt.Fprintf(sb, "  %s.appendChild(document.createComment(%s));\n", v, jsString(fmt.Sprintf("g:text:%d:close", idx)))
 			*bindings = append(*bindings, itemBinding{kind: "text", marker: idx, expr: e})
 		case *parser.Element:
 			childVar, err := g.emitDOM(sb, c, locals, bindings)
@@ -450,6 +467,31 @@ func (g *gen) assign(b *strings.Builder, s *ast.AssignStmt, ctx *exprCtx, pad st
 		return fmt.Errorf("unsupported assignment")
 	}
 	lhs, rhs := s.Lhs[0], s.Rhs[0]
+	if call, ok := rhs.(*ast.CallExpr); ok && g.isErrorProcedure(call) {
+		if !ctx.async {
+			return fmt.Errorf("procedures can only be called from commands")
+		}
+		lhsExpr, err := g.expr(lhs, *ctx)
+		if err != nil {
+			return err
+		}
+		callExpr, err := g.expr(call, *ctx)
+		if err != nil {
+			return err
+		}
+		tmp := g.temp()
+		if s.Tok == token.DEFINE {
+			fmt.Fprintf(b, "%slet %s = null;\n", pad, lhsExpr)
+		} else {
+			fmt.Fprintf(b, "%s%s = null;\n", pad, lhsExpr)
+		}
+		fmt.Fprintf(b, "%stry {\n", pad)
+		fmt.Fprintf(b, "%s  %s = %s;\n", pad, lhsExpr, callExpr)
+		fmt.Fprintf(b, "%s} catch (%s) {\n", pad, tmp)
+		fmt.Fprintf(b, "%s  %s = %s;\n", pad, lhsExpr, tmp)
+		fmt.Fprintf(b, "%s}\n", pad)
+		return nil
+	}
 	if call, ok := rhs.(*ast.CallExpr); ok && isAppend(call) {
 		lhsExpr, err := g.expr(lhs, *ctx)
 		if err != nil {
@@ -508,12 +550,13 @@ func (g *gen) typeSwitch(b *strings.Builder, s *ast.TypeSwitchStmt, ctx *exprCtx
 			}
 			fmt.Fprintf(b, "%scase %s:\n", pad, jsString(id.Name))
 		}
+		fmt.Fprintf(b, "%s{\n", pad)
 		for _, st := range cc.Body {
 			if err := g.stmt(b, st, ctx, indent+1); err != nil {
 				return err
 			}
 		}
-		fmt.Fprintf(b, "%s  break;\n", pad)
+		fmt.Fprintf(b, "%s  break;\n%s}\n", pad, pad)
 	}
 	fmt.Fprintf(b, "%s}\n", pad)
 	return nil
@@ -613,9 +656,27 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		return "(" + x + ")", nil
 	case *ast.CompositeLit:
 		return g.composite(e, ctx)
+	case *ast.FuncLit:
+		return g.funcLit(e)
 	default:
 		return "", fmt.Errorf("unsupported expression %T", e)
 	}
+}
+
+func (g *gen) funcLit(e *ast.FuncLit) (string, error) {
+	if e.Type.Params != nil && len(e.Type.Params.List) > 0 {
+		return "", fmt.Errorf("command functions cannot take parameters")
+	}
+	var b strings.Builder
+	b.WriteString("async () => {\n")
+	ctx := &exprCtx{async: true}
+	for _, st := range e.Body.List {
+		if err := g.stmt(&b, st, ctx, 1); err != nil {
+			return "", err
+		}
+	}
+	b.WriteString("}")
+	return b.String(), nil
 }
 
 func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
@@ -672,6 +733,19 @@ func identName(e ast.Expr) (string, bool) {
 func isAppend(c *ast.CallExpr) bool {
 	id, ok := c.Fun.(*ast.Ident)
 	return ok && id.Name == "append" && len(c.Args) >= 2
+}
+
+func (g *gen) isErrorProcedure(c *ast.CallExpr) bool {
+	id, ok := c.Fun.(*ast.Ident)
+	if !ok {
+		return false
+	}
+	for _, p := range g.app.Procedures {
+		if p.Name == id.Name && p.ResultType == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func singleModelParam(params string) (name, typ string, ok bool) {
