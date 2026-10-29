@@ -18,7 +18,7 @@ func TestValidateRejectsCollisions(t *testing.T) {
 			src: `package p
 rpc Ping() string
 rpc Ping() string
-templ T() {
+view T() {
 	<div></div>
 }
 `,
@@ -27,7 +27,7 @@ templ T() {
 		{
 			name: "state and procedure",
 			src: `package p
-templ T() {
+view T() {
 	state Ping = []string{}
 	<div></div>
 }
@@ -38,7 +38,7 @@ rpc Ping() string
 		{
 			name: "runtime reserved name",
 			src: `package p
-templ T() {
+view T() {
 	<div></div>
 }
 rpc signal() string
@@ -48,7 +48,7 @@ rpc signal() string
 		{
 			name: "javascript keyword",
 			src: `package p
-templ T() {
+view T() {
 	<div></div>
 }
 rpc class() string
@@ -58,7 +58,7 @@ rpc class() string
 		{
 			name: "go keyword",
 			src: `package p
-templ T() {
+view T() {
 	<div></div>
 }
 rpc return() string

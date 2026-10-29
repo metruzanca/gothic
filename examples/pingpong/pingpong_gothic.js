@@ -4,8 +4,8 @@ import { list, on, readState, rpc } from "/_gothic/runtime.js";
 
 const Ping = (...args) => rpc("Ping", ...args);
 
-const root = document.querySelector('[data-gothic-root="view"]');
-let model = readState("view");
+const root = document.querySelector('[data-gothic-root="app"]');
+let model = readState("app");
 
 on(root, "0", "click", () => dispatch({tag: "PingClicked"}));
 const renderList0 = list(root, "0", (m) => {

@@ -9,7 +9,7 @@ import (
 
 const demo = `package views
 
-templ PingPong() {
+view PingPong() {
 	state messages = []string{"ready"}
 
 	<div class="app">
@@ -125,7 +125,7 @@ func TestParseDemo(t *testing.T) {
 
 func TestRejectsAwait(t *testing.T) {
 	src := `package views
-templ Bad() {
+view Bad() {
 	<button onclick={ func() {
 		pong := await Ping()
 		_ = pong

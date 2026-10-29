@@ -50,7 +50,7 @@ func callPing() Msg {
 
 const viewSrc = `package app
 
-templ View(model Model) {
+view App(model Model) {
 	<div>
 		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>

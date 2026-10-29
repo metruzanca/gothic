@@ -104,7 +104,7 @@ func callPing() gothic.Msg {
 
 ```gothic
 // pingpong.gothic (view)
-templ View(model Model) {
+view App(model Model) {
 	<div class="app">
 		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>
@@ -179,7 +179,7 @@ from the server and reconciled. There is no virtual DOM.
 | `examples/pingpong/` | The proof-of-concept app. |
 
 The CLI detects an app file when the `.gothic` file has a valid Go prelude with
-a `Model` type and a view whose start line begins with `templ`.
+a `Model` type and a view whose start line begins with `view`.
 
 ## Proof-of-concept scope
 

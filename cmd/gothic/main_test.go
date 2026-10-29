@@ -12,7 +12,7 @@ func TestGenerateReportsArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	src := `package views
 
-templ Hello() {
+view Hello() {
 	<div>Hi</div>
 }
 `

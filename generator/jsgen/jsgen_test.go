@@ -11,7 +11,7 @@ import (
 
 const demo = `package views
 
-templ PingPong() {
+view PingPong() {
 	state messages = []string{"ready"}
 
 	<div class="app">
@@ -83,7 +83,7 @@ func TestGenerate(t *testing.T) {
 
 func TestRejectsAPIPrefix(t *testing.T) {
 	src := `package views
-templ T() {
+view T() {
 	<div>
 		<button onclick={ func() {
 			v, err := api.Ping()

@@ -11,7 +11,7 @@ import (
 
 const demo = `package views
 
-templ PingPong() {
+view PingPong() {
 	state messages = []string{"ready"}
 
 	<div class="app">
@@ -75,7 +75,7 @@ func TestGenerate(t *testing.T) {
 
 const appView = `package app
 
-templ View(model Model) {
+view App(model Model) {
 	<div>
 		for _, m := range model.Messages {
 			<li>{ m }</li>
@@ -128,7 +128,7 @@ func TestGenerateAppView(t *testing.T) {
 		`type Model struct`,
 		`type Procedures interface`,
 		`func (m Model) Update`,
-		`func View(model Model) gothic.Component`,
+		`func App(model Model) gothic.Component`,
 		`func (m Model) View() gothic.Component`,
 		`stateJSON, err := json.Marshal(model)`,
 		`for _, m := range model.Messages`,
@@ -172,7 +172,7 @@ func (m Model) Update(msg g.Msg) (g.Model, g.Cmd) { return m, nil }
 
 func TestGenerateRejectsMultipleRoots(t *testing.T) {
 	src := `package views
-templ Bad() {
+view Bad() {
 	<div></div>
 	<div></div>
 }

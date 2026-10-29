@@ -7,7 +7,7 @@ import (
 	"regexp"
 )
 
-var templLine = regexp.MustCompile(`(?m)^templ[ \t]+[A-Za-z_]\w*[ \t]*\(`)
+var viewLine = regexp.MustCompile(`(?m)^view[ \t]+[A-Za-z_]\w*[ \t]*\(`)
 
 // AppFile is a .gothic file split into its Go prelude and its view.
 type AppFile struct {
@@ -17,11 +17,11 @@ type AppFile struct {
 }
 
 // ParseApp parses a .gothic file that starts with a Go prelude and then
-// declares a templ view.
+// declares a view.
 func ParseApp(name string, src []byte) (*AppFile, error) {
-	loc := templLine.FindIndex(src)
+	loc := viewLine.FindIndex(src)
 	if loc == nil {
-		return nil, fmt.Errorf("%s: no templ declaration found", name)
+		return nil, fmt.Errorf("%s: no view declaration found", name)
 	}
 	goSource := src[:loc[0]]
 	viewSource := src[loc[0]:]

@@ -48,7 +48,7 @@ func callPing() gothic.Msg {
 	return PongReceived{Text: pong}
 }
 
-templ View(model Model) {
+view App(model Model) {
 	<div class="app">
 		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>

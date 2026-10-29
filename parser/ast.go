@@ -16,7 +16,7 @@ type Procedure struct {
 	ResultType string
 }
 
-// Template is a component declared with templ.
+// Template is a view declared with view.
 type Template struct {
 	Name     string
 	Params   string

@@ -82,7 +82,7 @@ func callPing() gothic.Msg {
 	return PongReceived{Text: pong}
 }
 
-templ View(model Model) {
+view App(model Model) {
 	<div class="app">
 		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>
@@ -123,9 +123,9 @@ A `.gothic` app file has two sections:
 
 1. A Go prelude: package, imports, model, messages, `Init`, `Update`,
    commands, and procedure interfaces.
-2. A view, starting with a line that begins with `templ`.
+2. A view, starting with a line that begins with `view`.
 
-Everything before the first top-level `templ` line is parsed as Go. Everything
+Everything before the first top-level `view` line is parsed as Go. Everything
 from that line onward is parsed as gothic markup.
 
 ## View language
@@ -133,7 +133,7 @@ from that line onward is parsed as gothic markup.
 ### View signature
 
 ```gothic
-templ View(model Model) {
+view App(model Model) {
 	...
 }
 ```

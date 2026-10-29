@@ -50,7 +50,7 @@ func callHello() gothic.Msg {
 	return HelloReceived{Message: message}
 }
 
-templ View(model Model) {
+view App(model Model) {
 	<button onclick={ HelloClicked{} }>Say hello</button>
 }
 ```

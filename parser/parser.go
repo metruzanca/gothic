@@ -34,7 +34,7 @@ func (p *parser) parseFile() (*File, error) {
 			if f.Package == "" {
 				return nil, p.errf("expected package name")
 			}
-		case p.consumeKeyword("templ"):
+		case p.consumeKeyword("view"):
 			t, err := p.parseTemplate()
 			if err != nil {
 				return nil, err
@@ -47,14 +47,14 @@ func (p *parser) parseFile() (*File, error) {
 			}
 			f.Procedures = append(f.Procedures, proc)
 		default:
-			return nil, p.errf("expected package, templ, or rpc")
+			return nil, p.errf("expected package, view, or rpc")
 		}
 	}
 	if f.Package == "" {
 		return nil, p.errf("missing package declaration")
 	}
 	if len(f.Templates) == 0 {
-		return nil, p.errf("no templ declaration found")
+		return nil, p.errf("no view declaration found")
 	}
 	return f, nil
 }

@@ -25,7 +25,7 @@ func TestPingPongApp(t *testing.T) {
 	res.Body.Close()
 	html := string(body)
 	for _, want := range []string{
-		`data-gothic-root="view"`,
+		`data-gothic-root="app"`,
 		`"Messages":["ready"]`,
 		`data-gothic-on="0"`,
 		`<!--g:each:0:open-->`,

@@ -54,7 +54,7 @@ func callPing() gothic.Msg {
 	return PongReceived{Text: pong}
 }
 
-func View(model Model) gothic.Component {
+func App(model Model) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -67,10 +67,10 @@ func View(model Model) gothic.Component {
 		if err != nil {
 			return err
 		}
-		if err := write("<div data-gothic-root=\"view\" class=\"app\">"); err != nil {
+		if err := write("<div data-gothic-root=\"app\" class=\"app\">"); err != nil {
 			return err
 		}
-		if err := write("<script type=\"application/json\" data-gothic-state=\"view\">"); err != nil {
+		if err := write("<script type=\"application/json\" data-gothic-state=\"app\">"); err != nil {
 			return err
 		}
 		if _, err := w.Write(stateJSON); err != nil {
@@ -123,7 +123,7 @@ func View(model Model) gothic.Component {
 
 // View implements gothic.Model for Model.
 func (m Model) View() gothic.Component {
-	return View(m)
+	return App(m)
 }
 
 //go:embed pingpong_gothic.js
