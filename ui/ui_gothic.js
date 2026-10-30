@@ -75,12 +75,17 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
     return [m, null];
   }
 
+  function init() {
+    return null;
+  }
+
   function dispatch(msg) {
     const result = update(model, msg, items);
     model = result[0];
     render(model);
   }
   render(model);
+  init();
   return { updateProps(nextItems) {
     let changed = false;
     if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
@@ -126,12 +131,17 @@ export function mountCounter(root, label, __gothicParentDispatch) {
     return [m, null];
   }
 
+  function init() {
+    return null;
+  }
+
   function dispatch(msg) {
     const result = update(model, msg);
     model = result[0];
     render(model);
   }
   render(model);
+  init();
   return { updateProps(nextLabel) {
     let changed = false;
     if (!Object.is(label, nextLabel)) { label = nextLabel; changed = true; }
@@ -221,12 +231,17 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
     return [m, null];
   }
 
+  function init() {
+    return null;
+  }
+
   function dispatch(msg) {
     const result = update(model, msg, item);
     model = result[0];
     render(model);
   }
   render(model);
+  init();
   return { updateProps(nextItem) {
     let changed = false;
     if (!Object.is(item, nextItem)) { item = nextItem; changed = true; }
@@ -321,12 +336,17 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     return [m, null];
   }
 
+  function init() {
+    return null;
+  }
+
   function dispatch(msg) {
     const result = update(model, msg, items);
     model = result[0];
     render(model);
   }
   render(model);
+  init();
   return { updateProps(nextItems) {
     let changed = false;
     if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }

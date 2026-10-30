@@ -802,3 +802,74 @@ func (m TabsModel) Update(msg Msg, items string) (TabsModel, Cmd) { return m, ni
 		t.Fatalf("error lacks a source position: %v", err)
 	}
 }
+
+func componentInitFixture(initSource string) (*parser.Template, *goapp.App) {
+	view, _ := parser.Parse("counter.gth", []byte(`package ui
+
+view Counter(model CounterModel) {
+	<div>{ model.Count }</div>
+}
+`))
+	app, _ := goapp.ParseComponents("counter.go", []byte(`package ui
+
+type CounterModel struct{ Count int }
+
+`+initSource+`
+
+func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
+`))
+	return view.Templates[0], app
+}
+
+func TestGenerateComponentInit(t *testing.T) {
+	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd {
+	js.SetTitle("ready")
+	return nil
+}`)
+	component := app.ComponentApp("CounterModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`function init() {`,
+		`(document.title = String("ready"));`,
+		`init();`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectComponentInitCommand(t *testing.T) {
+	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd {
+	return func() Msg { return nil }
+}`)
+	component := app.ComponentApp("CounterModel")
+	_, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err == nil || !strings.Contains(err.Error(), "Init must return nil") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRejectComponentInitProps(t *testing.T) {
+	tpl, app := componentInitFixture(`func (m CounterModel) Init(label string) Cmd {
+	return nil
+}`)
+	component := app.ComponentApp("CounterModel")
+	_, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err == nil || !strings.Contains(err.Error(), "Init cannot take parameters yet") {
+		t.Fatalf("error = %v", err)
+	}
+}

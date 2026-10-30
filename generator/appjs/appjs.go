@@ -1566,6 +1566,40 @@ func baseName(path string) string {
 	return path
 }
 
+func returnsNonNil(fn *ast.FuncDecl) bool {
+	bad := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		ret, ok := n.(*ast.ReturnStmt)
+		if !ok || len(ret.Results) == 0 {
+			return true
+		}
+		if id, ok := ret.Results[0].(*ast.Ident); ok && id.Name == "nil" {
+			return true
+		}
+		bad = true
+		return false
+	})
+	return bad
+}
+
+func (g *gen) componentInit(comp *generator.Stateful, modelName string) (string, error) {
+	init := comp.App.Init
+	if init == nil {
+		return "", nil
+	}
+	if init.Type.Params != nil && len(init.Type.Params.List) > 0 {
+		return "", parser.PosError(g.appPos(init.Pos()), "component Init cannot take props yet; return nil", "component %s: Init cannot take parameters yet", comp.Name)
+	}
+	if returnsNonNil(init) {
+		return "", parser.PosError(g.appPos(init.Pos()), "component Init commands are not supported yet; return nil", "component %s: Init must return nil", comp.Name)
+	}
+	var b strings.Builder
+	if err := g.emitInit(&b); err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
+
 // GenerateComponents renders a JavaScript module with stateful component
 // mount and create functions.
 func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte, error) {
@@ -1648,12 +1682,18 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			return nil, wrapFile(comp.Name, err)
 		}
 
+		initFn, err := g.componentInit(comp, modelName)
+		if err != nil {
+			return nil, wrapFile(comp.Name, err)
+		}
+
 		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch) {\n", comp.MountFunc, propSig)
 		fmt.Fprintf(&b, "  let %s = readComponentState(root) || cloneInitial(%s);\n", modelName, initial)
 		b.WriteString("  function emit(msg) {\n    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);\n  }\n")
 		b.WriteString(indentJS(bindings.String(), "  "))
 		b.WriteString(indentJS(renderCall.String(), "  "))
 		b.WriteString(indentJS(updateFn.String(), "  "))
+		b.WriteString(indentJS(initFn, "  "))
 		dispatchArgs := modelName + ", msg"
 		if len(g.updateProps) > 0 {
 			names := make([]string, len(comp.Props))
@@ -1664,6 +1704,9 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		fmt.Fprintf(&b, "  function dispatch(msg) {\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n  }\n", dispatchArgs, modelName, modelName)
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
+		if initFn != "" {
+			b.WriteString("  init();\n")
+		}
 		fmt.Fprintf(&b, "  return { updateProps(%s) {\n", nextPropList)
 		if len(comp.Props) > 0 {
 			b.WriteString("    let changed = false;\n")
