@@ -41,7 +41,7 @@ func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
 
 The view still declares the props:
 
-```gothic
+```templ
 view Tabs(model TabsModel, items []Tab) {
 	...
 }

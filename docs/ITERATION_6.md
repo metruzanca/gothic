@@ -20,7 +20,7 @@ iteration:
 
 ## Syntax
 
-```gothic
+```templ
 view App(model Model) {
 	<div class="app">
 		if len(model.Todos) > 0 {

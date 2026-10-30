@@ -8,7 +8,7 @@ exported fields, pointer fields are optional, and `Init` receives props.
 Replace long component prop lists with one props struct without changing call
 sites.
 
-```gothic
+```templ
 <ui.Tabs items={ model.Tabs } active={ model.ActiveTab } />
 ```
 
@@ -42,7 +42,7 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 }
 ```
 
-```gothic
+```templ
 view Tabs(model TabsModel, props TabsProps) {
 	<div>
 		for i, item := range props.Items {
@@ -82,7 +82,7 @@ Omit `active` and `props.Active` is nil in Go and `null` in the client props
 object. The client object always includes optional fields as `null`, so nil
 checks are consistent.
 
-```gothic
+```templ
 if props.Active != nil {
 	<p>{ *props.Active }</p>
 }
@@ -115,7 +115,7 @@ view Card(props CardProps) {
 
 Call sites stay unchanged:
 
-```gothic
+```templ
 <ui.Card title="Hello" />
 ```
 
@@ -124,7 +124,7 @@ struct literal, and the JavaScript compiler emits a plain object.
 
 Individual pure props remain supported during migration:
 
-```gothic
+```templ
 view Badge(text string) { ... }
 ```
 

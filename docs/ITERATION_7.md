@@ -26,7 +26,7 @@ After this iteration:
 
 ## Conditional components
 
-```gothic
+```templ
 if model.ShowDetails {
 	<ui.Disclosure item={ model.FeatureDisclosure } />
 }
@@ -47,7 +47,7 @@ Components nested inside elements in a branch follow the same path.
 
 A loop can be the direct child of a branch when the loop body is one element:
 
-```gothic
+```templ
 if model.HasItems {
 	for _, item := range model.Items {
 		<li>{ item }</li>

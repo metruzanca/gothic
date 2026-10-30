@@ -32,7 +32,7 @@ Following Bubble Tea:
 
 `pingpong.gth` holds the Go prelude, the view, and the procedure contract:
 
-```gothic
+```templ
 package pingpong
 
 import (
@@ -131,7 +131,7 @@ from that line onward is parsed as gothic markup.
 
 The app view is named `App`:
 
-```gothic
+```templ
 view App(model Model) {
 	...
 }
@@ -139,7 +139,7 @@ view App(model Model) {
 
 Any other view is a component:
 
-```gothic
+```templ
 view Badge(text string) {
 	<span class="badge">{ text }</span>
 }
@@ -153,7 +153,7 @@ views. It has no model and no `Init` or `Update`.
 
 ### View signature
 
-```gothic
+```templ
 view App(model Model) {
 	...
 }
@@ -180,7 +180,7 @@ view Badge(props BadgeProps) {
 Invoke a component with a capitalized tag. Named tags map to exported struct
 fields case-insensitively:
 
-```gothic
+```templ
 <Badge text={ model.Status } />
 <Badge text="ready" hidden />
 ```
@@ -192,7 +192,7 @@ fields case-insensitively:
 
 Older pure components can still declare individual props:
 
-```gothic
+```templ
 view Badge(text string) {
 	<span class="badge">{ text }</span>
 }
@@ -232,7 +232,7 @@ view Field(props FieldProps) {
 }
 ```
 
-```gothic
+```templ
 <ui.Field label="Your name">
 	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
 </ui.Field>
@@ -283,7 +283,7 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 }
 ```
 
-```gothic
+```templ
 view Tabs(model TabsModel, props TabsProps) {
 	<div class="tabs">
 		for i, item := range props.Items {
@@ -297,7 +297,7 @@ view Tabs(model TabsModel, props TabsProps) {
 
 Call sites still use named tags:
 
-```gothic
+```templ
 <Tabs items={ model.Tabs } />
 ```
 
@@ -317,7 +317,7 @@ DOM. Re-entering the branch creates a fresh instance, so component state resets.
 The same reset applies when a keyed list removes an item and later creates it
 again.
 
-```gothic
+```templ
 if model.ShowDetails {
 	<ui.Disclosure item={ model.FeatureDisclosure } />
 }
@@ -357,7 +357,7 @@ type TabsProps struct {
   and `null` in the client props object.
 - A pointer value is passed as its value or `null`, not as a pointer object.
 
-```gothic
+```templ
 <Tabs items={ model.Tabs } active={ model.ActiveTab } />
 ```
 
@@ -366,7 +366,7 @@ use a default.
 
 Use `*props.Active` after a nil check:
 
-```gothic
+```templ
 if props.Active != nil {
 	<p>{ *props.Active }</p>
 }
@@ -439,7 +439,7 @@ type ButtonProps struct {
 }
 ```
 
-```gothic
+```templ
 view Button(model ButtonModel, props ButtonProps) {
 	<button onclick={ emit(props.Onclick) }>{ props.Label }</button>
 }
@@ -447,7 +447,7 @@ view Button(model ButtonModel, props ButtonProps) {
 
 The parent passes the message:
 
-```gothic
+```templ
 <ui.Button label="Add todo" onclick={ AddClicked{} } />
 ```
 
@@ -464,7 +464,7 @@ packages with a directive in the app prelude:
 
 Use namespaced tags for external components:
 
-```gothic
+```templ
 <ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Tabs items={ model.Tabs } />
 ```
@@ -476,7 +476,7 @@ self-contained root.
 
 Elements, constant attributes, text, and interpolation work as in templ:
 
-```gothic
+```templ
 <div class="app">
 	<p>Hello</p>
 	<span>{ model.Count }</span>
@@ -487,7 +487,7 @@ Interpolation takes a Go expression. It is parsed with `go/parser`.
 
 ### Lists
 
-```gothic
+```templ
 for _, item := range model.Items {
 	<Item key={ item.ID } item={ item } />
 }
@@ -504,7 +504,7 @@ their events.
 
 ### Conditionals
 
-```gothic
+```templ
 if len(model.Todos) > 0 {
 	<ul>
 		for _, todo := range model.Todos {
@@ -547,7 +547,7 @@ unambiguous.
 
 An event attribute is a Go expression that produces a message:
 
-```gothic
+```templ
 <button onclick={ PingClicked{} }>Ping</button>
 <button onclick={ DeleteClicked{ID: item.ID} }>Delete</button>
 ```
@@ -557,13 +557,13 @@ handler block in the application model.
 
 Event handlers receive the DOM event as `event`. This is useful for inputs:
 
-```gothic
+```templ
 <input oninput={ DraftChanged{Text: event.target.value} } />
 ```
 
 `onenter` and `onescape` are shortcuts for keydown handlers:
 
-```gothic
+```templ
 <input onenter={ SaveEdit{ID: todo.ID} } onescape={ CancelEdit{ID: todo.ID} } />
 ```
 
@@ -571,13 +571,13 @@ Event handlers receive the DOM event as `event`. This is useful for inputs:
 
 Expression attributes update a DOM property or attribute:
 
-```gothic
+```templ
 <input value={ model.Draft } checked={ todo.Completed } />
 ```
 
 `class:name={ expr }` adds or removes a class when the expression changes:
 
-```gothic
+```templ
 <li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ hidden }>
 ```
 
@@ -601,7 +601,7 @@ leading `?`, and `Hash` is `window.location.hash` including `#`.
 
 Mark internal anchors with `route`:
 
-```gothic
+```templ
 <a href="/about" route>About</a>
 ```
 

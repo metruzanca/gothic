@@ -2,6 +2,8 @@
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/).
 - Releases are initiated by the user only.
+- Use `templ` as the language identifier in Markdown code fences for gothic
+  code. Do not use `gothic` or `gth` for now.
 
 ## Verification
 

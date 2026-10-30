@@ -49,7 +49,7 @@ func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
 }
 ```
 
-```gothic
+```templ
 view Tabs(model TabsModel, items []Tab) {
 	<div class="ui-tabs">
 		for i, item := range items {
@@ -123,7 +123,7 @@ Add the package to an app with a directive:
 
 Then use namespaced tags:
 
-```gothic
+```templ
 <ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Card title="Title" body="Body" />
 <ui.Tabs items={ model.Tabs } />

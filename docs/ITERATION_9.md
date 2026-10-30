@@ -72,7 +72,7 @@ Hash routing remains available for hash-only apps.
 
 ## Route links
 
-```gothic
+```templ
 <a href="/about" route>About</a>
 ```
 

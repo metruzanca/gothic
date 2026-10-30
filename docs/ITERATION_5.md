@@ -24,7 +24,7 @@ Tabs and Accordion remain purely client-side. No server mode was added to them.
 
 A component can accept a message prop:
 
-```gothic
+```templ
 view Button(model ButtonModel, label string, primary bool, onclick gothic.Msg) {
 	<button
 		class="ui-button"
@@ -38,7 +38,7 @@ view Button(model ButtonModel, label string, primary bool, onclick gothic.Msg) {
 
 The App passes the message:
 
-```gothic
+```templ
 <ui.Button label="Increment" onclick={ IncrementClicked{} } />
 ```
 

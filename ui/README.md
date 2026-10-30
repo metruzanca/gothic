@@ -30,7 +30,7 @@ ui.MountStyles(s)
 
 Use namespaced tags in `.gth` views:
 
-```gothic
+```templ
 <ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Button label="Cancel" primary={ false } onclick={ nil } />
 <ui.Card title="Card title" body="Card body" />

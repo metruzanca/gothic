@@ -24,7 +24,7 @@ The syntax is under active development and subject to change. See the
 [Gothicbook](examples/gothicbook), and the
 [router example](examples/router) for working examples.
 
-```gothic
+```templ
 //app.gth
 import (
 	"context"

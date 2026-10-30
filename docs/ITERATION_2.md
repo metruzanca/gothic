@@ -21,7 +21,7 @@ Stateful child components are the next phase. The working demo is
 
 ## Example
 
-```gothic
+```templ
 view Status(text string) {
 	<p class="status">{ text }</p>
 }
@@ -41,7 +41,7 @@ view App(model Model) {
 
 `MessageItem` can live in its own file:
 
-```gothic
+```templ
 package main
 
 view MessageItem(message string) {
@@ -59,7 +59,7 @@ view MessageItem(message string) {
 - Props are matched by name against the component parameters.
 - String literals, Go expressions, and boolean shorthand are supported:
 
-```gothic
+```templ
 <Status text={ model.Status } />
 <Status text="ready" />
 <Card hidden />
@@ -74,7 +74,7 @@ view MessageItem(message string) {
 
 A component can be declared in the app file, after the Go prelude:
 
-```gothic
+```templ
 package main
 
 // Go prelude: Model, messages, Init, Update, commands, procedures.
@@ -86,7 +86,7 @@ view App(model Model) { ... }
 
 Or in a separate file in the same directory:
 
-```gothic
+```templ
 package main
 
 view Status(text string) { ... }

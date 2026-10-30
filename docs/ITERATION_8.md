@@ -16,7 +16,7 @@ the App's own input. The alternatives were to duplicate markup or to introduce
 function-valued props. A default slot keeps one event model and one state
 owner:
 
-```gothic
+```templ
 view Field(label string) {
 	<div class="ui-field">
 		<span class="ui-field-label">{ label }</span>
@@ -25,7 +25,7 @@ view Field(label string) {
 }
 ```
 
-```gothic
+```templ
 <ui.Field label="Your name">
 	<input value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
 </ui.Field>
@@ -38,7 +38,7 @@ The input event stays in the App. `Field` only supplies layout.
 A pure component view can contain one `<slot />`. A component call with
 children uses opening and closing tags:
 
-```gothic
+```templ
 <ui.Field label="Your name">
 	<input ... />
 </ui.Field>

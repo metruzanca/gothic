@@ -57,7 +57,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 
 Then the view:
 
-```gothic
+```templ
 view App(model Model) {
 	<div class="app">
 		<button onclick={ PingClicked{} }>Ping</button>

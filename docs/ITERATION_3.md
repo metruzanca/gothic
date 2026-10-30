@@ -65,13 +65,13 @@ page reflects the shared database. The client loads the same list again through
 
 The new-todo input stores its value in the model through an event value:
 
-```gothic
+```templ
 <input value={ model.Draft } oninput={ DraftChanged{Text: event.target.value} } onenter={ AddClicked{} } />
 ```
 
 The edit input uses dynamic attributes, a focus binding, and key events:
 
-```gothic
+```templ
 <input
 	class="edit"
 	value={ editText }
@@ -85,13 +85,13 @@ The edit input uses dynamic attributes, a focus binding, and key events:
 
 Classes are toggled without conditionals:
 
-```gothic
+```templ
 <li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ hidden }>
 ```
 
 The todo item is a separate component. The loop supplies a stable key:
 
-```gothic
+```templ
 for _, todo := range model.Todos {
 	<TodoItem key={ todo.ID } todo={ todo } filter={ model.Filter } editing={ todo.ID == model.EditingID } editText={ model.EditText } />
 }

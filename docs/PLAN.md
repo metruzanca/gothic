@@ -104,7 +104,7 @@ func callPing() gothic.Msg {
 }
 ```
 
-```gothic
+```templ
 // pingpong.gth (views)
 view Status(text string) {
 	<p class="status">{ text }</p>

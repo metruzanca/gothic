@@ -56,7 +56,7 @@ func callPing() gothic.Msg {
 }
 ```
 
-```gothic
+```templ
 // pingpong.gth, view
 view App(model Model) {
 	<div>
