@@ -1,8 +1,12 @@
 package ui
 
-view Field(label string) {
+type FieldProps struct {
+	Label string
+}
+
+view Field(props FieldProps) {
 	<div class="ui-field">
-		<span class="ui-field-label">{ label }</span>
+		<span class="ui-field-label">{ props.Label }</span>
 		<slot />
 	</div>
 }

@@ -266,7 +266,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		}
 	}
 
-	external, externalPure, err := loadExternalComponents(appSource)
+	external, externalPure, externalProps, err := loadExternalComponents(appSource)
 	if err != nil {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
@@ -283,6 +283,9 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, err
 	}
 	propsTypes := propsTypesFromMessages(appSource.app.Messages)
+	for name, spec := range externalProps {
+		propsTypes[name] = spec
+	}
 	expanded, err := viewparser.ExpandAppWithProps(appSource.view, registry, propsTypes)
 	if err != nil {
 		return 0, 0, wrapFile(appSource.path, err)
@@ -628,7 +631,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	}
 
 	stateful := make([]*generator.Stateful, 0, len(statefulViews))
-	statefulFiles := map[string]bool{}
 	seenStateful := map[string]bool{}
 	for _, sv := range statefulViews {
 		t := sv.t
@@ -661,7 +663,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if _, ok := expanded.Children[0].(*viewparser.Element); !ok {
 			return 0, 0, fmt.Errorf("library component %s root must be an element", t.Name)
 		}
-		statefulFiles[sv.file] = true
 		name := t.Name
 		stateful = append(stateful, &generator.Stateful{
 			Name:       name,
@@ -682,9 +683,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 
 	var preludes [][]byte
 	for _, f := range files {
-		if statefulFiles[f.path] {
-			preludes = append(preludes, f.prelude)
-		}
+		preludes = append(preludes, f.prelude)
 	}
 
 	goSrc, err := generator.GenerateLibrary(generator.LibraryOptions{
@@ -733,28 +732,29 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	return n, len(paths), nil
 }
 
-func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.ComponentSet, error) {
+func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.ComponentSet, viewparser.PropsTypes, error) {
 	paths := componentDirectives(s.src)
 	var out []*generator.Stateful
 	pure := viewparser.ComponentSet{}
+	propsTypes := viewparser.PropsTypes{}
 	for _, path := range paths {
 		cmd := exec.Command("go", "list", "-f", "{{.Dir}}", path)
 		cmd.Dir = s.dir
 		data, err := cmd.Output()
 		if err != nil {
-			return nil, nil, fmt.Errorf("resolve component package %s: %w", path, err)
+			return nil, nil, nil, fmt.Errorf("resolve component package %s: %w", path, err)
 		}
 		pkgDir := strings.TrimSpace(string(data))
 		manifestData, err := os.ReadFile(filepath.Join(pkgDir, "gothic-components.json"))
 		if err != nil {
-			return nil, nil, fmt.Errorf("read component manifest for %s: %w", path, err)
+			return nil, nil, nil, fmt.Errorf("read component manifest for %s: %w", path, err)
 		}
 		var manifest libraryManifest
 		if err := json.Unmarshal(manifestData, &manifest); err != nil {
-			return nil, nil, fmt.Errorf("parse component manifest for %s: %w", path, err)
+			return nil, nil, nil, fmt.Errorf("parse component manifest for %s: %w", path, err)
 		}
 		if manifest.Alias == "" {
-			return nil, nil, fmt.Errorf("component package %s: missing alias in manifest", path)
+			return nil, nil, nil, fmt.Errorf("component package %s: missing alias in manifest", path)
 		}
 		statefulNames := map[string]bool{}
 		for _, comp := range manifest.Components {
@@ -780,8 +780,14 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 
 		entries, err := os.ReadDir(pkgDir)
 		if err != nil {
-			return nil, nil, fmt.Errorf("read component package %s: %w", path, err)
+			return nil, nil, nil, fmt.Errorf("read component package %s: %w", path, err)
 		}
+		type pureFile struct {
+			path    string
+			appFile *viewparser.AppFile
+		}
+		var pureFiles []pureFile
+		pkgProps := viewparser.PropsTypes{}
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".gth") {
 				continue
@@ -789,30 +795,54 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 			file := filepath.Join(pkgDir, entry.Name())
 			src, err := os.ReadFile(file)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			appFile, err := viewparser.ParseApp(file, src)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			for _, t := range appFile.View.Templates {
+			pureFiles = append(pureFiles, pureFile{path: file, appFile: appFile})
+			app, err := goapp.ParseComponents(file, appFile.GoSource)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			for name, fields := range app.Messages {
+				params := make([]viewparser.Param, len(fields))
+				for i, field := range fields {
+					params[i] = viewparser.Param{Name: field.Name, Type: field.Type}
+				}
+				pkgProps[name] = viewparser.PropsType{Name: name, Fields: params}
+			}
+		}
+		for _, f := range pureFiles {
+			for _, t := range f.appFile.View.Templates {
 				if statefulNames[t.Name] {
 					continue
 				}
 				for _, p := range t.ParamList {
 					if p.Name == "emit" {
-						return nil, nil, fmt.Errorf("component %s: prop %q is reserved", t.Name, p.Name)
+						return nil, nil, nil, fmt.Errorf("component %s: prop %q is reserved", t.Name, p.Name)
+					}
+				}
+				if len(t.ParamList) == 1 && t.ParamList[0].Name == "props" {
+					if spec, ok := pkgProps[t.ParamList[0].Type]; ok {
+						qualified := manifest.Alias + "." + t.ParamList[0].Type
+						t.ParamList[0].Type = qualified
+						pkgProps[qualified] = viewparser.PropsType{Name: qualified, Fields: spec.Fields}
 					}
 				}
 				name := manifest.Alias + "." + t.Name
 				if _, exists := pure[name]; exists {
-					return nil, nil, fmt.Errorf("duplicate component %q", name)
+					return nil, nil, nil, fmt.Errorf("duplicate component %q", name)
 				}
 				pure[name] = t
 			}
 		}
+		for name, spec := range pkgProps {
+			propsTypes[name] = spec
+		}
 	}
-	return out, pure, nil
+	return out, pure, propsTypes, nil
 }
 
 func componentDirectives(src []byte) []string {

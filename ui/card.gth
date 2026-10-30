@@ -1,8 +1,13 @@
 package ui
 
-view Card(title string, body string) {
+type CardProps struct {
+	Title string
+	Body  string
+}
+
+view Card(props CardProps) {
 	<section class="ui-card">
-		<h2>{ title }</h2>
-		<p>{ body }</p>
+		<h2>{ props.Title }</h2>
+		<p>{ props.Body }</p>
 	</section>
 }

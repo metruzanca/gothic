@@ -282,7 +282,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if true {
+		if (ui.ButtonProps{Label: "Save changes", Primary: true, Onclick: nil}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -296,7 +296,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Save changes")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Save changes", Primary: true, Onclick: nil}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {
@@ -311,7 +311,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if false {
+		if (ui.ButtonProps{Label: "Cancel", Primary: false, Onclick: nil}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -325,7 +325,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:1:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Cancel")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Cancel", Primary: false, Onclick: nil}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:1:close-->"); err != nil {
@@ -430,7 +430,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:4:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("A simple card")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.CardProps{Title: "A simple card", Body: "Cards group related content with a small surface."}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:4:close-->"); err != nil {
@@ -445,7 +445,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:5:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Cards group related content with a small surface.")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.CardProps{Title: "A simple card", Body: "Cards group related content with a small surface."}).Body))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:5:close-->"); err != nil {
@@ -568,7 +568,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:8:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Your name")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.FieldProps{Label: "Your name"}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:8:close-->"); err != nil {
@@ -670,7 +670,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:11:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("A stateful child")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.FieldProps{Label: "A stateful child"}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:11:close-->"); err != nil {
@@ -790,7 +790,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if false {
+		if (ui.ButtonProps{Label: "Fewer tabs", Primary: false, Onclick: FewerTabs{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -804,7 +804,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:14:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Fewer tabs")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Fewer tabs", Primary: false, Onclick: FewerTabs{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:14:close-->"); err != nil {
@@ -819,7 +819,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if false {
+		if (ui.ButtonProps{Label: "More tabs", Primary: false, Onclick: MoreTabs{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -833,7 +833,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:15:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("More tabs")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "More tabs", Primary: false, Onclick: MoreTabs{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:15:close-->"); err != nil {
@@ -1025,7 +1025,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if true {
+		if (ui.ButtonProps{Label: "Toggle panel", Primary: true, Onclick: ToggleExample{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -1039,7 +1039,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:20:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Toggle panel")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Toggle panel", Primary: true, Onclick: ToggleExample{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:20:close-->"); err != nil {
@@ -1164,7 +1164,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if false {
+		if (ui.ButtonProps{Label: "Previous page", Primary: false, Onclick: PrevPage{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -1178,7 +1178,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:21:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Previous page")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Previous page", Primary: false, Onclick: PrevPage{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:21:close-->"); err != nil {
@@ -1193,7 +1193,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if true {
+		if (ui.ButtonProps{Label: "Next page", Primary: true, Onclick: NextPage{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -1207,7 +1207,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:22:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Next page")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Next page", Primary: true, Onclick: NextPage{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:22:close-->"); err != nil {
@@ -1348,7 +1348,7 @@ func App(model Model) gothic.Component {
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if true {
+		if (ui.ButtonProps{Label: "Increment on server", Primary: true, Onclick: IncrementClicked{}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -1362,7 +1362,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:26:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Increment on server")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Increment on server", Primary: true, Onclick: IncrementClicked{}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:26:close-->"); err != nil {

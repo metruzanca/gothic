@@ -123,10 +123,10 @@ export function mountCounter(root, props, __gothicParentDispatch) {
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
-  onLocal(root, "0", "click", (event) => dispatch(({tag: "CounterClicked", By: 1})));
+  onLocal(root, "0", "click", (event) => dispatch(({Label: props.Label, Primary: true, Onclick: {tag: "CounterClicked", By: 1}}).Onclick));
   function render(model) {
-    classToggleLocal(root, "0", (true));
-    textLocal(root, "0", (props.Label));
+    classToggleLocal(root, "0", ({Label: props.Label, Primary: true, Onclick: {tag: "CounterClicked", By: 1}}).Primary);
+    textLocal(root, "0", ({Label: props.Label, Primary: true, Onclick: {tag: "CounterClicked", By: 1}}).Label);
     textLocal(root, "1", model.Count);
   }
 
@@ -179,7 +179,7 @@ export function createCounter(id, props) {
     e1.setAttribute("data-gothic-class-0", "ui-button-primary");
     e1.setAttribute("data-gothic-on", "0");
     e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String((props.Label))));
+    e1.appendChild(document.createTextNode(String(({Label: props.Label, Primary: true, Onclick: {tag: "CounterClicked", By: 1}}).Label)));
     e1.appendChild(document.createComment("g:text:0:close"));
     e0.appendChild(e1);
     const e2 = document.createElement("strong");

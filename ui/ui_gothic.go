@@ -46,6 +46,17 @@ func (m AccordionModel) Update(msg gothic.Msg, props AccordionProps) (AccordionM
 	return m, nil
 }
 
+type ButtonProps struct {
+	Label   string
+	Primary bool
+	Onclick gothic.Msg
+}
+
+type CardProps struct {
+	Title string
+	Body  string
+}
+
 type CounterProps struct {
 	Label string
 }
@@ -97,6 +108,10 @@ func (m DisclosureModel) Update(msg gothic.Msg, props DisclosureProps) (Disclosu
 		}
 	}
 	return m, nil
+}
+
+type FieldProps struct {
+	Label string
 }
 
 type Tab struct {
@@ -318,7 +333,7 @@ func __gothicCounterView(model CounterModel, props CounterProps) gothic.Componen
 		if err := write(" class=\"ui-button"); err != nil {
 			return err
 		}
-		if true {
+		if (ButtonProps{Label: props.Label, Primary: true, Onclick: CounterClicked{By: 1}}).Primary {
 			if err := write(" ui-button-primary"); err != nil {
 				return err
 			}
@@ -332,7 +347,7 @@ func __gothicCounterView(model CounterModel, props CounterProps) gothic.Componen
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((props.Label)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((ButtonProps{Label: props.Label, Primary: true, Onclick: CounterClicked{By: 1}}).Label))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {

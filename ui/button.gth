@@ -2,6 +2,12 @@ package ui
 
 import "github.com/metruzanca/gothic"
 
-view Button(label string, primary bool, onclick gothic.Msg) {
-	<button class="ui-button" class:ui-button-primary={ primary } onclick={ onclick }>{ label }</button>
+type ButtonProps struct {
+	Label   string
+	Primary bool
+	Onclick gothic.Msg
+}
+
+view Button(props ButtonProps) {
+	<button class="ui-button" class:ui-button-primary={ props.Primary } onclick={ props.Onclick }>{ props.Label }</button>
 }
