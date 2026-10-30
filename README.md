@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.svg" alt="Gothic logo" width="96">
+</p>
+
 # Gothic
 
 Gothic is a batteries-included Go framework for building full-stack apps.
@@ -118,6 +122,11 @@ expandable components. A small `js` package covers browser interop, and the
 router example uses path-based URL state with back and forward support. Parse
 and compiler errors include source excerpts, carets, and hints. An installable
 UI kit is included.
+
+## Credits
+
+The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
+([X](https://x.com/mackenziechild)). See [CREDITS.md](CREDITS.md).
 
 ## Learn more
 
