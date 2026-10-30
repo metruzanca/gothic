@@ -75,3 +75,40 @@ func TestServerServesRuntimeModuleAndRPC(t *testing.T) {
 		t.Fatalf("missing rpc = %d %q", res.StatusCode, body)
 	}
 }
+
+type pathModel struct{ path string }
+
+func (m pathModel) Init() Cmd               { return nil }
+func (m pathModel) Update(Msg) (Model, Cmd) { return m, nil }
+func (m pathModel) View() Component {
+	return ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, m.path)
+		return err
+	})
+}
+
+func TestMountAppCatchAll(t *testing.T) {
+	s := NewServer()
+	s.MountApp("/", NewAppFunc(func(r *http.Request) Model {
+		return pathModel{path: r.URL.Path}
+	}))
+	ts := httptest.NewServer(s)
+	defer ts.Close()
+
+	for _, path := range []string{"/", "/about", "/items/42"} {
+		res, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK || string(body) != path {
+			t.Fatalf("GET %s = %d %q", path, res.StatusCode, body)
+		}
+	}
+
+	app := NewAppFunc(func(r *http.Request) Model { return pathModel{} })
+	if err := app.RenderTo(context.Background(), io.Discard); err == nil {
+		t.Fatal("RenderTo should fail for a request-scoped app")
+	}
+}

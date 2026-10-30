@@ -614,6 +614,12 @@ func (p *parser) parseAttribute() (Attribute, error) {
 		return nil, p.errf("expected attribute name")
 	}
 	p.skipSpace()
+	if name == "route" {
+		if p.consume("=") {
+			return nil, p.errf("route does not take a value")
+		}
+		return &RouteAttr{}, nil
+	}
 	if name == "key" {
 		if !p.consume("=") {
 			return nil, p.errf("expected = after key")

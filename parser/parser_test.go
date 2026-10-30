@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"go/ast"
+	"strings"
 	"testing"
 
 	"github.com/metruzanca/gothic/parser"
@@ -227,5 +228,41 @@ view App(model Model) {
 `
 	if _, err := parser.Parse("bad.gth", []byte(src)); err == nil {
 		t.Fatal("expected an error for an empty if condition")
+	}
+}
+
+func TestParseRouteAttribute(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div><a href="/about" route>About</a></div>
+}
+`
+	f, err := parser.Parse("route.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := f.Templates[0].Children[0].(*parser.Element)
+	link := root.Children[0].(*parser.Element)
+	found := false
+	for _, attr := range link.Attributes {
+		if _, ok := attr.(*parser.RouteAttr); ok {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("route attribute not parsed: %#v", link.Attributes)
+	}
+}
+
+func TestRejectRouteValue(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div><a href="/about" route="yes">About</a></div>
+}
+`
+	if _, err := parser.Parse("route.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "route does not take a value") {
+		t.Fatalf("error = %v", err)
 	}
 }

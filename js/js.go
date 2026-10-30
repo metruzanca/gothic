@@ -52,3 +52,21 @@ func Focus(selector string) {
 func Reload() {
 	panic(clientOnly)
 }
+
+// Navigate pushes a new path onto browser history and dispatches
+// LocationChanged. The app must define a LocationChanged message.
+func Navigate(path string) {
+	panic(clientOnly)
+}
+
+// Replace replaces the current history entry and dispatches LocationChanged.
+// The app must define a LocationChanged message.
+func Replace(path string) {
+	panic(clientOnly)
+}
+
+// Back moves one entry back in browser history. The resulting popstate
+// dispatches LocationChanged.
+func Back() {
+	panic(clientOnly)
+}

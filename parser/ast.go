@@ -151,3 +151,8 @@ type ClassToggleAttr struct {
 }
 
 func (*ClassToggleAttr) attr() {}
+
+// RouteAttr marks an anchor for client-side navigation.
+type RouteAttr struct{}
+
+func (*RouteAttr) attr() {}

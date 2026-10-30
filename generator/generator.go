@@ -540,6 +540,12 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 			g.classN++
 			static.WriteString(fmt.Sprintf(" data-gothic-class-%d=%q", idx, a.Name))
 			classToggles = append(classToggles, classToggle{Name: a.Name, Expr: a.Expr, Marker: idx})
+		case *parser.RouteAttr:
+			if el.Name != "a" {
+				return fmt.Errorf("route is only supported on <a>")
+			}
+			eventMarkers = append(eventMarkers, fmt.Sprintf("%d", g.eventN))
+			g.eventN++
 		}
 	}
 

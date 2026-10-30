@@ -68,6 +68,7 @@ type Model interface {
 // App is a gothic application built from a Model.
 type App struct {
 	initial Model
+	model   func(*http.Request) Model
 }
 
 // NewApp creates an application from its initial model.
@@ -75,14 +76,31 @@ func NewApp(initial Model) *App {
 	return &App{initial: initial}
 }
 
-// RenderTo writes the application's initial view to w.
+// NewAppFunc creates an application whose initial model depends on the
+// request. Use it with MountApp to render deep links from the URL.
+func NewAppFunc[M Model](model func(*http.Request) M) *App {
+	return &App{model: func(r *http.Request) Model { return model(r) }}
+}
+
+// RenderTo writes the application's static initial view to w. It requires an
+// app created with NewApp. Request-scoped apps render through Render.
 func (a *App) RenderTo(ctx context.Context, w io.Writer) error {
+	if a.initial == nil {
+		return fmt.Errorf("gothic: RenderTo requires NewApp; use Render for NewAppFunc")
+	}
 	return a.initial.View().Render(ctx, w)
 }
 
-// Render writes the application's initial view to the response.
+// Render writes the application view for the request to the response.
 func (a *App) Render(w http.ResponseWriter, r *http.Request) error {
-	return a.RenderTo(r.Context(), w)
+	model := a.initial
+	if a.model != nil {
+		model = a.model(r)
+	}
+	if model == nil {
+		return fmt.Errorf("gothic: app model is nil")
+	}
+	return model.View().Render(r.Context(), w)
 }
 
 var (

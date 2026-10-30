@@ -53,14 +53,25 @@ func (s *Server) Use(middlewares ...func(http.Handler) http.Handler) {
 	s.mux.Use(middlewares...)
 }
 
-// MountApp mounts an application at pattern.
+// MountApp mounts an application at pattern. It also mounts a catch-all below
+// the pattern so client-side paths and deep links reach the app. Use a
+// request-scoped model with NewAppFunc to render the right state for a URL.
 func (s *Server) MountApp(pattern string, app *App) {
-	s.Get(pattern, func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := app.Render(w, r); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	})
+	}
+	s.Get(pattern, handler)
+	if strings.Contains(pattern, "*") {
+		return
+	}
+	catch := strings.TrimSuffix(pattern, "/") + "/*"
+	if pattern == "/" || pattern == "" {
+		catch = "/*"
+	}
+	s.Get(catch, handler)
 }
 
 // RegisterProcedure registers a server procedure. Generated code calls this

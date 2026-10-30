@@ -463,3 +463,67 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		}
 	}
 }
+
+func TestGenerateRouteLink(t *testing.T) {
+	f, err := parser.Parse("route.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		<a href="/about" route>About</a>
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(f, app, generator.Options{
+		FileName:   "route.gth",
+		ModuleBase: "route",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	if !strings.Contains(src, `data-gothic-on=\"0\"`) {
+		t.Errorf("route link missing click marker\n\n%s", src)
+	}
+	if strings.Contains(src, `href=\"/about\" route`) {
+		t.Errorf("route attribute should not render\n\n%s", src)
+	}
+}
+
+func TestRejectRouteOnNonAnchor(t *testing.T) {
+	f, err := parser.Parse("route.gth", []byte(`package app
+
+view App(model Model) {
+	<div route>No</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "route.gth", ModuleBase: "route", App: app}); err == nil || !strings.Contains(err.Error(), "route is only supported on <a>") {
+		t.Fatalf("error = %v", err)
+	}
+}

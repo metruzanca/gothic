@@ -48,6 +48,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 		statefulList:  opts.Stateful,
 		componentsURL: opts.ComponentsModuleURL,
 		allowNested:   true,
+		appModule:     true,
 	}
 
 	var bindings strings.Builder
@@ -106,7 +107,37 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 	}
 
 	b.WriteString("render(model);\nrun(init());\n")
-	if _, ok := app.Messages["HashChanged"]; ok {
+	if _, ok := app.Messages["LocationChanged"]; ok {
+		b.WriteString(`function locationMessage() {
+  return {tag: "LocationChanged", Path: window.location.pathname, Query: window.location.search, Hash: window.location.hash};
+}
+
+function navigate(path) {
+  history.pushState(null, "", path);
+  dispatch(locationMessage());
+}
+
+function replaceLocation(path) {
+  history.replaceState(null, "", path);
+  dispatch(locationMessage());
+}
+
+function routeClick(event) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const el = event.currentTarget;
+  if (!el || !el.hasAttribute("href")) return;
+  if (el.hasAttribute("download")) return;
+  if (el.target && el.target !== "_self") return;
+  const url = new URL(el.href, location.href);
+  if (url.origin !== location.origin) return;
+  event.preventDefault();
+  navigate(url.pathname + url.search + url.hash);
+}
+
+window.addEventListener("popstate", () => dispatch(locationMessage()));
+dispatch(locationMessage());
+`)
+	} else if _, ok := app.Messages["HashChanged"]; ok {
 		b.WriteString("window.addEventListener(\"hashchange\", () => dispatch({tag: \"HashChanged\", Hash: window.location.hash}));\n")
 		b.WriteString("dispatch({tag: \"HashChanged\", Hash: window.location.hash});\n")
 	}
@@ -138,6 +169,7 @@ type gen struct {
 	componentsURL    string
 	localHelpers     bool
 	allowNested      bool
+	appModule        bool
 }
 
 func (g *gen) helper(name string) string {
@@ -208,6 +240,13 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 				return err
 			}
 			g.bindingCalls = append(g.bindingCalls, fmt.Sprintf("%s(root, %s, %s);", g.helper("classToggle"), jsString(fmt.Sprintf("%d", idx)), expr))
+		case *parser.RouteAttr:
+			if err := g.checkRoute(el); err != nil {
+				return err
+			}
+			idx := g.eventN
+			g.eventN++
+			fmt.Fprintf(b, "%s(root, %s, \"click\", routeClick);\n", g.helper("on"), jsString(fmt.Sprintf("%d", idx)))
 		}
 	}
 	for _, child := range el.Children {
@@ -443,6 +482,8 @@ func emitItemBindings(b *strings.Builder, root string, bindings []itemBinding, g
 			fmt.Fprintf(b, "  %s(%s, %s, %s);\n", g.helper("classToggle"), root, jsString(fmt.Sprintf("%d", binding.marker)), binding.expr)
 		case "focus":
 			fmt.Fprintf(b, "  %s(%s, %s, %s);\n", g.helper("focus"), root, jsString(fmt.Sprintf("%d", binding.marker)), binding.expr)
+		case "route":
+			fmt.Fprintf(b, "  %s(%s, %s, \"click\", routeClick);\n", g.helper("on"), root, jsString(fmt.Sprintf("%d", binding.marker)))
 		case "code":
 			fmt.Fprintf(b, "  %s\n", strings.ReplaceAll(binding.expr, "__ROOT__", root))
 		}
@@ -682,6 +723,14 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 			}
 			fmt.Fprintf(sb, "  %s.setAttribute(%s, %s);\n", v, jsString(fmt.Sprintf("data-gothic-class-%d", idx)), jsString(a.Name))
 			*bindings = append(*bindings, itemBinding{kind: "class", marker: idx, expr: expr})
+		case *parser.RouteAttr:
+			if err := g.checkRoute(el); err != nil {
+				return "", err
+			}
+			idx := g.eventN
+			g.eventN++
+			eventMarkers = append(eventMarkers, fmt.Sprintf("%d", idx))
+			*bindings = append(*bindings, itemBinding{kind: "route", marker: idx})
 		}
 	}
 	if len(eventMarkers) > 0 {
@@ -1165,6 +1214,19 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 	}
 }
 
+func (g *gen) checkRoute(el *parser.Element) error {
+	if !g.appModule {
+		return fmt.Errorf("route links are only supported in the App view")
+	}
+	if el.Name != "a" {
+		return fmt.Errorf("route is only supported on <a>")
+	}
+	if _, ok := g.app.Messages["LocationChanged"]; !ok {
+		return fmt.Errorf("route links require a LocationChanged message")
+	}
+	return nil
+}
+
 func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) {
 	if !ctx.allowJS {
 		return "", fmt.Errorf("js.%s can only be used in Init, Update, or commands", name)
@@ -1219,6 +1281,30 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 			return "", fmt.Errorf("js.Focus expects one argument")
 		}
 		return fmt.Sprintf("document.querySelector(%s)?.focus()", parts[0]), nil
+	case "Navigate":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.Navigate expects one argument")
+		}
+		if _, ok := g.app.Messages["LocationChanged"]; !ok {
+			return "", fmt.Errorf("js.Navigate requires a LocationChanged message")
+		}
+		return fmt.Sprintf("navigate(%s)", parts[0]), nil
+	case "Replace":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.Replace expects one argument")
+		}
+		if _, ok := g.app.Messages["LocationChanged"]; !ok {
+			return "", fmt.Errorf("js.Replace requires a LocationChanged message")
+		}
+		return fmt.Sprintf("replaceLocation(%s)", parts[0]), nil
+	case "Back":
+		if len(parts) != 0 {
+			return "", fmt.Errorf("js.Back takes no arguments")
+		}
+		if _, ok := g.app.Messages["LocationChanged"]; !ok {
+			return "", fmt.Errorf("js.Back requires a LocationChanged message")
+		}
+		return "history.back()", nil
 	case "Reload":
 		if len(parts) != 0 {
 			return "", fmt.Errorf("js.Reload takes no arguments")

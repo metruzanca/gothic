@@ -545,3 +545,118 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestGenerateLocationState(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		<a href="/about" route>About</a>
+		<button onclick={ GoAbout{} }>Go</button>
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+type LocationChanged struct{ Path string; Query string; Hash string }
+type GoAbout struct{}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg.(type) {
+	case LocationChanged:
+	case GoAbout:
+		js.Navigate("/about")
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "routes.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`on(root, "0", "click", routeClick);`,
+		`navigate("/about");`,
+		`function routeClick(event) {`,
+		`window.addEventListener("popstate"`,
+		`dispatch(locationMessage());`,
+		`history.pushState(null, "", path);`,
+		`Path: window.location.pathname`,
+		`Query: window.location.search`,
+		`Hash: window.location.hash`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectRouteWithoutLocationMessage(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div><a href="/about" route>About</a></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "routes.gth"})
+	if err == nil || !strings.Contains(err.Error(), "route links require a LocationChanged message") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRejectNavigateWithoutLocationMessage(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+type Go struct{}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg.(type) {
+	case Go:
+		js.Navigate("/about")
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "routes.gth"})
+	if err == nil || !strings.Contains(err.Error(), "js.Navigate requires a LocationChanged message") {
+		t.Fatalf("error = %v", err)
+	}
+}
