@@ -55,7 +55,7 @@ func TestGothicbook(t *testing.T) {
 		}
 	}
 
-	for _, path := range []string{"/gothic-ui.css", "/style.css"} {
+	for _, path := range []string{"/gothic-ui.css", "/style.css", "/logo.svg"} {
 		res, err := http.Get(ts.URL + path)
 		if err != nil {
 			t.Fatal(err)

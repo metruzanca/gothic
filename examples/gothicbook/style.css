@@ -19,6 +19,13 @@ body {
 	margin-bottom: 2.5rem;
 }
 
+.logo {
+	display: block;
+	width: 4rem;
+	height: auto;
+	margin-bottom: 1.25rem;
+}
+
 .eyebrow {
 	margin: 0 0 0.4rem;
 	color: #2563eb;

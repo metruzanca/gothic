@@ -204,6 +204,18 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
+		if err := write("<img src=\"/logo.svg\" alt=\"Gothic logo\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"logo"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
 		if err := write("<p"); err != nil {
 			return err
 		}

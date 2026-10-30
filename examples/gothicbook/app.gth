@@ -162,6 +162,7 @@ view Code(props CodeProps) {
 view App(model Model) {
 	<main class="page">
 		<header class="hero">
+			<img class="logo" src="/logo.svg" alt="Gothic logo" />
 			<p class="eyebrow">gothic ui kit</p>
 			<h1>Gothicbook</h1>
 			<p>A tiny design system demo for the installable gothic UI package.</p>
