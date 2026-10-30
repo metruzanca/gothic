@@ -47,7 +47,7 @@ func TestComponentsApp(t *testing.T) {
 	for _, want := range []string{
 		`text(root, "0", (model.Count));`,
 		`on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));`,
-		`m.History.push(msg.Text);`,
+		`(m.History = m.History || []).push(msg.Text);`,
 	} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, js)

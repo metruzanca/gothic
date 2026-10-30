@@ -46,7 +46,7 @@ func TestPingPongApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`m.Messages.push("ping");`,
+		`(m.Messages = m.Messages || []).push("ping");`,
 		`return [m, callPing];`,
 		`pong = await Ping();`,
 		`return {tag: "PongReceived", Text: pong};`,

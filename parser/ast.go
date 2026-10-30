@@ -78,6 +78,15 @@ type For struct {
 
 func (*For) node() {}
 
+// If renders one branch based on a Go condition.
+type If struct {
+	Cond ast.Expr
+	Then []Node
+	Else []Node
+}
+
+func (*If) node() {}
+
 // ComponentCall invokes a component view with named props.
 type ComponentCall struct {
 	Name  string

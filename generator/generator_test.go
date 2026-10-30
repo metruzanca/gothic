@@ -302,3 +302,52 @@ view Bad() {
 		t.Fatal("expected an error for multiple root elements")
 	}
 }
+
+const conditionalView = `package app
+
+view App(model Model) {
+	<div>
+		if len(model.Items) > 0 {
+			<ul>
+				for _, item := range model.Items {
+					<li>{ item }</li>
+				}
+			</ul>
+		} else if model.Loading {
+			<p>loading</p>
+		} else {
+			<p>empty</p>
+		}
+	</div>
+}
+`
+
+func TestGenerateConditionals(t *testing.T) {
+	f, err := parser.Parse("cond.gth", []byte(conditionalView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.Generate(f, generator.Options{
+		FileName:   "cond.gth",
+		ModuleBase: "cond",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`<!--g:if:0:open-->`,
+		`if len(model.Items) > 0 {`,
+		`<!--g:if:0:then-->`,
+		`<!--g:if:0:else-->`,
+		`<!--g:if:0:close-->`,
+		`<!--g:if:1:open-->`,
+		`if model.Loading {`,
+		`write("loading")`,
+		`write("empty")`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+}

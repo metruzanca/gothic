@@ -309,6 +309,44 @@ the end only. `key` is reserved and is not passed to components as a prop.
 The server renders the initial children. The client adopts them and hydrates
 their events.
 
+### Conditionals
+
+```gothic
+if len(model.Todos) > 0 {
+	<ul>
+		for _, todo := range model.Todos {
+			<li>{ todo.Title }</li>
+		}
+	</ul>
+} else if model.Loading {
+	<p>Loading todos.</p>
+} else {
+	<p class="empty">Nothing to do yet.</p>
+}
+```
+
+The condition is a Go expression in the same subset as `Update` and events.
+`else if` is sugar for a nested conditional. A branch can hold any number of
+nodes, including text, interpolation, elements, loops inside an element,
+components, and nested conditionals.
+
+The server renders only the chosen branch. The client adopts it on load and
+swaps branches when the condition changes, removing the unused nodes from the
+DOM. `len(x)` is supported in conditions and compiles to a null-safe length
+read, so `len(model.Items) > 0` works when the serialized slice is `null`.
+
+Limits in this iteration:
+
+- a pure component still renders exactly one root element, so an `if` cannot be
+  the component root,
+- a `for` loop cannot be the direct child of a branch; wrap it in an element,
+- stateful components inside a conditional are not supported yet,
+- `switch` is not part of the view language.
+
+As with `for`, text that begins with the word `if` is parsed as a conditional.
+Rephrase such prose or place it inside an element that makes the intent
+unambiguous.
+
 ### Events
 
 An event attribute is a Go expression that produces a message:
@@ -473,6 +511,8 @@ The proof of concept supports:
 - app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
+- `if`, `else if`, and `else` in views, including inside loops and pure
+  components,
 - the installable gothic UI kit,
 - message structs with zero or simple fields,
 - `Update` with a type switch,
@@ -498,7 +538,9 @@ Not supported yet:
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- conditionals in views,
+- stateful components inside conditionals,
+- `for` loops as the direct child of an `if` branch,
+- `switch` in views,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - typed procedure argument validation,

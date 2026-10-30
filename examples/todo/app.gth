@@ -202,8 +202,13 @@ view App(model Model) {
 		<header class="header">
 			<h1>todos</h1>
 			<input class="new-todo" placeholder="What needs to be done?" autofocus value={ model.Draft } oninput={ DraftChanged{Text: event.target.value} } onenter={ AddClicked{} } />
-			<p class="error" class:hidden={ model.Failure == "" }>{ model.Failure }</p>
+			if model.Failure != "" {
+				<p class="error">{ model.Failure }</p>
+			}
 		</header>
+		if !model.HasTodos {
+			<p class="empty-state">No todos yet. Add one above.</p>
+		}
 		<section id="main" class="main" class:hidden={ !model.HasTodos }>
 			<input id="toggle-all" class="toggle-all" type="checkbox" checked={ model.AllDone } onchange={ ToggleAll{Checked: event.target.checked} } />
 			<label for="toggle-all">Mark all as complete</label>

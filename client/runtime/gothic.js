@@ -294,6 +294,67 @@ export function focus(root, marker, active, skipComponents = true) {
 }
 
 
+const ifControllers = new WeakMap();
+
+function ifServerBranch(open, marker) {
+  const node = open.nextSibling;
+  if (!node || node.nodeType !== 8) return null;
+  if (node.nodeValue === `g:if:${marker}:then`) return "then";
+  if (node.nodeValue === `g:if:${marker}:else`) return "else";
+  return null;
+}
+
+function ifClear(open, close) {
+  let node = open.nextSibling;
+  while (node && node !== close) {
+    const next = node.nextSibling;
+    node.remove();
+    node = next;
+  }
+}
+
+function ifBlockInternal(root, marker, test, buildThen, buildElse, bindThen, bindElse, skipComponents) {
+  const open = findComment(root, `g:if:${marker}:open`, skipComponents);
+  const close = findComment(root, `g:if:${marker}:close`, skipComponents);
+  if (!open || !close) return;
+
+  let state = ifControllers.get(open);
+  if (!state) {
+    state = { branch: null, started: false };
+    ifControllers.set(open, state);
+  }
+
+  const want = test ? "then" : "else";
+
+  if (!state.started) {
+    state.started = true;
+    const rendered = ifServerBranch(open, marker);
+    if (rendered) {
+      state.branch = rendered;
+    }
+  }
+
+  if (state.branch === want) {
+    (want === "then" ? bindThen : bindElse)(open.parentNode);
+    return;
+  }
+
+  ifClear(open, close);
+  close.parentNode.insertBefore(document.createComment(`g:if:${marker}:${want}`), close);
+  const frag = want === "then" ? buildThen() : buildElse();
+  close.parentNode.insertBefore(frag, close);
+  state.branch = want;
+  (want === "then" ? bindThen : bindElse)(open.parentNode);
+}
+
+export function ifBlock(root, marker, test, buildThen, buildElse, bindThen, bindElse) {
+  return ifBlockInternal(root, marker, test, buildThen, buildElse, bindThen, bindElse, true);
+}
+
+export function ifBlockLocal(root, marker, test, buildThen, buildElse, bindThen, bindElse) {
+  return ifBlockInternal(root, marker, test, buildThen, buildElse, bindThen, bindElse, false);
+}
+
 export function textLocal(root, marker, value) { return text(root, marker, value, false); }
 export function onLocal(root, marker, event, handler) { return on(root, marker, event, handler, false); }
 export function attrLocal(root, marker, value) { return attr(root, marker, value, false); }

@@ -364,3 +364,48 @@ view App(model Model) {
 		}
 	}
 }
+
+func TestExpandConditionalInsideComponent(t *testing.T) {
+	src := `package views
+
+view Badge(text string, active bool) {
+	<span>
+		if active {
+			<b class="on">{ text }</b>
+		} else {
+			<i class="off">{ text }</i>
+		}
+	</span>
+}
+
+view App(model Model) {
+	<div>
+		<Badge text={ model.Text } active={ model.Active } />
+	</div>
+}
+`
+	f, err := parser.Parse("cond.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	components := parser.ComponentSet{}
+	for _, tpl := range f.Templates {
+		components[tpl.Name] = tpl
+	}
+	app, err := parser.ExpandApp(f, components)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := app.Templates[0].Children[0].(*parser.Element)
+	wrapper := root.Children[0].(*parser.Element)
+	cond, ok := wrapper.Children[0].(*parser.If)
+	if !ok {
+		t.Fatalf("expanded child = %T", wrapper.Children[0])
+	}
+	if got := exprText(t, cond.Cond); got != "(model.Active)" {
+		t.Fatalf("condition = %q", got)
+	}
+	if len(cond.Then) != 1 || len(cond.Else) != 1 {
+		t.Fatalf("branches = %d %d", len(cond.Then), len(cond.Else))
+	}
+}

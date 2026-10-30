@@ -154,3 +154,78 @@ func findElementIn(nodes []parser.Node, name string) *parser.Element {
 	}
 	return nil
 }
+
+const conditionalView = `package views
+
+view App(model Model) {
+	<div>
+		if len(model.Items) > 0 {
+			<ul>
+				for _, item := range model.Items {
+					<li>{ item }</li>
+				}
+			</ul>
+		} else if model.Loading {
+			<p>loading</p>
+		} else {
+			<p>empty</p>
+		}
+	</div>
+}
+`
+
+func TestParseConditionals(t *testing.T) {
+	f, err := parser.Parse("cond.gth", []byte(conditionalView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, ok := f.Templates[0].Children[0].(*parser.Element)
+	if !ok {
+		t.Fatalf("root = %T", f.Templates[0].Children[0])
+	}
+	if len(root.Children) != 1 {
+		t.Fatalf("root children = %d", len(root.Children))
+	}
+	cond, ok := root.Children[0].(*parser.If)
+	if !ok {
+		t.Fatalf("root child = %T", root.Children[0])
+	}
+	if _, ok := cond.Cond.(*ast.BinaryExpr); !ok {
+		t.Fatalf("condition = %T", cond.Cond)
+	}
+	if len(cond.Then) != 1 {
+		t.Fatalf("then nodes = %d", len(cond.Then))
+	}
+	if findElementIn(cond.Then, "ul") == nil {
+		t.Fatal("then branch should contain ul")
+	}
+	if len(cond.Else) != 1 {
+		t.Fatalf("else nodes = %d", len(cond.Else))
+	}
+	nested, ok := cond.Else[0].(*parser.If)
+	if !ok {
+		t.Fatalf("else branch = %T", cond.Else[0])
+	}
+	if len(nested.Else) != 1 {
+		t.Fatalf("nested else nodes = %d", len(nested.Else))
+	}
+	if findElementIn(nested.Else, "p") == nil {
+		t.Fatal("final else should contain p")
+	}
+}
+
+func TestParseIfRequiresCondition(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div>
+		if {
+			<p>x</p>
+		}
+	</div>
+}
+`
+	if _, err := parser.Parse("bad.gth", []byte(src)); err == nil {
+		t.Fatal("expected an error for an empty if condition")
+	}
+}

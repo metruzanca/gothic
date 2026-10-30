@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -47,9 +48,12 @@ func TestTodoApp(t *testing.T) {
 		`class="todoapp"`,
 		`"Todos":[{"ID":1,"Title":"write tests","Completed":false},{"ID":2,"Title":"ship it","Completed":false}]`,
 		`data-gothic-key="1"`,
-		`data-gothic-attr-2="checked"`,
-		`data-gothic-class-2="completed"`,
-		`data-gothic-focus="0"`,
+		`data-gothic-attr-3="checked"`,
+		`data-gothic-class-1="completed"`,
+		`<!--g:if:0:open-->`,
+		`<!--g:if:1:open-->`,
+		`<!--g:if:2:open-->`,
+		`<!--g:if:2:else-->`,
 		`class="new-todo"`,
 		`data-gothic-on="0 1"`,
 	} {
@@ -79,10 +83,11 @@ func TestTodoApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`import { attr, classToggle, focus, list, on, readState, rpc, text }`,
+		`import { attr, classToggle, focus, ifBlock, list, on, readState, rpc, text }`,
 		`window.addEventListener("hashchange"`,
 		`{tag: "HashChanged", Hash: window.location.hash}`,
 		`list(root, "0", (todo, __i0) => {`,
+		`ifBlock(node, "2",`,
 		`(todo, __i0) => String(todo.ID)`,
 		`event.key === "Enter"`,
 		`event.key === "Escape"`,
@@ -177,4 +182,62 @@ func postRPC(t *testing.T, base, name, args string) []byte {
 
 func jsonUnmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
+}
+
+func TestTodoConditionalRendering(t *testing.T) {
+	render := func(model Model) string {
+		var b bytes.Buffer
+		if err := App(model).Render(context.Background(), &b); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+
+	empty := NewModel(TodoData{ItemWord: "items"})
+	empty.Failure = "boom"
+	html := render(empty)
+	for _, want := range []string{
+		`<!--g:if:0:then-->`,
+		`boom`,
+		`<!--g:if:1:then-->`,
+		`No todos yet. Add one above.`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("empty model SSR missing %q\n\n%s", want, html)
+		}
+	}
+	if strings.Contains(html, `<!--g:if:0:else-->`) || strings.Contains(html, `<!--g:if:1:else-->`) {
+		t.Errorf("empty model SSR rendered an unused branch\n\n%s", html)
+	}
+
+	filled := NewModel(TodoData{
+		Todos:       []Todo{{ID: 1, Title: "write tests"}},
+		HasTodos:    true,
+		ActiveCount: 1,
+		ItemWord:    "item",
+	})
+	html = render(filled)
+	if strings.Contains(html, `boom`) || strings.Contains(html, `No todos yet.`) {
+		t.Errorf("filled model SSR rendered a hidden branch\n\n%s", html)
+	}
+	if !strings.Contains(html, `write tests`) {
+		t.Errorf("filled model SSR missing todo title\n\n%s", html)
+	}
+
+	editing := filled
+	editing.EditingID = 1
+	editing.EditText = "draft title"
+	html = render(editing)
+	for _, want := range []string{
+		`<!--g:if:2:then-->`,
+		`class="edit"`,
+		`value="draft title"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("editing model SSR missing %q\n\n%s", want, html)
+		}
+	}
+	if strings.Contains(html, `class="view"`) {
+		t.Errorf("editing model SSR rendered the read view too\n\n%s", html)
+	}
 }

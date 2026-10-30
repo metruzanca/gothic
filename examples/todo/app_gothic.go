@@ -282,39 +282,82 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<p data-gothic-class-0=\"hidden\""); err != nil {
+		if err := write("<!--g:if:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(" class=\"error"); err != nil {
-			return err
-		}
-		if model.Failure == "" {
-			if err := write(" hidden"); err != nil {
+		if model.Failure != "" {
+			if err := write("<!--g:if:0:then-->"); err != nil {
+				return err
+			}
+			if err := write("<p"); err != nil {
+				return err
+			}
+			if err := write(" class=\"error"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.Failure))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:close-->"); err != nil {
+				return err
+			}
+			if err := write("</p>"); err != nil {
+				return err
+			}
+		} else {
+			if err := write("<!--g:if:0:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(model.Failure))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</p>"); err != nil {
+		if err := write("<!--g:if:0:close-->"); err != nil {
 			return err
 		}
 		if err := write("</header>"); err != nil {
 			return err
 		}
-		if err := write("<section id=\"main\" data-gothic-class-1=\"hidden\""); err != nil {
+		if err := write("<!--g:if:1:open-->"); err != nil {
+			return err
+		}
+		if !model.HasTodos {
+			if err := write("<!--g:if:1:then-->"); err != nil {
+				return err
+			}
+			if err := write("<p"); err != nil {
+				return err
+			}
+			if err := write(" class=\"empty-state"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("No todos yet. Add one above."); err != nil {
+				return err
+			}
+			if err := write("</p>"); err != nil {
+				return err
+			}
+		} else {
+			if err := write("<!--g:if:1:else-->"); err != nil {
+				return err
+			}
+		}
+		if err := write("<!--g:if:1:close-->"); err != nil {
+			return err
+		}
+		if err := write("<section id=\"main\" data-gothic-class-0=\"hidden\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"main"); err != nil {
@@ -376,7 +419,7 @@ func App(model Model) gothic.Component {
 			return err
 		}
 		for _, todo := range model.Todos {
-			if err := write("<li data-gothic-class-2=\"completed\" data-gothic-class-3=\"editing\" data-gothic-class-4=\"hidden\""); err != nil {
+			if err := write("<li data-gothic-class-1=\"completed\" data-gothic-class-2=\"editing\" data-gothic-class-3=\"hidden\""); err != nil {
 				return err
 			}
 			if err := write(" class=\""); err != nil {
@@ -412,93 +455,108 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<div"); err != nil {
+			if err := write("<!--g:if:2:open-->"); err != nil {
 				return err
 			}
-			if err := write(" class=\"view"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<input type=\"checkbox\" data-gothic-attr-2=\"checked\""); err != nil {
-				return err
-			}
-			if (todo).Completed {
-				if err := write(" checked"); err != nil {
+			if todo.ID == model.EditingID {
+				if err := write("<!--g:if:2:then-->"); err != nil {
+					return err
+				}
+				if err := write("<input data-gothic-attr-2=\"value\""); err != nil {
+					return err
+				}
+				if err := write(" value=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((model.EditText)))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" data-gothic-focus=\"0\" data-gothic-on=\"3 4 5 6\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"edit"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+			} else {
+				if err := write("<!--g:if:2:else-->"); err != nil {
+					return err
+				}
+				if err := write("<div"); err != nil {
+					return err
+				}
+				if err := write(" class=\"view"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<input type=\"checkbox\" data-gothic-attr-3=\"checked\""); err != nil {
+					return err
+				}
+				if (todo).Completed {
+					if err := write(" checked"); err != nil {
+						return err
+					}
+				}
+				if err := write(" data-gothic-on=\"7\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"toggle"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<label data-gothic-on=\"8\">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((todo).Title))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:close-->"); err != nil {
+					return err
+				}
+				if err := write("</label>"); err != nil {
+					return err
+				}
+				if err := write("<button data-gothic-on=\"9\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"destroy"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("</button>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
 					return err
 				}
 			}
-			if err := write(" data-gothic-on=\"3\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"toggle"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<label data-gothic-on=\"4\">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((todo).Title))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</label>"); err != nil {
-				return err
-			}
-			if err := write("<button data-gothic-on=\"5\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"destroy"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("</button>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("<input data-gothic-attr-3=\"value\""); err != nil {
-				return err
-			}
-			if err := write(" value=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((model.EditText)))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-focus=\"0\" data-gothic-on=\"6 7 8 9\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"edit"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
+			if err := write("<!--g:if:2:close-->"); err != nil {
 				return err
 			}
 			if err := write("</li>"); err != nil {
@@ -514,7 +572,7 @@ func App(model Model) gothic.Component {
 		if err := write("</section>"); err != nil {
 			return err
 		}
-		if err := write("<footer id=\"footer\" data-gothic-class-5=\"hidden\""); err != nil {
+		if err := write("<footer id=\"footer\" data-gothic-class-4=\"hidden\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"footer"); err != nil {
@@ -603,7 +661,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-6=\"selected\" href=\"#/\""); err != nil {
+		if err := write("<a data-gothic-class-5=\"selected\" href=\"#/\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -632,7 +690,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-7=\"selected\" href=\"#/active\""); err != nil {
+		if err := write("<a data-gothic-class-6=\"selected\" href=\"#/active\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -661,7 +719,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-8=\"selected\" href=\"#/completed\""); err != nil {
+		if err := write("<a data-gothic-class-7=\"selected\" href=\"#/completed\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -690,7 +748,7 @@ func App(model Model) gothic.Component {
 		if err := write("</ul>"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-class-9=\"hidden\" data-gothic-on=\"10\""); err != nil {
+		if err := write("<button data-gothic-class-8=\"hidden\" data-gothic-on=\"10\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"clear-completed"); err != nil {

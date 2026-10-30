@@ -119,7 +119,8 @@ The ping/pong proof of concept runs end to end.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Gothicbook is a small design system demo for the UI kit, including a server-backed action.
 - Procedures accept JSON arguments, and keyed lists update in place.
-- The SQLite TodoMVC example supports filters, inline editing, mark-all, and clear-completed.
+- Views support `if`, `else if`, and `else`; the server renders one branch and the client swaps it in place.
+- The SQLite TodoMVC example supports filters, conditional empty and error states, inline editing, mark-all, and clear-completed.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
 - Failure handling produces `ready`, `ping`, `ping failed`.
 - No hand-written JavaScript. No wasm. No npm.
@@ -131,7 +132,7 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 
 1. Component commands, component-declared procedures, callback props, and controlled components.
 2. Nested stateful components and stateful components with internal loops in lists.
-3. Conditionals in views.
+3. Stateful components and top-level loops inside conditional branches.
 4. `Batch` and `Sequence` commands.
 5. Typed procedure argument validation and the no-JS form fallback.
 6. `go/packages` type information for stronger compiler checks.

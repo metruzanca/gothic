@@ -1,11 +1,13 @@
 package appjs_test
 
 import (
+	"go/ast"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/metruzanca/gothic/generator"
 	"github.com/metruzanca/gothic/generator/appjs"
 	"github.com/metruzanca/gothic/goapp"
 	"github.com/metruzanca/gothic/parser"
@@ -85,7 +87,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, focus, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, focus, ifBlock, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -97,12 +99,12 @@ func TestGenerate(t *testing.T) {
 		`function update(m, msg) {`,
 		`switch (msg.tag) {`,
 		`case "PingClicked":`,
-		`m.Messages.push("ping");`,
+		`(m.Messages = m.Messages || []).push("ping");`,
 		`return [m, callPing];`,
 		`case "PongReceived":`,
-		`m.Messages.push(msg.Text);`,
+		`(m.Messages = m.Messages || []).push(msg.Text);`,
 		`case "PingFailed":`,
-		`m.Messages.push(msg.Message);`,
+		`(m.Messages = m.Messages || []).push(msg.Message);`,
 		`async function callPing() {`,
 		`pong = await Ping();`,
 		`if (err != null) {`,
@@ -189,5 +191,98 @@ func TestGenerateCommandClosure(t *testing.T) {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
 		}
+	}
+}
+
+const conditionalView = `package app
+
+view App(model Model) {
+	<div>
+		if len(model.Items) > 0 {
+			<ul>
+				for _, item := range model.Items {
+					<li>{ item }</li>
+				}
+			</ul>
+		} else {
+			<p>empty</p>
+		}
+	</div>
+}
+`
+
+func TestGenerateConditionals(t *testing.T) {
+	view, err := parser.Parse("cond.gth", []byte(conditionalView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Items []string; Loading bool }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "cond.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`ifBlock(root, "0",`,
+		`((model.Items) ?? []).length > 0`,
+		`document.createComment("g:each:0:open")`,
+		`document.createDocumentFragment()`,
+		`return frag;`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectStatefulComponentInsideConditional(t *testing.T) {
+	view := &parser.File{Templates: []*parser.Template{{
+		Name:   "App",
+		Params: "(model Model)",
+		ParamList: []parser.Param{
+			{Name: "model", Type: "Model"},
+		},
+		Children: []parser.Node{&parser.Element{
+			Name: "div",
+			Children: []parser.Node{&parser.If{
+				Cond: &ast.Ident{Name: "model"},
+				Then: []parser.Node{&parser.ComponentCall{Name: "Tabs"}},
+			}},
+		}},
+	}}}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName: "view.gth",
+		Stateful: []*generator.Stateful{{
+			Name:       "Tabs",
+			ModuleURL:  "/_gothic/modules/tabs.js",
+			MountFunc:  "mountTabs",
+			CreateFunc: "createTabs",
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "inside an if branch is not supported") {
+		t.Fatalf("error = %v", err)
 	}
 }

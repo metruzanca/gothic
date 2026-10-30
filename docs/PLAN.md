@@ -183,7 +183,7 @@ from the server and reconciled. There is no virtual DOM.
 | `generator/` | Emits Go SSR code, the generated `View` method, registrars, and client stubs. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view into a JavaScript module. |
 | `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
-| `client/runtime/` | Embedded runtime helpers: `list`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
+| `client/runtime/` | Embedded runtime helpers: `list`, `ifBlock`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
@@ -217,6 +217,8 @@ Supported now:
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
+- `if`, `else if`, and `else` in views, including inside loops and pure components,
+- `len` in conditions with null-safe client lowering,
 - dynamic attributes, class toggles, and focus bindings,
 - message-valued event bindings and event values,
 - hash routing through a `HashChanged` message,
@@ -236,7 +238,9 @@ Not supported yet:
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- conditionals in views,
+- stateful components inside conditionals,
+- `for` loops as the direct child of an `if` branch,
+- `switch` in views,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - message serialization or logging,
@@ -256,7 +260,7 @@ These will be planned in detail after the proof of concept is evaluated:
 
 1. Component commands, component-declared procedures, and props in component Init/Update.
 2. Controlled components, callback props, and nested stateful components.
-3. Conditionals in views.
+3. Stateful components and top-level loops inside conditional branches.
 4. More Go statements and expressions in `Update` and commands.
 5. `Batch` and `Sequence` commands.
 6. Typed procedure argument validation and the no-JS fallback.
@@ -279,7 +283,9 @@ These will be planned in detail after the proof of concept is evaluated:
   no nested stateful components, and no internal loops for list-created
   instances.
 - The external UI manifest and generated UI module must stay in sync.
-- Conditional rendering is not yet designed.
+- Conditional branches rebuild their DOM on swap. State held only in the DOM,
+  such as caret position, is lost. Stateful components inside branches are not
+  supported yet, and a `for` loop cannot be a direct branch child.
 - Arbitrary browser globals such as `window.alert` have no designed bridge.
   The JavaScript backend can emit selector calls, but the Go prelude must still
   compile, so browser-only symbols need a future client-side declaration or

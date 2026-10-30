@@ -378,6 +378,7 @@ type templateGen struct {
 	stateful      map[string]*Stateful
 	componentN    int
 	eachN         int
+	ifN           int
 	eventN        int
 	textN         int
 	attrN         int
@@ -614,6 +615,8 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 		return g.writeElement(b, n, false)
 	case *parser.For:
 		return g.writeFor(b, n)
+	case *parser.If:
+		return g.writeIf(b, n)
 	case *parser.ComponentCall:
 		return g.writeStatefulCall(b, n)
 	default:
@@ -641,6 +644,29 @@ func (g *templateGen) writeFor(b *strings.Builder, n *parser.For) error {
 	}
 	b.WriteString("\t\t}\n")
 	g.emitWrite(b, fmt.Sprintf("<!--g:each:%d:close-->", idx))
+	return nil
+}
+
+func (g *templateGen) writeIf(b *strings.Builder, n *parser.If) error {
+	idx := g.ifN
+	g.ifN++
+	g.emitWrite(b, fmt.Sprintf("<!--g:if:%d:open-->", idx))
+	fmt.Fprintf(b, "\t\tif %s {\n", goExpr(n.Cond))
+	g.emitWrite(b, fmt.Sprintf("<!--g:if:%d:then-->", idx))
+	for _, child := range n.Then {
+		if err := g.writeNode(b, child); err != nil {
+			return err
+		}
+	}
+	b.WriteString("\t\t} else {\n")
+	g.emitWrite(b, fmt.Sprintf("<!--g:if:%d:else-->", idx))
+	for _, child := range n.Else {
+		if err := g.writeNode(b, child); err != nil {
+			return err
+		}
+	}
+	b.WriteString("\t\t}\n")
+	g.emitWrite(b, fmt.Sprintf("<!--g:if:%d:close-->", idx))
 	return nil
 }
 

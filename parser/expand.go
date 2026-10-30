@@ -103,6 +103,27 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			}
 		}
 		return loop, nil
+	case *If:
+		out := &If{Cond: substExpr(n.Cond, env)}
+		for _, child := range n.Then {
+			expanded, err := expandNode(child, env, stack, components)
+			if err != nil {
+				return nil, err
+			}
+			if expanded != nil {
+				out.Then = append(out.Then, expanded)
+			}
+		}
+		for _, child := range n.Else {
+			expanded, err := expandNode(child, env, stack, components)
+			if err != nil {
+				return nil, err
+			}
+			if expanded != nil {
+				out.Else = append(out.Else, expanded)
+			}
+		}
+		return out, nil
 	case *ComponentCall:
 		return expandComponentCall(n, env, stack, components)
 	default:

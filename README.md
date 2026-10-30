@@ -100,7 +100,9 @@ See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
 Early, working proof of concept. The ping/pong example runs end to end with
 server rendering, hydration, a Bubble Tea-style update loop, a typed server
 call, composable pure view components, and self-contained stateful components.
-An installable UI kit and the Gothicbook demo are included.
+Views support `if` / `else if` / `else`, and TodoMVC uses conditionals for empty
+states and inline editing. An installable UI kit and the Gothicbook demo are
+included.
 
 ## Learn more
 
@@ -111,4 +113,5 @@ An installable UI kit and the Gothicbook demo are included.
 - [TodoMVC on SQLite](docs/ITERATION_3.md)
 - [Stateful components and UI kit](docs/ITERATION_4.md)
 - [App-owned actions](docs/ITERATION_5.md)
+- [Conditional rendering](docs/ITERATION_6.md)
 - [Pitch](docs/PITCH.md)

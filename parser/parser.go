@@ -189,6 +189,9 @@ func (p *parser) parseNode() (Node, error) {
 		if p.startsKeyword("for") {
 			return p.parseFor()
 		}
+		if p.startsKeyword("if") {
+			return p.parseIf()
+		}
 		return p.parseText(), nil
 	}
 }
@@ -273,6 +276,66 @@ func (p *parser) parseFor() (Node, error) {
 		}
 	}
 	return &For{Key: key, Value: value, X: rs.X, Children: children}, nil
+}
+
+func (p *parser) parseIf() (Node, error) {
+	if !p.consumeKeyword("if") {
+		return nil, p.errf("expected if")
+	}
+	start := p.pos
+	for !p.eof() && p.peek() != '{' {
+		p.pos++
+	}
+	if p.eof() {
+		return nil, p.errf("expected { after if condition")
+	}
+	condText := strings.TrimSpace(string(p.src[start:p.pos]))
+	if condText == "" {
+		return nil, p.errf("empty if condition")
+	}
+	cond, err := goparser.ParseExpr(condText)
+	if err != nil {
+		return nil, p.errf("invalid if condition %q: %v", condText, err)
+	}
+
+	if !p.consume("{") {
+		return nil, p.errf("expected { after if condition")
+	}
+	thenNodes, err := p.parseNodesUntil('}')
+	if err != nil {
+		return nil, err
+	}
+	if !p.consume("}") {
+		return nil, p.errf("expected } to close if")
+	}
+
+	node := &If{Cond: cond, Then: thenNodes}
+
+	p.skipSpace()
+	if !p.consumeKeyword("else") {
+		return node, nil
+	}
+	p.skipSpace()
+	if p.startsKeyword("if") {
+		nested, err := p.parseIf()
+		if err != nil {
+			return nil, err
+		}
+		node.Else = []Node{nested}
+		return node, nil
+	}
+	if !p.consume("{") {
+		return nil, p.errf("expected { or if after else")
+	}
+	elseNodes, err := p.parseNodesUntil('}')
+	if err != nil {
+		return nil, err
+	}
+	if !p.consume("}") {
+		return nil, p.errf("expected } to close else")
+	}
+	node.Else = elseNodes
+	return node, nil
 }
 
 func parseParams(raw string) ([]Param, error) {
