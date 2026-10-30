@@ -16,15 +16,19 @@ It prioritizes simplicity and productivity.
 The syntax is under active development and subject to change. See the
 [ping/pong app](examples/pingpong), the
 [component demo](examples/components), the
-[TodoMVC app](examples/todo), and
-[Gothicbook](examples/gothicbook) for working examples.
-
-Browser globals such as `window.alert` are not yet part of a supported
-JavaScript interop bridge. The example below is illustrative; see the roadmap
-for the planned bridge.
+[TodoMVC app](examples/todo),
+[Gothicbook](examples/gothicbook), and the
+[router example](examples/router) for working examples.
 
 ```templ
 //app.gth
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/js"
+)
+
 type Model struct{}
 
 type HelloClicked struct{}
@@ -44,7 +48,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case HelloClicked:
 		return m, callHello
 	case HelloReceived:
-		window.alert(msg.Message)
+		js.Alert(msg.Message)
 	}
 	return m, nil
 }
@@ -104,7 +108,9 @@ Views support `if` / `else if` / `else`, pure components accept children
 through a default slot, and stateful components work inside branches and keyed
 lists. TodoMVC uses conditionals for empty states and inline editing.
 Gothicbook includes slotted form fields and a scrollable, paginated list of
-expandable components. An installable UI kit is included.
+expandable components. A small `js` package covers browser interop, and the
+router example uses path-based URL state with back and forward support. An
+installable UI kit is included.
 
 ## Learn more
 
@@ -118,4 +124,5 @@ expandable components. An installable UI kit is included.
 - [Conditional rendering](docs/ITERATION_6.md)
 - [Stateful branches and lists](docs/ITERATION_7.md)
 - [Component children and slots](docs/ITERATION_8.md)
+- [Browser interop and URL state](docs/ITERATION_9.md)
 - [Pitch](docs/PITCH.md)

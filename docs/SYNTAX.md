@@ -447,14 +447,77 @@ Expression attributes update a DOM property or attribute:
 
 ### Routing
 
-If the app defines a `HashChanged` message with a `Hash` field, the client
-dispatches it on load and on every hashchange:
+For path-based URL state, define a `LocationChanged` message:
 
 ```go
-type HashChanged struct{ Hash string }
+type LocationChanged struct {
+	Path  string
+	Query string
+	Hash  string
+}
 ```
 
-Use it to map `#/`, `#/active`, and `#/completed` to a model field.
+The client dispatches it on load and on `popstate`. `Path` is
+`window.location.pathname`, `Query` is `window.location.search` including the
+leading `?`, and `Hash` is `window.location.hash` including `#`.
+
+Mark internal anchors with `route`:
+
+```gothic
+<a href="/about" route>About</a>
+```
+
+A plain left click is intercepted, `history.pushState` runs, and
+`LocationChanged` dispatches. Modifier clicks, `target` values other than
+`_self`, `download` links, and external origins are left to the browser.
+
+Programmatic navigation comes from the `js` package:
+
+```go
+js.Navigate("/about")
+js.Replace("/about")
+js.Back()
+```
+
+These are client-only and valid in `Init`, `Update`, or commands. They require
+a `LocationChanged` message.
+
+Render the right state for deep links with a request-scoped model:
+
+```go
+s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
+	return NewModel(r.URL.Path)
+}))
+```
+
+`MountApp` also registers a catch-all below the pattern, so paths below the
+mount reach the app. The server renders the model for the request, then the
+client hydrates it and dispatches `LocationChanged` on load.
+
+`HashChanged` still works for hash-only apps. If an app defines both
+`LocationChanged` and `HashChanged`, `LocationChanged` takes precedence.
+
+### Browser interop
+
+The `js` package is a curated, client-only surface:
+
+```go
+import "github.com/metruzanca/gothic/js"
+
+js.Alert("Saved")
+js.Log("loaded", count)
+js.SetTitle("Todos")
+js.SetItem("theme", "dark")
+theme := js.GetItem("theme")
+js.RemoveItem("theme")
+js.Copy("text to copy")
+js.Focus("#search")
+js.Reload()
+```
+
+Calls are lowered to browser APIs in the generated JavaScript. They are only
+valid in `Init`, `Update`, or commands; calling them from a view is a compile
+error. The package does not expose arbitrary `window` access.
 
 ### Procedures
 
@@ -589,6 +652,10 @@ The proof of concept supports:
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,
 - hash-based route changes through a `HashChanged` message,
+- path, query, and hash URL state through a `LocationChanged` message,
+- `route` links with pushState, replaceState, back, and popstate,
+- request-scoped app models and catch-all app mounting for deep links,
+- curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,
 - App-owned procedures passed to components as action props,
 - procedure contracts through an interface embedding `gothic.RPCService`.
@@ -606,7 +673,8 @@ Not supported yet:
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
 - typed procedure argument validation,
-- browser JavaScript interop such as `window.alert` and third-party browser globals,
+- arbitrary browser globals outside the `js` package,
+- path parameters, nested routers, and route matching helpers,
 - message serialization,
 - `go/packages` type information.
 

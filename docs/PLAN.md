@@ -185,13 +185,15 @@ from the server and reconciled. There is no virtual DOM.
 | `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
 | `client/runtime/` | Embedded runtime helpers: `list`, `ifBlock`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
-| `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, and module registry. |
+| `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, request-scoped app models, and module registry. |
+| `js/` | Curated client-only browser interop. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/pingpong/` | The proof-of-concept app. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
 | `ui/` | Precompiled, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
+| `examples/router/` | Path-based URL state, route links, and browser interop. |
 
 The CLI detects an app file when the `.gth` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -227,6 +229,10 @@ Supported now:
 - dynamic attributes, class toggles, and focus bindings,
 - message-valued event bindings and event values,
 - hash routing through a `HashChanged` message,
+- path, query, and hash state through `LocationChanged`,
+- `route` links, pushState, replaceState, back, and popstate,
+- request-scoped app models and catch-all mounting for deep links,
+- curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
@@ -249,10 +255,11 @@ Not supported yet:
 - message serialization or logging,
 - `go/packages` type information,
 - typed procedure argument validation,
+- arbitrary browser globals outside the `js` package,
+- path parameters, nested routers, and route matching helpers,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps,
-- browser JavaScript interop such as `window.alert`, `window.location`, or third-party browser globals.
 
 The earlier `state` and imperative `func()` handler syntax still exists in the
 compiler as a legacy path. It is not the direction of the project.
@@ -261,13 +268,13 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Browser JavaScript interop and first-class URL state.
-2. Actionable diagnostics with source excerpts and hints.
-3. Component commands, component-declared procedures, and props in component
+1. Actionable diagnostics with source excerpts and hints.
+2. Component commands, component-declared procedures, and props in component
    Init/Update.
-4. Nested stateful components.
-5. Children on stateful components, named slots, and fallback content if a
+3. Nested stateful components.
+4. Children on stateful components, named slots, and fallback content if a
    real use case appears.
+5. Path parameters, nested routers, and route matching helpers.
 6. More Go statements and expressions in `Update` and commands, including
    indexing and slicing.
 7. `Batch` and `Sequence` commands.
@@ -292,10 +299,8 @@ These will be planned in detail after the proof of concept is evaluated:
 - Conditional branches and keyed list removal rebuild DOM and reset component
   state. State held only in the DOM, such as caret position, is lost. There is
   no component destroy hook yet.
-- Arbitrary browser globals such as `window.alert` have no designed bridge.
-  The JavaScript backend can emit selector calls, but the Go prelude must still
-  compile, so browser-only symbols need a future client-side declaration or
-  typed binding.
+- The `js` package is deliberately small. Any new browser API is a design
+  decision, not an arbitrary escape hatch.
 - The model is serialized whole. Large models may need selective state later.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
