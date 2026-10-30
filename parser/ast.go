@@ -39,13 +39,27 @@ type StateDecl struct {
 	Init ast.Expr
 }
 
+// NodePosition is the source location of a view node.
+type NodePosition struct {
+	File string
+	Line int
+	Col  int
+}
+
+// Position returns the source location of the node.
+func (p NodePosition) Position() (string, int, int) {
+	return p.File, p.Line, p.Col
+}
+
 // Node is a template body node.
 type Node interface {
 	node()
+	Position() (string, int, int)
 }
 
 // Element is an HTML element.
 type Element struct {
+	NodePosition
 	Name       string
 	Key        ast.Expr
 	Attributes []Attribute
@@ -56,6 +70,7 @@ func (*Element) node() {}
 
 // Text is literal text.
 type Text struct {
+	NodePosition
 	Value string
 }
 
@@ -63,6 +78,7 @@ func (*Text) node() {}
 
 // Interpolation is an inline { expression } node.
 type Interpolation struct {
+	NodePosition
 	Expr ast.Expr
 }
 
@@ -70,6 +86,7 @@ func (*Interpolation) node() {}
 
 // For renders a list. X is a real Go expression, normally a state identifier.
 type For struct {
+	NodePosition
 	Key      string
 	Value    string
 	X        ast.Expr
@@ -80,6 +97,7 @@ func (*For) node() {}
 
 // If renders one branch based on a Go condition.
 type If struct {
+	NodePosition
 	Cond ast.Expr
 	Then []Node
 	Else []Node
@@ -88,12 +106,15 @@ type If struct {
 func (*If) node() {}
 
 // Slot marks where a pure component's children are inserted.
-type Slot struct{}
+type Slot struct {
+	NodePosition
+}
 
 func (*Slot) node() {}
 
 // ComponentCall invokes a component view with named props and optional children.
 type ComponentCall struct {
+	NodePosition
 	Name     string
 	Key      ast.Expr
 	Props    []Prop

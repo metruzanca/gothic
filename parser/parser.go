@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -94,10 +95,10 @@ func (p *parser) parseTemplate() (*Template, error) {
 
 	nodes, err := p.parseNodesUntil('}')
 	if err != nil {
-		return nil, err
+		return nil, p.withHint(err, fmt.Sprintf("the view %s is missing a closing }", t.Name))
 	}
 	if !p.consume("}") {
-		return nil, p.errf("expected } to close template")
+		return nil, p.errh(fmt.Sprintf("add a closing } for the view %s", t.Name), "expected } to close template")
 	}
 	t.Children = nodes
 	return t, nil
@@ -197,6 +198,7 @@ func (p *parser) parseNode() (Node, error) {
 }
 
 func (p *parser) parseText() Node {
+	pos := p.position()
 	start := p.pos
 	for !p.eof() {
 		switch p.peek() {
@@ -205,7 +207,7 @@ func (p *parser) parseText() Node {
 			if s == "" {
 				return nil
 			}
-			return &Text{Value: s}
+			return &Text{NodePosition: pos, Value: s}
 		default:
 			p.pos++
 		}
@@ -214,10 +216,11 @@ func (p *parser) parseText() Node {
 	if s == "" {
 		return nil
 	}
-	return &Text{Value: s}
+	return &Text{NodePosition: pos, Value: s}
 }
 
 func (p *parser) parseInterpolation() (Node, error) {
+	pos := p.position()
 	inner, err := p.readBalancedBraces()
 	if err != nil {
 		return nil, err
@@ -229,10 +232,11 @@ func (p *parser) parseInterpolation() (Node, error) {
 	if err != nil {
 		return nil, p.errf("invalid expression %q: %v", strings.TrimSpace(inner), err)
 	}
-	return &Interpolation{Expr: expr}, nil
+	return &Interpolation{NodePosition: pos, Expr: expr}, nil
 }
 
 func (p *parser) parseFor() (Node, error) {
+	pos := p.position()
 	if !p.consumeKeyword("for") {
 		return nil, p.errf("expected for")
 	}
@@ -258,10 +262,10 @@ func (p *parser) parseFor() (Node, error) {
 	}
 	children, err := p.parseNodesUntil('}')
 	if err != nil {
-		return nil, err
+		return nil, p.forceHint(err, fmt.Sprintf("the for loop opened on line %d is missing a closing }", pos.Line))
 	}
 	if !p.consume("}") {
-		return nil, p.errf("expected } to close for")
+		return nil, p.errh(fmt.Sprintf("add a closing } for the for loop on line %d", pos.Line), "expected } to close for")
 	}
 
 	key, value := "", ""
@@ -275,10 +279,11 @@ func (p *parser) parseFor() (Node, error) {
 			value = id.Name
 		}
 	}
-	return &For{Key: key, Value: value, X: rs.X, Children: children}, nil
+	return &For{NodePosition: pos, Key: key, Value: value, X: rs.X, Children: children}, nil
 }
 
 func (p *parser) parseIf() (Node, error) {
+	pos := p.position()
 	if !p.consumeKeyword("if") {
 		return nil, p.errf("expected if")
 	}
@@ -303,13 +308,13 @@ func (p *parser) parseIf() (Node, error) {
 	}
 	thenNodes, err := p.parseNodesUntil('}')
 	if err != nil {
-		return nil, err
+		return nil, p.forceHint(err, fmt.Sprintf("the if block opened on line %d is missing a closing }", pos.Line))
 	}
 	if !p.consume("}") {
-		return nil, p.errf("expected } to close if")
+		return nil, p.errh(fmt.Sprintf("add a closing } for the if block on line %d", pos.Line), "expected } to close if")
 	}
 
-	node := &If{Cond: cond, Then: thenNodes}
+	node := &If{NodePosition: pos, Cond: cond, Then: thenNodes}
 
 	p.skipSpace()
 	if !p.consumeKeyword("else") {
@@ -405,28 +410,29 @@ func parseRangeHeader(header string) (*ast.RangeStmt, error) {
 }
 
 func (p *parser) parseElement() (Node, error) {
+	pos := p.position()
 	if !p.consume("<") {
 		return nil, p.errf("expected <")
 	}
 	if p.peek() == '/' {
-		return nil, p.errf("unexpected closing tag")
+		return nil, p.errh("remove the extra closing tag or add its opening tag", "unexpected closing tag")
 	}
 	name := p.readTagName()
 	if name == "" {
 		return nil, p.errf("expected element name")
 	}
 	if isComponentName(name) {
-		return p.parseComponent(name)
+		return p.parseComponent(name, pos)
 	}
 	if name == "slot" {
-		return p.parseSlot()
+		return p.parseSlot(pos)
 	}
-	el := &Element{Name: name}
+	el := &Element{NodePosition: pos, Name: name}
 
 	for {
 		p.skipSpace()
 		if p.eof() {
-			return nil, p.errf("unexpected end of file in element")
+			return nil, p.errh("check that every attribute and the closing > are present", "unexpected end of file in element")
 		}
 		if p.consume("/>") {
 			return el, nil
@@ -452,7 +458,7 @@ func (p *parser) parseElement() (Node, error) {
 	for {
 		p.skipSpace()
 		if p.eof() {
-			return nil, p.errf("unexpected end of file in <%s>", name)
+			return nil, p.errh(fmt.Sprintf("add a closing </%s> tag", name), "unexpected end of file in <%s>", name)
 		}
 		if p.startsWith("</") {
 			break
@@ -467,11 +473,11 @@ func (p *parser) parseElement() (Node, error) {
 	}
 
 	if !p.consume("</") {
-		return nil, p.errf("expected closing tag for <%s>", name)
+		return nil, p.errh(fmt.Sprintf("add a closing </%s> tag", name), "expected closing tag for <%s>", name)
 	}
 	closing := p.readTagName()
 	if closing != name {
-		return nil, p.errf("expected </%s>, got </%s>", name, closing)
+		return nil, p.errh(fmt.Sprintf("close <%s> with </%s>", name, name), "expected </%s>, got </%s>", name, closing)
 	}
 	p.skipSpace()
 	if !p.consume(">") {
@@ -480,19 +486,19 @@ func (p *parser) parseElement() (Node, error) {
 	return el, nil
 }
 
-func (p *parser) parseSlot() (Node, error) {
+func (p *parser) parseSlot(pos NodePosition) (Node, error) {
 	for {
 		p.skipSpace()
 		if p.eof() {
 			return nil, p.errf("unexpected end of file in <slot>")
 		}
 		if p.consume("/>") {
-			return &Slot{}, nil
+			return &Slot{NodePosition: pos}, nil
 		}
 		if p.consume(">") {
 			break
 		}
-		return nil, p.errf("slot does not take attributes")
+		return nil, p.errh("write <slot /> with no attributes", "slot does not take attributes")
 	}
 	p.skipSpace()
 	if p.startsWith("</") {
@@ -506,17 +512,17 @@ func (p *parser) parseSlot() (Node, error) {
 		if !p.consume(">") {
 			return nil, p.errf("expected > to close </slot>")
 		}
-		return &Slot{}, nil
+		return &Slot{NodePosition: pos}, nil
 	}
-	return nil, p.errf("slot cannot have children")
+	return nil, p.errh("put fallback content in the caller, not inside <slot />", "slot cannot have children")
 }
 
-func (p *parser) parseComponent(name string) (Node, error) {
-	call := &ComponentCall{Name: name}
+func (p *parser) parseComponent(name string, pos NodePosition) (Node, error) {
+	call := &ComponentCall{NodePosition: pos, Name: name}
 	for {
 		p.skipSpace()
 		if p.eof() {
-			return nil, p.errf("unexpected end of file in <%s>", name)
+			return nil, p.errh(fmt.Sprintf("add a closing </%s> tag or use />", name), "unexpected end of file in <%s>", name)
 		}
 		if p.consume("/>") {
 			return call, nil
@@ -539,7 +545,7 @@ func (p *parser) parseComponent(name string) (Node, error) {
 	for {
 		p.skipSpace()
 		if p.eof() {
-			return nil, p.errf("unexpected end of file in <%s>", name)
+			return nil, p.errh(fmt.Sprintf("add a closing </%s> tag", name), "unexpected end of file in <%s>", name)
 		}
 		if p.startsWith("</") {
 			break
@@ -554,11 +560,11 @@ func (p *parser) parseComponent(name string) (Node, error) {
 	}
 	call.Children = children
 	if !p.consume("</") {
-		return nil, p.errf("expected closing tag for <%s>", name)
+		return nil, p.errh(fmt.Sprintf("add a closing </%s> tag", name), "expected closing tag for <%s>", name)
 	}
 	closing := p.readTagName()
 	if closing != name {
-		return nil, p.errf("expected </%s>, got </%s>", name, closing)
+		return nil, p.errh(fmt.Sprintf("close <%s> with </%s>", name, name), "expected </%s>, got </%s>", name, closing)
 	}
 	p.skipSpace()
 	if !p.consume(">") {
@@ -616,7 +622,7 @@ func (p *parser) parseAttribute() (Attribute, error) {
 	p.skipSpace()
 	if name == "route" {
 		if p.consume("=") {
-			return nil, p.errf("route does not take a value")
+			return nil, p.errh("write a bare route attribute: <a href=\"/path\" route>", "route does not take a value")
 		}
 		return &RouteAttr{}, nil
 	}
@@ -938,6 +944,48 @@ func (p *parser) eof() bool {
 }
 
 func (p *parser) errf(format string, args ...any) error {
+	line, col := p.lineCol()
+	return &Error{
+		File:    p.name,
+		Line:    line,
+		Col:     col,
+		Message: fmt.Sprintf(format, args...),
+		Source:  p.lineText(line),
+	}
+}
+
+func (p *parser) errh(hint, format string, args ...any) error {
+	err := p.errf(format, args...).(*Error)
+	err.Hint = hint
+	return err
+}
+
+func (p *parser) forceHint(err error, hint string) error {
+	var pe *Error
+	if errors.As(err, &pe) {
+		pe.Hint = hint
+		return pe
+	}
+	return &Error{Message: err.Error(), Hint: hint}
+}
+
+func (p *parser) withHint(err error, hint string) error {
+	var pe *Error
+	if errors.As(err, &pe) {
+		if pe.Hint == "" {
+			pe.Hint = hint
+		}
+		return pe
+	}
+	return &Error{Message: err.Error(), Hint: hint}
+}
+
+func (p *parser) position() NodePosition {
+	line, col := p.lineCol()
+	return NodePosition{File: p.name, Line: line, Col: col}
+}
+
+func (p *parser) lineCol() (int, int) {
 	line, col := 1, 1
 	for i := 0; i < p.pos && i < len(p.src); i++ {
 		if p.src[i] == '\n' {
@@ -947,7 +995,15 @@ func (p *parser) errf(format string, args ...any) error {
 			col++
 		}
 	}
-	return fmt.Errorf("%s:%d:%d: %s", p.name, line, col, fmt.Sprintf(format, args...))
+	return line, col
+}
+
+func (p *parser) lineText(line int) string {
+	lines := strings.Split(string(p.src), "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	return strings.TrimRight(lines[line-1], "\r")
 }
 
 func isComponentName(name string) bool {

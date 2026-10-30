@@ -60,11 +60,11 @@ func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, compon
 func expandNode(n Node, env map[string]ast.Expr, stack []string, components ComponentSet) (Node, error) {
 	switch n := n.(type) {
 	case *Text:
-		return &Text{Value: n.Value}, nil
+		return &Text{NodePosition: n.NodePosition, Value: n.Value}, nil
 	case *Interpolation:
-		return &Interpolation{Expr: substExpr(n.Expr, env)}, nil
+		return &Interpolation{NodePosition: n.NodePosition, Expr: substExpr(n.Expr, env)}, nil
 	case *Element:
-		el := &Element{Name: n.Name, Key: substExpr(n.Key, env)}
+		el := &Element{NodePosition: n.NodePosition, Name: n.Name, Key: substExpr(n.Key, env)}
 		for _, attr := range n.Attributes {
 			switch a := attr.(type) {
 			case *ConstantAttr:
@@ -94,9 +94,10 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 		delete(childEnv, n.Key)
 		delete(childEnv, n.Value)
 		loop := &For{
-			Key:   n.Key,
-			Value: n.Value,
-			X:     substExpr(n.X, env),
+			NodePosition: n.NodePosition,
+			Key:          n.Key,
+			Value:        n.Value,
+			X:            substExpr(n.X, env),
 		}
 		for _, child := range n.Children {
 			expanded, err := expandNode(child, childEnv, stack, components)
@@ -109,9 +110,9 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 		}
 		return loop, nil
 	case *Slot:
-		return &Slot{}, nil
+		return &Slot{NodePosition: n.NodePosition}, nil
 	case *If:
-		out := &If{Cond: substExpr(n.Cond, env)}
+		out := &If{NodePosition: n.NodePosition, Cond: substExpr(n.Cond, env)}
 		for _, child := range n.Then {
 			expanded, err := expandNode(child, env, stack, components)
 			if err != nil {
@@ -151,7 +152,7 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		for i, prop := range call.Props {
 			props[i] = Prop{Name: prop.Name, Value: substExpr(prop.Value, env)}
 		}
-		return &ComponentCall{Name: call.Name, Key: substExpr(call.Key, env), Props: props}, nil
+		return &ComponentCall{NodePosition: call.NodePosition, Name: call.Name, Key: substExpr(call.Key, env), Props: props}, nil
 	}
 	for _, name := range stack {
 		if name == call.Name {

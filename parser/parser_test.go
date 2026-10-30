@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"errors"
 	"go/ast"
 	"strings"
 	"testing"
@@ -264,5 +265,67 @@ view App(model Model) {
 `
 	if _, err := parser.Parse("route.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "route does not take a value") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestParseErrorContext(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div>
+		if model.Show {
+			<p>hi</p>
+	</div>
+}
+`
+	_, err := parser.Parse("bad.gth", []byte(src))
+	if err == nil {
+		t.Fatal("expected a parse error")
+	}
+	var pe *parser.Error
+	if !errors.As(err, &pe) {
+		t.Fatalf("error type = %T", err)
+	}
+	if pe.File != "bad.gth" || pe.Line != 7 {
+		t.Fatalf("position = %s:%d:%d", pe.File, pe.Line, pe.Col)
+	}
+	if !strings.Contains(pe.Hint, "if block opened on line 5") {
+		t.Fatalf("hint = %q", pe.Hint)
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		"bad.gth:7:",
+		"  7 | ",
+		"^",
+		"hint: the if block opened on line 5 is missing a closing }",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error text missing %q\n\n%s", want, msg)
+		}
+	}
+}
+
+func TestNodePositions(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div>
+		if model.Show {
+			<p>hi</p>
+		}
+	</div>
+}
+`
+	f, err := parser.Parse("pos.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := f.Templates[0].Children[0].(*parser.Element)
+	if file, line, col := root.Position(); file != "pos.gth" || line != 4 || col != 2 {
+		t.Fatalf("element position = %s:%d:%d", file, line, col)
+	}
+	cond := root.Children[0].(*parser.If)
+	if file, line, col := cond.Position(); file != "pos.gth" || line != 5 || col != 3 {
+		t.Fatalf("if position = %s:%d:%d", file, line, col)
 	}
 }
