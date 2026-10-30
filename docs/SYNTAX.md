@@ -235,14 +235,34 @@ Each instance owns its own state. The parent passes props but does not read or
 write child state. State starts at the model zero value. Use `<Tabs items={ model.Tabs } />`
 inside `App` or another view.
 
+Stateful components can render in static positions, inside `if` branches, and
+as keyed list items. A list-created component may contain its own loops and
+conditionals, and must be the loop body root when used in a list.
+
+A component inside a conditional branch is unmounted when the branch leaves the
+DOM. Re-entering the branch creates a fresh instance, so component state resets.
+The same reset applies when a keyed list removes an item and later creates it
+again.
+
+```gothic
+if model.ShowDetails {
+	<ui.Disclosure item={ model.FeatureDisclosure } />
+}
+
+for _, item := range model.Items {
+	<ui.Disclosure key={ item.ID } item={ item } />
+}
+```
+
 Stateful components in this phase:
 
-- support static positions and keyed lists,
+- support static positions, conditional branches, and keyed lists,
 - must be the loop body root when used in a list,
+- may contain their own loops and conditionals,
 - cannot use commands or procedures,
 - can emit messages to the parent from event attributes,
 - cannot contain other stateful components,
-- cannot be created inside a list when their view contains a `for` loop.
+- reset their state when unmounted by a branch swap or keyed list removal.
 
 Emit a parent message with `emit` in a component event:
 
@@ -335,12 +355,15 @@ swaps branches when the condition changes, removing the unused nodes from the
 DOM. `len(x)` is supported in conditions and compiles to a null-safe length
 read, so `len(model.Items) > 0` works when the serialized slice is `null`.
 
+A branch can contain stateful components. They mount when the branch appears
+and unmount when it leaves, so their state resets on re-entry. A `for` loop can
+be the direct child of a branch when the loop body is one element.
+
 Limits in this iteration:
 
 - a pure component still renders exactly one root element, so an `if` cannot be
   the component root,
-- a `for` loop cannot be the direct child of a branch; wrap it in an element,
-- stateful components inside a conditional are not supported yet,
+- a branch-level loop body must be one element,
 - `switch` is not part of the view language.
 
 As with `for`, text that begins with the word `if` is parsed as a conditional.
@@ -513,6 +536,10 @@ The proof of concept supports:
 - nested pure components and components inside lists,
 - `if`, `else if`, and `else` in views, including inside loops and pure
   components,
+- stateful components inside conditional branches, with unmount and state reset,
+- stateful components as keyed list items, including components with internal
+  loops,
+- `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
 - message structs with zero or simple fields,
 - `Update` with a type switch,
@@ -534,12 +561,9 @@ Not supported yet:
 - component commands and component-declared procedures,
 - controlled components, props in component Init/Update, and function-valued props,
 - stateful components nested inside other stateful components,
-- list-created stateful components whose views contain loops,
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- stateful components inside conditionals,
-- `for` loops as the direct child of an `if` branch,
 - `switch` in views,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,

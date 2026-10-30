@@ -100,9 +100,10 @@ See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
 Early, working proof of concept. The ping/pong example runs end to end with
 server rendering, hydration, a Bubble Tea-style update loop, a typed server
 call, composable pure view components, and self-contained stateful components.
-Views support `if` / `else if` / `else`, and TodoMVC uses conditionals for empty
-states and inline editing. An installable UI kit and the Gothicbook demo are
-included.
+Views support `if` / `else if` / `else`, and stateful components work inside
+branches and keyed lists. TodoMVC uses conditionals for empty states and inline
+editing. Gothicbook includes a scrollable, paginated list of expandable
+components. An installable UI kit is included.
 
 ## Learn more
 
@@ -114,4 +115,5 @@ included.
 - [Stateful components and UI kit](docs/ITERATION_4.md)
 - [App-owned actions](docs/ITERATION_5.md)
 - [Conditional rendering](docs/ITERATION_6.md)
+- [Stateful branches and lists](docs/ITERATION_7.md)
 - [Pitch](docs/PITCH.md)

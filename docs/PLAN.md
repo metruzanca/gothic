@@ -205,7 +205,9 @@ Supported now:
 - pure components with props, in the app file or separate files,
 - compile-time component expansion and nested pure components,
 - self-contained stateful components with their own model, Init, Update, and view,
-- stateful components in static positions and keyed lists,
+- stateful components in static positions, conditional branches, and keyed lists,
+- stateful components with internal loops and conditionals as list items,
+- stateful components unmount and reset when a branch or list item leaves,
 - precompiled external components from installable packages,
 - the independently versioned gothic UI kit,
 - `Msg = any` with messages as ordinary Go structs,
@@ -218,6 +220,7 @@ Supported now:
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
 - `if`, `else if`, and `else` in views, including inside loops and pure components,
+- `for` loops directly inside conditional branches when the body is one element,
 - `len` in conditions with null-safe client lowering,
 - dynamic attributes, class toggles, and focus bindings,
 - message-valued event bindings and event values,
@@ -234,12 +237,9 @@ Not supported yet:
 - component commands and component-declared procedures,
 - controlled components, props in component Init/Update, and function-valued props,
 - stateful components nested inside other stateful components,
-- list-created stateful components whose views contain loops,
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
-- stateful components inside conditionals,
-- `for` loops as the direct child of an `if` branch,
 - `switch` in views,
 - multiple `App` parameters,
 - `Batch` and `Sequence`,
@@ -258,18 +258,22 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Component commands, component-declared procedures, and props in component Init/Update.
-2. Controlled components, callback props, and nested stateful components.
-3. Stateful components and top-level loops inside conditional branches.
-4. More Go statements and expressions in `Update` and commands.
-5. `Batch` and `Sequence` commands.
-6. Typed procedure argument validation and the no-JS fallback.
-7. `go/packages` for type information and stronger validation.
-8. Manifest, content hashing, and production serving.
-9. Formatter, LSP, and source maps.
-10. Selective vendoring of templ's HTML and whitespace handling with tests.
-11. A designed browser JavaScript interop bridge, such as typed bindings or a
-    client-only declaration syntax, for `window.alert` and similar APIs.
+1. Component children and slots, the preferred composition mechanism over
+   callback props.
+2. Browser JavaScript interop and first-class URL state.
+3. Actionable diagnostics with source excerpts and hints.
+4. Component commands, component-declared procedures, and props in component
+   Init/Update.
+5. Nested stateful components.
+6. More Go statements and expressions in `Update` and commands, including
+   indexing and slicing.
+7. `Batch` and `Sequence` commands.
+8. Typed procedure argument validation and the no-JS fallback.
+9. `go/packages` for type information and stronger validation.
+10. Manifest, content hashing, and production serving.
+11. Formatter, LSP, and source maps.
+12. Selective vendoring of templ's HTML and whitespace handling with tests.
+13. A virtualized list example app.
 
 ## Risks
 
@@ -280,12 +284,11 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no commands, no parent events,
-  no nested stateful components, and no internal loops for list-created
-  instances.
+  no nested stateful components, and no props in Init/Update.
 - The external UI manifest and generated UI module must stay in sync.
-- Conditional branches rebuild their DOM on swap. State held only in the DOM,
-  such as caret position, is lost. Stateful components inside branches are not
-  supported yet, and a `for` loop cannot be a direct branch child.
+- Conditional branches and keyed list removal rebuild DOM and reset component
+  state. State held only in the DOM, such as caret position, is lost. There is
+  no component destroy hook yet.
 - Arbitrary browser globals such as `window.alert` have no designed bridge.
   The JavaScript backend can emit selector calls, but the Go prelude must still
   compile, so browser-only symbols need a future client-side declaration or
