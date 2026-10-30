@@ -55,6 +55,19 @@
       "listable": true
     },
     {
+      "name": "Counter",
+      "go": "Counter",
+      "mount": "mountCounter",
+      "create": "createCounter",
+      "props": [
+        {
+          "name": "label",
+          "type": "string"
+        }
+      ],
+      "listable": true
+    },
+    {
       "name": "Tabs",
       "go": "Tabs",
       "mount": "mountTabs",

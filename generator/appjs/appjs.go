@@ -1166,7 +1166,13 @@ func indentJS(s, prefix string) string {
 	if s == "" {
 		return ""
 	}
-	return prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = prefix + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func jsIdent(name string) string {

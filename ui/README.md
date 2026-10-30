@@ -32,6 +32,7 @@ Use namespaced tags in `.gth` views:
 <ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Button label="Cancel" primary={ false } onclick={ nil } />
 <ui.Card title="Card title" body="Card body" />
+<ui.Counter label="Increment on client" />
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
 ```
@@ -45,6 +46,7 @@ owns the message handler and any server procedures it calls.
 
 - `Button` with `label`, `primary`, and `onclick gothic.Msg`
 - `Card` with `title` and `body`
+- `Counter` with `label`, keeping count in component state
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
 

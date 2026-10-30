@@ -48,11 +48,11 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
     classToggleLocal(node, "0", model.Open != i + 1);
     textLocal(node, "1", item.Body);
   }, (item, i) => String(i));
-    function render(model) {
+  function render(model) {
     renderList0(items);
   }
-  
-    function update(m, msg) {
+
+  function update(m, msg) {
     switch (msg.tag) {
     case "AccordionClicked":
     {
@@ -67,8 +67,8 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
     }
     return [m, null];
   }
-  
-    function dispatch(msg) {
+
+  function dispatch(msg) {
     const result = update(model, msg);
     model = result[0];
     render(model);
@@ -92,16 +92,16 @@ export function mountButton(root, label, primary, onclick, __gothicParentDispatc
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
   onLocal(root, "0", "click", (event) => emit(onclick));
-    function render(model) {
+  function render(model) {
     classToggleLocal(root, "0", primary);
     textLocal(root, "0", label);
   }
-  
-    function update(m, msg) {
+
+  function update(m, msg) {
     return [m, null];
   }
-  
-    function dispatch(msg) {
+
+  function dispatch(msg) {
     const result = update(model, msg);
     model = result[0];
     render(model);
@@ -126,7 +126,7 @@ export function createButton(id, label, primary, onclick) {
     e0.appendChild(document.createComment("g:text:0:open"));
     e0.appendChild(document.createTextNode(String(label)));
     e0.appendChild(document.createComment("g:text:0:close"));
-    wrapper.appendChild(e0);
+  wrapper.appendChild(e0);
   return wrapper;
 }
 
@@ -141,12 +141,12 @@ export function mountCard(root, title, body, __gothicParentDispatch) {
     textLocal(root, "0", title);
     textLocal(root, "1", body);
   }
-  
-    function update(m, msg) {
+
+  function update(m, msg) {
     return [m, null];
   }
-  
-    function dispatch(msg) {
+
+  function dispatch(msg) {
     const result = update(model, msg);
     model = result[0];
     render(model);
@@ -175,7 +175,66 @@ export function createCard(id, title, body) {
     e2.appendChild(document.createTextNode(String(body)));
     e2.appendChild(document.createComment("g:text:1:close"));
     e0.appendChild(e2);
-    wrapper.appendChild(e0);
+  wrapper.appendChild(e0);
+  return wrapper;
+}
+
+const INITIAL_Counter = {"Count":0};
+
+export function mountCounter(root, label, __gothicParentDispatch) {
+  let model = readComponentState(root) || cloneInitial(INITIAL_Counter);
+  function emit(msg) {
+    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
+  }
+  onLocal(root, "0", "click", (event) => dispatch({tag: "CounterClicked", By: 1}));
+  function render(model) {
+    textLocal(root, "0", label);
+    textLocal(root, "1", model.Count);
+  }
+
+  function update(m, msg) {
+    switch (msg.tag) {
+    case "CounterClicked":
+    {
+      m.Count = m.Count + msg.By;
+      break;
+    }
+    }
+    return [m, null];
+  }
+
+  function dispatch(msg) {
+    const result = update(model, msg);
+    model = result[0];
+    render(model);
+  }
+  render(model);
+  return { updateProps(nextLabel) {
+    label = nextLabel;
+    render(model);
+  } };
+}
+
+export function createCounter(id, label) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = cloneInitial(INITIAL_Counter);
+    const e0 = document.createElement("div");
+    e0.setAttribute("class", "ui-counter");
+    const e1 = document.createElement("button");
+    e1.setAttribute("class", "ui-button ui-button-primary");
+    e1.setAttribute("data-gothic-on", "0");
+    e1.appendChild(document.createComment("g:text:0:open"));
+    e1.appendChild(document.createTextNode(String(label)));
+    e1.appendChild(document.createComment("g:text:0:close"));
+    e0.appendChild(e1);
+    const e2 = document.createElement("strong");
+    e2.setAttribute("class", "ui-counter-value");
+    e2.appendChild(document.createComment("g:text:1:open"));
+    e2.appendChild(document.createTextNode(String(model.Count)));
+    e2.appendChild(document.createComment("g:text:1:close"));
+    e0.appendChild(e2);
+  wrapper.appendChild(e0);
   return wrapper;
 }
 
@@ -219,12 +278,12 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     classToggleLocal(node, "1", model.Active != i);
     textLocal(node, "1", item.Panel);
   }, (item, i) => String(i));
-    function render(model) {
+  function render(model) {
     renderList0(items);
     renderList1(items);
   }
-  
-    function update(m, msg) {
+
+  function update(m, msg) {
     switch (msg.tag) {
     case "TabClicked":
     {
@@ -234,8 +293,8 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     }
     return [m, null];
   }
-  
-    function dispatch(msg) {
+
+  function dispatch(msg) {
     const result = update(model, msg);
     model = result[0];
     render(model);

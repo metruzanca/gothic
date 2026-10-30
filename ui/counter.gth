@@ -1,0 +1,26 @@
+package ui
+
+import "github.com/metruzanca/gothic"
+
+type CounterModel struct {
+	Count int
+}
+
+type CounterClicked struct{ By int }
+
+func (m CounterModel) Init() gothic.Cmd { return nil }
+
+func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case CounterClicked:
+		m.Count = m.Count + msg.By
+	}
+	return m, nil
+}
+
+view Counter(model CounterModel, label string) {
+	<div class="ui-counter">
+		<button class="ui-button ui-button-primary" onclick={ CounterClicked{By: 1} }>{ label }</button>
+		<strong class="ui-counter-value">{ model.Count }</strong>
+	</div>
+}

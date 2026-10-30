@@ -107,6 +107,7 @@ It contains four proof-of-concept components:
 - `Card`
 - `Tabs`
 - `Accordion`
+- `Counter`
 
 Button and Card have empty models and are stateless in behavior. Tabs and
 Accordion own their active or open state.

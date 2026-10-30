@@ -32,6 +32,8 @@ func TestGothicbook(t *testing.T) {
 		`class="ui-accordion`,
 		`data-gothic-component="Button"`,
 		`data-gothic-component="Tabs"`,
+		`data-gothic-component="Counter"`,
+		`Increment on client`,
 		`Server count:`,
 		`/gothic-ui.css`,
 		`/style.css`,
@@ -65,6 +67,7 @@ func TestGothicbook(t *testing.T) {
 		`mountTabs`,
 		`mountAccordion`,
 		`mountButton`,
+		`mountCounter`,
 		`dispatch`,
 	} {
 		if !strings.Contains(string(js), want) {
@@ -82,6 +85,7 @@ func TestGothicbook(t *testing.T) {
 		`export function mountTabs`,
 		`export function mountAccordion`,
 		`export function mountButton`,
+		`export function mountCounter`,
 		`emit(onclick)`,
 	} {
 		if !strings.Contains(string(uiJS), want) {

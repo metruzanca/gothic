@@ -504,7 +504,7 @@ func App(model Model) gothic.Component {
 		if err := write("<h2>"); err != nil {
 			return err
 		}
-		if err := write("Server action"); err != nil {
+		if err := write("Client and server state"); err != nil {
 			return err
 		}
 		if err := write("</h2>"); err != nil {
@@ -513,13 +513,31 @@ func App(model Model) gothic.Component {
 		if err := write("<p>"); err != nil {
 			return err
 		}
-		if err := write("The button emits a message to the app. The app runs a procedure and passes the new count back as props."); err != nil {
+		if err := write("Increment on client stays inside the component. Increment on server emits a message to the app, which runs a procedure."); err != nil {
 			return err
 		}
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := ui.Button("c5", "", "Increment on server", true, IncrementClicked{}).Render(ctx, w); err != nil {
+		if err := write("<div"); err != nil {
+			return err
+		}
+		if err := write(" class=\"row"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := ui.Counter("c5", "", "Increment on client").Render(ctx, w); err != nil {
+			return err
+		}
+		if err := ui.Button("c6", "", "Increment on server", true, IncrementClicked{}).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
 			return err
 		}
 		if err := write("<p"); err != nil {

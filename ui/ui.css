@@ -113,3 +113,15 @@
 .hidden {
 	display: none !important;
 }
+
+.ui-counter {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.ui-counter-value {
+	min-width: 2ch;
+	font-size: 1.1rem;
+	font-variant-numeric: tabular-nums;
+}

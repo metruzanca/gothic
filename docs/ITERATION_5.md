@@ -72,15 +72,17 @@ Its message is emitted to the App; it is not executed by the Button component.
 
 ## Gothicbook
 
-Gothicbook adds a small server action section:
+Gothicbook adds a small client and server state section:
 
+- a `ui.Counter` that keeps its count entirely inside the component,
 - an in-memory counter in the server,
 - an `Increment` procedure,
 - a `ui.Button` whose `onclick` is `IncrementClicked{}`,
 - an App command that calls `Increment` and updates the model,
 - a displayed server count.
 
-Client Tabs and Accordion still make no RPC requests. The server Button does.
+The client counter, Tabs, and Accordion make no RPC requests. The server Button
+does.
 
 ## Limits
 
@@ -121,6 +123,7 @@ go test ./...
 
 Browser checks:
 
+- the client Counter increments without any RPC request,
 - the server Button sends one `Increment` RPC and updates the count,
 - Tabs and Accordion interactions send no RPC requests,
 - component action messages reach the App exactly once.
