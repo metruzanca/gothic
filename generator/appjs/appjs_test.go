@@ -1086,3 +1086,39 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestGeneratePurePropsObject(t *testing.T) {
+	view, err := parser.Parse("props.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ (CardProps{Title: "x"}).Title }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "props.gth",
+		PropsTypes: map[string]bool{"CardProps": true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	if !strings.Contains(src, `({Title: "x"}).Title`) {
+		t.Errorf("props struct literal should be a plain object\n\n%s", src)
+	}
+	if strings.Contains(src, `tag: "CardProps"`) {
+		t.Errorf("props struct literal should not be tagged as a message\n\n%s", src)
+	}
+}

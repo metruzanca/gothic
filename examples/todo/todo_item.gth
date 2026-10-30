@@ -1,14 +1,14 @@
 package main
 
-view TodoItem(todo Todo, filter string, editing bool, editText string) {
-	<li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ (filter == "active" && todo.Completed) || (filter == "completed" && !todo.Completed) }>
-		if editing {
-			<input class="edit" value={ editText } focus={ editing } oninput={ EditChanged{Text: event.target.value} } onblur={ SaveEdit{ID: todo.ID} } onenter={ SaveEdit{ID: todo.ID} } onescape={ CancelEdit{ID: todo.ID} } />
+view TodoItem(props TodoItemProps) {
+	<li class:completed={ props.Todo.Completed } class:editing={ props.Editing } class:hidden={ (props.Filter == "active" && props.Todo.Completed) || (props.Filter == "completed" && !props.Todo.Completed) }>
+		if props.Editing {
+			<input class="edit" value={ props.EditText } focus={ props.Editing } oninput={ EditChanged{Text: event.target.value} } onblur={ SaveEdit{ID: props.Todo.ID} } onenter={ SaveEdit{ID: props.Todo.ID} } onescape={ CancelEdit{ID: props.Todo.ID} } />
 		} else {
 			<div class="view">
-				<input class="toggle" type="checkbox" checked={ todo.Completed } onchange={ ToggleClicked{ID: todo.ID} } />
-				<label ondblclick={ StartEdit{ID: todo.ID, Text: todo.Title} }>{ todo.Title }</label>
-				<button class="destroy" onclick={ DeleteClicked{ID: todo.ID} }></button>
+				<input class="toggle" type="checkbox" checked={ props.Todo.Completed } onchange={ ToggleClicked{ID: props.Todo.ID} } />
+				<label ondblclick={ StartEdit{ID: props.Todo.ID, Text: props.Todo.Title} }>{ props.Todo.Title }</label>
+				<button class="destroy" onclick={ DeleteClicked{ID: props.Todo.ID} }></button>
 			</div>
 		}
 	</li>

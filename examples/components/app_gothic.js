@@ -8,24 +8,24 @@ let model = readState("app");
 on(root, "0", "click", (event) => dispatch({tag: "AddClicked"}));
 
 function render(model) {
-  text(root, "0", (model.Count));
+  text(root, "0", ({Count: model.Count}).Count);
   const renderList0 = list(root, "0", (item, __i0) => {
   const e0 = document.createElement("li");
   e0.setAttribute("class", "history");
   e0.appendChild(document.createComment("g:text:1:open"));
-  e0.appendChild(document.createTextNode(String((item))));
+  e0.appendChild(document.createTextNode(String(({Text: item}).Text)));
   e0.appendChild(document.createComment("g:text:1:close"));
   const e1 = document.createElement("button");
   e1.setAttribute("class", "repeat");
   e1.setAttribute("data-gothic-on", "1");
   e1.appendChild(document.createTextNode("repeat"));
   e0.appendChild(e1);
-  text(e0, "1", (item));
-  on(e0, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
+  text(e0, "1", ({Text: item}).Text);
+  on(e0, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: ({Text: item}).Text}));
   return e0;
 }, (node, item, __i0) => {
-  text(node, "1", (item));
-  on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
+  text(node, "1", ({Text: item}).Text);
+  on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: ({Text: item}).Text}));
 });
 renderList0(model.History);
 }

@@ -24,6 +24,8 @@ type Options struct {
 	ComponentsModuleURL string
 	// ProcedureNames are App-owned procedures that components must not call.
 	ProcedureNames map[string]bool
+	// PropsTypes are struct types that must compile to plain props objects.
+	PropsTypes map[string]bool
 }
 
 // Generate renders the JavaScript application module for the view and app.
@@ -54,6 +56,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 		allowNested:     true,
 		appModule:       true,
 		allowProcedures: true,
+		propsTypes:      opts.PropsTypes,
 	}
 
 	var bindings strings.Builder
@@ -178,6 +181,7 @@ type gen struct {
 	updatePropsParam string
 	allowProcedures  bool
 	procedureNames   map[string]bool
+	propsTypes       map[string]bool
 }
 
 func (g *gen) helper(name string) string {
@@ -1504,9 +1508,32 @@ func (g *gen) funcLit(e *ast.FuncLit) (string, error) {
 	return b.String(), nil
 }
 
+func (g *gen) objectLiteral(e *ast.CompositeLit, ctx exprCtx) (string, error) {
+	parts := make([]string, 0, len(e.Elts))
+	for _, elt := range e.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			return "", g.exprErr(ctx, "write props fields as Name: value", "props literals must use keyed fields")
+		}
+		key, ok := identName(kv.Key)
+		if !ok {
+			return "", g.exprErr(ctx, "props field names must be identifiers", "props fields must be identifiers")
+		}
+		val, err := g.expr(kv.Value, ctx)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, key+": "+val)
+	}
+	return "{" + strings.Join(parts, ", ") + "}", nil
+}
+
 func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
 	switch t := e.Type.(type) {
 	case *ast.Ident:
+		if g.propsTypes[t.Name] {
+			return g.objectLiteral(e, ctx)
+		}
 		if _, ok := g.app.Messages[t.Name]; !ok {
 			return "", g.exprErr(ctx, "declare the message struct in the prelude", "unknown message type %s", t.Name)
 		}
@@ -1527,6 +1554,8 @@ func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
 			parts = append(parts, key+": "+val)
 		}
 		return "{" + strings.Join(parts, ", ") + "}", nil
+	case *ast.SelectorExpr:
+		return g.objectLiteral(e, ctx)
 	case *ast.ArrayType:
 		parts := make([]string, 0, len(e.Elts))
 		for _, elt := range e.Elts {
@@ -1653,7 +1682,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			propSig = ", props"
 		}
 
-		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames}
+		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes}
 		updatePropParam, err := g.updatePropsParamName(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
@@ -1721,7 +1750,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		b.WriteString("  }, destroy() { alive = false; } };\n}\n\n")
 
-		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames}
+		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes}
 		locals := map[string]bool{}
 		for _, p := range comp.Props {
 			locals[p.Name] = true

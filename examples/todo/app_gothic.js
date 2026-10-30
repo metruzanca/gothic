@@ -66,11 +66,11 @@ function render(model) {
   e0.setAttribute("data-gothic-class-3", "hidden");
   e0.appendChild(document.createComment("g:if:2:open"));
   e0.appendChild(document.createComment("g:if:2:close"));
-  classToggle(e0, "1", (todo).Completed);
-  classToggle(e0, "2", (todo.ID == model.EditingID));
-  classToggle(e0, "3", ((model.Filter) == "active" && (todo).Completed) || ((model.Filter) == "completed" && !(todo).Completed));
+  classToggle(e0, "1", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed);
+  classToggle(e0, "2", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing);
+  classToggle(e0, "3", (({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "active" && ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed) || (({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "completed" && !({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed));
   ifBlock(e0, "2",
-    (todo.ID == model.EditingID),
+    ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing,
     () => { const frag = document.createDocumentFragment();
     const e1 = document.createElement("input");
     e1.setAttribute("class", "edit");
@@ -91,7 +91,7 @@ function render(model) {
     const e4 = document.createElement("label");
     e4.setAttribute("data-gothic-on", "8");
     e4.appendChild(document.createComment("g:text:1:open"));
-    e4.appendChild(document.createTextNode(String((todo).Title)));
+    e4.appendChild(document.createTextNode(String(({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title)));
     e4.appendChild(document.createComment("g:text:1:close"));
     e2.appendChild(e4);
     const e5 = document.createElement("button");
@@ -100,26 +100,26 @@ function render(model) {
     e2.appendChild(e5);
   frag.appendChild(e2);
   return frag; },
-    (region) => {   attr(region, "2", (model.EditText));
-  focus(region, "0", (todo.ID == model.EditingID));
+    (region) => {   attr(region, "2", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).EditText);
+  focus(region, "0", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing);
   on(region, "3", "input", (event) => dispatch({tag: "EditChanged", Text: event.target.value}));
-  on(region, "4", "blur", (event) => dispatch({tag: "SaveEdit", ID: (todo).ID}));
-  on(region, "5", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: (todo).ID}); });
-  on(region, "6", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: (todo).ID}); });
+  on(region, "4", "blur", (event) => dispatch({tag: "SaveEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
+  on(region, "5", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}); });
+  on(region, "6", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}); });
  },
-    (region) => {   attr(region, "3", (todo).Completed);
-  on(region, "7", "change", (event) => dispatch({tag: "ToggleClicked", ID: (todo).ID}));
-  on(region, "8", "dblclick", (event) => dispatch({tag: "StartEdit", ID: (todo).ID, Text: (todo).Title}));
-  text(region, "1", (todo).Title);
-  on(region, "9", "click", (event) => dispatch({tag: "DeleteClicked", ID: (todo).ID}));
+    (region) => {   attr(region, "3", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed);
+  on(region, "7", "change", (event) => dispatch({tag: "ToggleClicked", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
+  on(region, "8", "dblclick", (event) => dispatch({tag: "StartEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID, Text: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title}));
+  text(region, "1", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title);
+  on(region, "9", "click", (event) => dispatch({tag: "DeleteClicked", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
  });
   return e0;
 }, (node, todo, __i0) => {
-  classToggle(node, "1", (todo).Completed);
-  classToggle(node, "2", (todo.ID == model.EditingID));
-  classToggle(node, "3", ((model.Filter) == "active" && (todo).Completed) || ((model.Filter) == "completed" && !(todo).Completed));
+  classToggle(node, "1", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed);
+  classToggle(node, "2", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing);
+  classToggle(node, "3", (({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "active" && ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed) || (({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "completed" && !({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed));
   ifBlock(node, "2",
-    (todo.ID == model.EditingID),
+    ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing,
     () => { const frag = document.createDocumentFragment();
     const e1 = document.createElement("input");
     e1.setAttribute("class", "edit");
@@ -140,7 +140,7 @@ function render(model) {
     const e4 = document.createElement("label");
     e4.setAttribute("data-gothic-on", "8");
     e4.appendChild(document.createComment("g:text:1:open"));
-    e4.appendChild(document.createTextNode(String((todo).Title)));
+    e4.appendChild(document.createTextNode(String(({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title)));
     e4.appendChild(document.createComment("g:text:1:close"));
     e2.appendChild(e4);
     const e5 = document.createElement("button");
@@ -149,18 +149,18 @@ function render(model) {
     e2.appendChild(e5);
   frag.appendChild(e2);
   return frag; },
-    (region) => {   attr(region, "2", (model.EditText));
-  focus(region, "0", (todo.ID == model.EditingID));
+    (region) => {   attr(region, "2", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).EditText);
+  focus(region, "0", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing);
   on(region, "3", "input", (event) => dispatch({tag: "EditChanged", Text: event.target.value}));
-  on(region, "4", "blur", (event) => dispatch({tag: "SaveEdit", ID: (todo).ID}));
-  on(region, "5", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: (todo).ID}); });
-  on(region, "6", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: (todo).ID}); });
+  on(region, "4", "blur", (event) => dispatch({tag: "SaveEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
+  on(region, "5", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}); });
+  on(region, "6", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}); });
  },
-    (region) => {   attr(region, "3", (todo).Completed);
-  on(region, "7", "change", (event) => dispatch({tag: "ToggleClicked", ID: (todo).ID}));
-  on(region, "8", "dblclick", (event) => dispatch({tag: "StartEdit", ID: (todo).ID, Text: (todo).Title}));
-  text(region, "1", (todo).Title);
-  on(region, "9", "click", (event) => dispatch({tag: "DeleteClicked", ID: (todo).ID}));
+    (region) => {   attr(region, "3", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed);
+  on(region, "7", "change", (event) => dispatch({tag: "ToggleClicked", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
+  on(region, "8", "dblclick", (event) => dispatch({tag: "StartEdit", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID, Text: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title}));
+  text(region, "1", ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title);
+  on(region, "9", "click", (event) => dispatch({tag: "DeleteClicked", ID: ({Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.ID}));
  });
 }, (todo, __i0) => String(todo.ID));
 renderList0(model.Todos);

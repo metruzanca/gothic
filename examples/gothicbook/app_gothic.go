@@ -13,6 +13,11 @@ import (
 	"io"
 )
 
+type CodeProps struct {
+	Title string
+	Code  string
+}
+
 type Model struct {
 	Tabs              []ui.Tab
 	ManyTabs          []ui.Tab
@@ -350,7 +355,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:2:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ButtonCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:2:close-->"); err != nil {
@@ -368,7 +373,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:3:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.ButtonCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ButtonCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:3:close-->"); err != nil {
@@ -470,7 +475,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:6:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CardCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:6:close-->"); err != nil {
@@ -488,7 +493,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:7:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.CardCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CardCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:7:close-->"); err != nil {
@@ -698,7 +703,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:12:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.SlotCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:12:close-->"); err != nil {
@@ -716,7 +721,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:13:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.SlotCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.SlotCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:13:close-->"); err != nil {
@@ -858,7 +863,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:16:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.TabsCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:16:close-->"); err != nil {
@@ -876,7 +881,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:17:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.TabsCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.TabsCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:17:close-->"); err != nil {
@@ -936,7 +941,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:18:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.AccordionCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:18:close-->"); err != nil {
@@ -954,7 +959,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:19:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.AccordionCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.AccordionCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:19:close-->"); err != nil {
@@ -1256,7 +1261,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:24:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:24:close-->"); err != nil {
@@ -1274,7 +1279,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:25:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.DisclosureCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:25:close-->"); err != nil {
@@ -1414,7 +1419,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:28:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(("Usage")))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:28:close-->"); err != nil {
@@ -1432,7 +1437,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:29:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.ServerCode)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Code))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:29:close-->"); err != nil {

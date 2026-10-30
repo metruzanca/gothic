@@ -571,3 +571,84 @@ view App(model Model) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestExpandPurePropsStruct(t *testing.T) {
+	src := `package views
+
+type CardProps struct {
+	Title string
+	Body  *string
+}
+
+view Card(props CardProps) {
+	<section>
+		<h2>{ props.Title }</h2>
+		if props.Body != nil {
+			<p>{ *props.Body }</p>
+		}
+	</section>
+}
+
+view App(model Model) {
+	<div>
+		<Card title="Hello" />
+	</div>
+}
+`
+	appFile, err := parser.ParseApp("props.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := appFile.View
+	propsTypes := parser.PropsTypes{
+		"CardProps": {
+			Name: "CardProps",
+			Fields: []parser.Param{
+				{Name: "Title", Type: "string"},
+				{Name: "Body", Type: "*string"},
+			},
+		},
+	}
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), propsTypes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := expanded.Templates[0].Children[0].(*parser.Element)
+	section := root.Children[0].(*parser.Element)
+	h2 := section.Children[0].(*parser.Element)
+	interp := h2.Children[0].(*parser.Interpolation)
+	if got := exprText(t, interp.Expr); !strings.Contains(got, `CardProps{Title: "Hello", Body: nil}`) {
+		t.Fatalf("title expression = %q", got)
+	}
+	cond, ok := section.Children[1].(*parser.If)
+	if !ok {
+		t.Fatalf("conditional = %T", section.Children[1])
+	}
+	if got := exprText(t, cond.Cond); !strings.Contains(got, "Body: nil") {
+		t.Fatalf("condition = %q", got)
+	}
+}
+
+func TestExpandPurePropsStructRequiredField(t *testing.T) {
+	src := `package views
+
+type CardProps struct{ Title string }
+
+view Card(props CardProps) {
+	<section>{ props.Title }</section>
+}
+
+view App(model Model) {
+	<div><Card /></div>
+}
+`
+	appFile, err := parser.ParseApp("props.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := appFile.View
+	propsTypes := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{{Name: "Title", Type: "string"}}}}
+	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), propsTypes); err == nil || !strings.Contains(err.Error(), `missing prop "Title"`) {
+		t.Fatalf("error = %v", err)
+	}
+}

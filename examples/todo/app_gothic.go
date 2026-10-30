@@ -18,6 +18,13 @@ type Todo struct {
 	Completed bool
 }
 
+type TodoItemProps struct {
+	Todo     Todo
+	Filter   string
+	Editing  bool
+	EditText string
+}
+
 type TodoData struct {
 	Todos          []Todo
 	ActiveCount    int
@@ -425,17 +432,17 @@ func App(model Model) gothic.Component {
 			if err := write(" class=\""); err != nil {
 				return err
 			}
-			if (todo).Completed {
+			if (TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed {
 				if err := write(" completed"); err != nil {
 					return err
 				}
 			}
-			if todo.ID == model.EditingID {
+			if (TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing {
 				if err := write(" editing"); err != nil {
 					return err
 				}
 			}
-			if ((model.Filter) == "active" && (todo).Completed) || ((model.Filter) == "completed" && !(todo).Completed) {
+			if ((TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "active" && (TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed) || ((TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Filter == "completed" && !(TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed) {
 				if err := write(" hidden"); err != nil {
 					return err
 				}
@@ -458,7 +465,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:if:2:open-->"); err != nil {
 				return err
 			}
-			if todo.ID == model.EditingID {
+			if (TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Editing {
 				if err := write("<!--g:if:2:then-->"); err != nil {
 					return err
 				}
@@ -468,7 +475,7 @@ func App(model Model) gothic.Component {
 				if err := write(" value=\""); err != nil {
 					return err
 				}
-				if err := write(html.EscapeString(fmt.Sprint((model.EditText)))); err != nil {
+				if err := write(html.EscapeString(fmt.Sprint((TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).EditText))); err != nil {
 					return err
 				}
 				if err := write("\""); err != nil {
@@ -505,7 +512,7 @@ func App(model Model) gothic.Component {
 				if err := write("<input type=\"checkbox\" data-gothic-attr-3=\"checked\""); err != nil {
 					return err
 				}
-				if (todo).Completed {
+				if (TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Completed {
 					if err := write(" checked"); err != nil {
 						return err
 					}
@@ -528,7 +535,7 @@ func App(model Model) gothic.Component {
 				if err := write("<!--g:text:1:open-->"); err != nil {
 					return err
 				}
-				if err := write(html.EscapeString(fmt.Sprint((todo).Title))); err != nil {
+				if err := write(html.EscapeString(fmt.Sprint((TodoItemProps{Todo: todo, Filter: model.Filter, Editing: todo.ID == model.EditingID, EditText: model.EditText}).Todo.Title))); err != nil {
 					return err
 				}
 				if err := write("<!--g:text:1:close-->"); err != nil {

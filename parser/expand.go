@@ -3,14 +3,29 @@ package parser
 import (
 	"fmt"
 	"go/ast"
+	"strings"
 )
 
 // ComponentSet maps component names to their declarations.
 type ComponentSet map[string]*Template
 
+// PropsType describes a component props struct.
+type PropsType struct {
+	Name   string
+	Fields []Param
+}
+
+// PropsTypes maps props type names to their fields.
+type PropsTypes map[string]PropsType
+
 // ExpandApp returns a copy of f with only the App view, with component calls
-// expanded inline. Component declarations are resolved from components.
+// expanded inline.
 func ExpandApp(f *File, components ComponentSet) (*File, error) {
+	return ExpandAppWithProps(f, components, nil)
+}
+
+// ExpandAppWithProps is ExpandApp with props struct information.
+func ExpandAppWithProps(f *File, components ComponentSet, propsTypes PropsTypes) (*File, error) {
 	var app *Template
 	for _, t := range f.Templates {
 		if t.Name != "App" {
@@ -24,7 +39,7 @@ func ExpandApp(f *File, components ComponentSet) (*File, error) {
 	if app == nil {
 		return nil, fmt.Errorf("App view not found")
 	}
-	expanded, err := expandTemplate(app, nil, nil, components)
+	expanded, err := expandTemplate(app, nil, nil, components, propsTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +53,7 @@ func ExpandApp(f *File, components ComponentSet) (*File, error) {
 	}, nil
 }
 
-func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, components ComponentSet) (*Template, error) {
+func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, components ComponentSet, propsTypes PropsTypes) (*Template, error) {
 	out := &Template{
 		NodePosition: t.NodePosition,
 		Name:         t.Name,
@@ -47,7 +62,7 @@ func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, compon
 		State:        append([]StateDecl(nil), t.State...),
 	}
 	for _, child := range t.Children {
-		n, err := expandNode(child, env, stack, components)
+		n, err := expandNode(child, env, stack, components, propsTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +73,7 @@ func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, compon
 	return out, nil
 }
 
-func expandNode(n Node, env map[string]ast.Expr, stack []string, components ComponentSet) (Node, error) {
+func expandNode(n Node, env map[string]ast.Expr, stack []string, components ComponentSet, propsTypes PropsTypes) (Node, error) {
 	switch n := n.(type) {
 	case *Text:
 		return &Text{NodePosition: n.NodePosition, Value: n.Value}, nil
@@ -81,7 +96,7 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			}
 		}
 		for _, child := range n.Children {
-			expanded, err := expandNode(child, env, stack, components)
+			expanded, err := expandNode(child, env, stack, components, propsTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +116,7 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			X:            substExpr(n.X, env),
 		}
 		for _, child := range n.Children {
-			expanded, err := expandNode(child, childEnv, stack, components)
+			expanded, err := expandNode(child, childEnv, stack, components, propsTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +130,7 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 	case *If:
 		out := &If{NodePosition: n.NodePosition, Cond: substExpr(n.Cond, env)}
 		for _, child := range n.Then {
-			expanded, err := expandNode(child, env, stack, components)
+			expanded, err := expandNode(child, env, stack, components, propsTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -124,7 +139,7 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			}
 		}
 		for _, child := range n.Else {
-			expanded, err := expandNode(child, env, stack, components)
+			expanded, err := expandNode(child, env, stack, components, propsTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -134,13 +149,13 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 		}
 		return out, nil
 	case *ComponentCall:
-		return expandComponentCall(n, env, stack, components)
+		return expandComponentCall(n, env, stack, components, propsTypes)
 	default:
 		return nil, fmt.Errorf("unsupported node type %T", n)
 	}
 }
 
-func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []string, components ComponentSet) (Node, error) {
+func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []string, components ComponentSet, propsTypes PropsTypes) (Node, error) {
 	component, ok := components[call.Name]
 	if !ok {
 		return nil, fmt.Errorf("unknown component %s", call.Name)
@@ -164,34 +179,47 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, fmt.Errorf("component %s must have exactly one root element", call.Name)
 	}
 
-	props := map[string]ast.Expr{}
-	for _, prop := range call.Props {
-		if _, exists := props[prop.Name]; exists {
-			return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
-		}
-		props[prop.Name] = substExpr(prop.Value, env)
-	}
 	childEnv := map[string]ast.Expr{}
-	for _, param := range component.ParamList {
-		value, ok := props[param.Name]
-		if !ok {
-			return nil, fmt.Errorf("component %s: missing prop %q", call.Name, param.Name)
+	usedPropsStruct := false
+	if len(component.ParamList) == 1 && component.ParamList[0].Name == "props" {
+		if spec, ok := propsTypes[component.ParamList[0].Type]; ok {
+			literal, err := propsStructLiteral(component, spec, call, env)
+			if err != nil {
+				return nil, err
+			}
+			childEnv["props"] = literal
+			usedPropsStruct = true
 		}
-		childEnv[param.Name] = value
-		delete(props, param.Name)
 	}
-	for name := range props {
-		return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+	if !usedPropsStruct {
+		props := map[string]ast.Expr{}
+		for _, prop := range call.Props {
+			if _, exists := props[prop.Name]; exists {
+				return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
+			}
+			props[prop.Name] = substExpr(prop.Value, env)
+		}
+		for _, param := range component.ParamList {
+			value, ok := props[param.Name]
+			if !ok {
+				return nil, fmt.Errorf("component %s: missing prop %q", call.Name, param.Name)
+			}
+			childEnv[param.Name] = value
+			delete(props, param.Name)
+		}
+		for name := range props {
+			return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+		}
 	}
 
-	children, err := expandNodes(call.Children, env, stack, components)
+	children, err := expandNodes(call.Children, env, stack, components, propsTypes)
 	if err != nil {
 		return nil, err
 	}
 	if err := rejectSlots(children); err != nil {
 		return nil, err
 	}
-	expanded, err := expandTemplate(component, childEnv, append(stack, call.Name), components)
+	expanded, err := expandTemplate(component, childEnv, append(stack, call.Name), components, propsTypes)
 	if err != nil {
 		return nil, err
 	}
@@ -220,10 +248,55 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	return root, nil
 }
 
-func expandNodes(nodes []Node, env map[string]ast.Expr, stack []string, components ComponentSet) ([]Node, error) {
+func matchPropField(fields []Param, tag string) (Param, bool, error) {
+	var match Param
+	found := 0
+	for _, f := range fields {
+		if strings.EqualFold(f.Name, tag) {
+			match = f
+			found++
+		}
+	}
+	if found > 1 {
+		return Param{}, false, fmt.Errorf("ambiguous prop %q", tag)
+	}
+	return match, found == 1, nil
+}
+
+func propsStructLiteral(component *Template, spec PropsType, call *ComponentCall, env map[string]ast.Expr) (ast.Expr, error) {
+	values := map[string]ast.Expr{}
+	for _, prop := range call.Props {
+		field, ok, err := matchPropField(spec.Fields, prop.Name)
+		if err != nil {
+			return nil, fmt.Errorf("component %s: %v", call.Name, err)
+		}
+		if !ok {
+			return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, prop.Name)
+		}
+		if _, exists := values[field.Name]; exists {
+			return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
+		}
+		values[field.Name] = substExpr(prop.Value, env)
+	}
+	elts := make([]ast.Expr, 0, len(spec.Fields))
+	for _, field := range spec.Fields {
+		value, ok := values[field.Name]
+		if !ok {
+			if strings.HasPrefix(field.Type, "*") {
+				value = ast.NewIdent("nil")
+			} else {
+				return nil, fmt.Errorf("component %s: missing prop %q", call.Name, field.Name)
+			}
+		}
+		elts = append(elts, &ast.KeyValueExpr{Key: ast.NewIdent(field.Name), Value: value})
+	}
+	return &ast.CompositeLit{Type: ast.NewIdent(spec.Name), Elts: elts}, nil
+}
+
+func expandNodes(nodes []Node, env map[string]ast.Expr, stack []string, components ComponentSet, propsTypes PropsTypes) ([]Node, error) {
 	out := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
-		expanded, err := expandNode(node, env, stack, components)
+		expanded, err := expandNode(node, env, stack, components, propsTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -386,5 +459,10 @@ func substExpr(e ast.Expr, env map[string]ast.Expr) ast.Expr {
 // ExpandTemplate expands pure component calls in one template. Stateful calls
 // are left intact.
 func ExpandTemplate(t *Template, components ComponentSet) (*Template, error) {
-	return expandTemplate(t, nil, nil, components)
+	return ExpandTemplateWithProps(t, components, nil)
+}
+
+// ExpandTemplateWithProps expands pure component calls with props structs.
+func ExpandTemplateWithProps(t *Template, components ComponentSet, propsTypes PropsTypes) (*Template, error) {
+	return expandTemplate(t, nil, nil, components, propsTypes)
 }

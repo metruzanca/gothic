@@ -12,6 +12,13 @@ type Todo struct {
 	Completed bool
 }
 
+type TodoItemProps struct {
+	Todo     Todo
+	Filter   string
+	Editing  bool
+	EditText string
+}
+
 type TodoData struct {
 	Todos          []Todo
 	ActiveCount    int

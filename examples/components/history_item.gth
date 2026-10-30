@@ -1,8 +1,8 @@
 package main
 
-view HistoryItem(text string) {
+view HistoryItem(props HistoryItemProps) {
 	<li class="history">
-		{ text }
-		<button class="repeat" onclick={ RepeatClicked{Text: text} }>repeat</button>
+		{ props.Text }
+		<button class="repeat" onclick={ RepeatClicked{Text: props.Text} }>repeat</button>
 	</li>
 }

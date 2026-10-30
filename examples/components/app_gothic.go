@@ -12,6 +12,14 @@ import (
 	"io"
 )
 
+type StatusProps struct {
+	Count int
+}
+
+type HistoryItemProps struct {
+	Text string
+}
+
 type Model struct {
 	Count   int
 	History []string
@@ -89,7 +97,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((model.Count)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((StatusProps{Count: model.Count}).Count))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {
@@ -138,7 +146,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:1:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((item)))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((HistoryItemProps{Text: item}).Text))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:1:close-->"); err != nil {

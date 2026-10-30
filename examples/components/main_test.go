@@ -45,8 +45,8 @@ func TestComponentsApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`text(root, "0", (model.Count));`,
-		`on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));`,
+		`text(root, "0", ({Count: model.Count}).Count);`,
+		`on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: ({Text: item}).Text}));`,
 		`(m.History = m.History || []).push(msg.Text);`,
 	} {
 		if !strings.Contains(string(js), want) {

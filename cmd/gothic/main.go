@@ -162,6 +162,33 @@ func loadSource(path string) (*source, error) {
 	return s, nil
 }
 
+func propsTypesFromMessages(messages map[string][]goapp.Field) viewparser.PropsTypes {
+	out := viewparser.PropsTypes{}
+	for name, fields := range messages {
+		params := make([]viewparser.Param, len(fields))
+		for i, field := range fields {
+			params[i] = viewparser.Param{Name: field.Name, Type: field.Type}
+		}
+		out[name] = viewparser.PropsType{Name: name, Fields: params}
+	}
+	return out
+}
+
+func usedPropsTypes(registry viewparser.ComponentSet, stateful []*generator.Stateful) map[string]bool {
+	out := map[string]bool{}
+	for _, comp := range stateful {
+		if comp.PropsType != "" {
+			out[comp.PropsType] = true
+		}
+	}
+	for _, t := range registry {
+		if len(t.ParamList) == 1 && t.ParamList[0].Name == "props" {
+			out[t.ParamList[0].Type] = true
+		}
+	}
+	return out
+}
+
 func hasAppView(f *viewparser.File) bool {
 	for _, t := range f.Templates {
 		if t.Name == "App" {
@@ -255,7 +282,8 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	if err := validateRegistry(registry); err != nil {
 		return 0, 0, err
 	}
-	expanded, err := viewparser.ExpandApp(appSource.view, registry)
+	propsTypes := propsTypesFromMessages(appSource.app.Messages)
+	expanded, err := viewparser.ExpandAppWithProps(appSource.view, registry, propsTypes)
 	if err != nil {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
@@ -267,7 +295,8 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
 	stateful = append(stateful, external...)
-	n, err := generateApp(appSource, expanded, stateful, out)
+	propsTypeNames := usedPropsTypes(registry, stateful)
+	n, err := generateApp(appSource, expanded, stateful, propsTypeNames, out)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -432,7 +461,7 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 		if app == nil {
 			return nil, viewparser.PosError(t.NodePosition, "add Init and Update methods to the model", "stateful component %s: model %s has no Init/Update", t.Name, modelType)
 		}
-		expanded, err := viewparser.ExpandTemplate(t, registry)
+		expanded, err := viewparser.ExpandTemplateWithProps(t, registry, propsTypesFromMessages(s.app.Messages))
 		if err != nil {
 			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
 		}
@@ -555,6 +584,17 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		files = append(files, libFile{path: path, prelude: appFile.GoSource, views: appFile.View.Templates, app: app})
 	}
 
+	propsTypes := viewparser.PropsTypes{}
+	for _, f := range files {
+		for name, fields := range f.app.Messages {
+			params := make([]viewparser.Param, len(fields))
+			for i, field := range fields {
+				params[i] = viewparser.Param{Name: field.Name, Type: field.Type}
+			}
+			propsTypes[name] = viewparser.PropsType{Name: name, Fields: params}
+		}
+	}
+
 	pure := viewparser.ComponentSet{}
 	type statefulView struct {
 		t    *viewparser.Template
@@ -611,7 +651,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, err
 		}
-		expanded, err := viewparser.ExpandTemplate(t, pure)
+		expanded, err := viewparser.ExpandTemplateWithProps(t, pure, propsTypes)
 		if err != nil {
 			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
 		}
@@ -661,6 +701,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
 		FileName:   filepath.Join(dir, "library.gth"),
 		RuntimeURL: "/_gothic/runtime.js",
+		PropsTypes: usedPropsTypes(pure, stateful),
 	})
 	if err != nil {
 		return 0, 0, err
@@ -789,7 +830,7 @@ func componentDirectives(src []byte) []string {
 	return paths
 }
 
-func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Stateful, out io.Writer) (int, error) {
+func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Stateful, propsTypes map[string]bool, out io.Writer) (int, error) {
 	goSrc, err := generator.GenerateSingle(expanded, s.app, generator.Options{
 		FileName:   s.path,
 		ModuleBase: s.base,
@@ -804,6 +845,7 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 		RuntimeURL:          "/_gothic/runtime.js",
 		Stateful:            stateful,
 		ComponentsModuleURL: generator.ComponentsModuleURL(s.base),
+		PropsTypes:          propsTypes,
 	})
 	if err != nil {
 		return 0, err
@@ -827,6 +869,7 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 			FileName:       s.path,
 			RuntimeURL:     "/_gothic/runtime.js",
 			ProcedureNames: procedureNames,
+			PropsTypes:     propsTypes,
 		})
 		if err != nil {
 			return 0, err
