@@ -917,14 +917,6 @@ func typeText(e ast.Expr) string {
 	return b.String()
 }
 
-func propSignature(props []parser.Param) string {
-	parts := make([]string, len(props))
-	for i, p := range props {
-		parts[i] = p.Name + " " + p.Type
-	}
-	return strings.Join(parts, ", ")
-}
-
 func (g *gen) updatePropsParamName(comp *generator.Stateful) (string, error) {
 	fn := comp.App.Update
 	if fn == nil || fn.Type.Params == nil {
