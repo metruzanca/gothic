@@ -418,6 +418,9 @@ func (p *parser) parseElement() (Node, error) {
 	if isComponentName(name) {
 		return p.parseComponent(name)
 	}
+	if name == "slot" {
+		return p.parseSlot()
+	}
 	el := &Element{Name: name}
 
 	for {
@@ -477,6 +480,37 @@ func (p *parser) parseElement() (Node, error) {
 	return el, nil
 }
 
+func (p *parser) parseSlot() (Node, error) {
+	for {
+		p.skipSpace()
+		if p.eof() {
+			return nil, p.errf("unexpected end of file in <slot>")
+		}
+		if p.consume("/>") {
+			return &Slot{}, nil
+		}
+		if p.consume(">") {
+			break
+		}
+		return nil, p.errf("slot does not take attributes")
+	}
+	p.skipSpace()
+	if p.startsWith("</") {
+		if !p.consume("</") {
+			return nil, p.errf("expected </slot>")
+		}
+		if closing := p.readTagName(); closing != "slot" {
+			return nil, p.errf("expected </slot>, got </%s>", closing)
+		}
+		p.skipSpace()
+		if !p.consume(">") {
+			return nil, p.errf("expected > to close </slot>")
+		}
+		return &Slot{}, nil
+	}
+	return nil, p.errf("slot cannot have children")
+}
+
 func (p *parser) parseComponent(name string) (Node, error) {
 	call := &ComponentCall{Name: name}
 	for {
@@ -518,9 +552,7 @@ func (p *parser) parseComponent(name string) (Node, error) {
 			children = append(children, child)
 		}
 	}
-	if len(children) > 0 {
-		return nil, p.errf("component <%s> cannot have children yet", name)
-	}
+	call.Children = children
 	if !p.consume("</") {
 		return nil, p.errf("expected closing tag for <%s>", name)
 	}

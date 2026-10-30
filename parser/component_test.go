@@ -72,17 +72,30 @@ view App(model Model) {
 	}
 }
 
-func TestRejectComponentChildren(t *testing.T) {
+func TestParseComponentChildren(t *testing.T) {
 	src := `package views
 view Card(text string) {
-	<p>{ text }</p>
+	<p>{ text }<slot /></p>
 }
 view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	if _, err := parser.Parse("component.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "cannot have children") {
-		t.Fatalf("error = %v", err)
+	f, err := parser.Parse("component.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := f.Templates[1].Children[0].(*parser.Element)
+	call := root.Children[0].(*parser.ComponentCall)
+	if len(call.Children) != 1 {
+		t.Fatalf("children = %d", len(call.Children))
+	}
+	if span, ok := call.Children[0].(*parser.Element); !ok || span.Name != "span" {
+		t.Fatalf("child = %#v", call.Children[0])
+	}
+	p := f.Templates[0].Children[0].(*parser.Element)
+	if _, ok := p.Children[1].(*parser.Slot); !ok {
+		t.Fatalf("slot = %T", p.Children[1])
 	}
 }
 
@@ -407,5 +420,154 @@ view App(model Model) {
 	}
 	if len(cond.Then) != 1 || len(cond.Else) != 1 {
 		t.Fatalf("branches = %d %d", len(cond.Then), len(cond.Else))
+	}
+}
+
+func TestExpandComponentChildren(t *testing.T) {
+	src := `package views
+
+view Card(text string) {
+	<section>
+		<h2>{ text }</h2>
+		<slot />
+	</section>
+}
+
+view App(model Model) {
+	<div>
+		<Card text="Hello">
+			<p class="body">Child</p>
+		</Card>
+	</div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := expanded.Templates[0].Children[0].(*parser.Element)
+	section := root.Children[0].(*parser.Element)
+	if section.Name != "section" || len(section.Children) != 2 {
+		t.Fatalf("section = %#v", section)
+	}
+	p, ok := section.Children[1].(*parser.Element)
+	if !ok || p.Name != "p" {
+		t.Fatalf("child = %#v", section.Children[1])
+	}
+}
+
+func TestExpandNestedComponentChildren(t *testing.T) {
+	src := `package views
+
+view Box() {
+	<div class="box"><slot /></div>
+}
+
+view App(model Model) {
+	<div>
+		<Box>
+			<Box><p>nested</p></Box>
+		</Box>
+	</div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := expanded.Templates[0].Children[0].(*parser.Element)
+	outer := root.Children[0].(*parser.Element)
+	inner := outer.Children[0].(*parser.Element)
+	if inner.Name != "div" {
+		t.Fatalf("inner = %#v", inner)
+	}
+	if p, ok := inner.Children[0].(*parser.Element); !ok || p.Name != "p" {
+		t.Fatalf("nested child = %#v", inner.Children[0])
+	}
+}
+
+func TestExpandRejectsChildrenWithoutSlot(t *testing.T) {
+	src := `package views
+
+view Card(text string) {
+	<p>{ text }</p>
+}
+
+view App(model Model) {
+	<div><Card text="x"><span>hi</span></Card></div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.ExpandApp(f, componentsOf(f)); err == nil || !strings.Contains(err.Error(), "does not accept children") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExpandRejectsMultipleSlots(t *testing.T) {
+	src := `package views
+
+view Box() {
+	<div><slot /><slot /></div>
+}
+
+view App(model Model) {
+	<div><Box><p>x</p></Box></div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.ExpandApp(f, componentsOf(f)); err == nil || !strings.Contains(err.Error(), "must declare one <slot />") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExpandRejectsStatefulChildren(t *testing.T) {
+	src := `package views
+
+view Tabs() {
+	<div></div>
+}
+
+view App(model Model) {
+	<div><Tabs><p>x</p></Tabs></div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	components := componentsOf(f)
+	components["Tabs"].Stateful = true
+	if _, err := parser.ExpandApp(f, components); err == nil || !strings.Contains(err.Error(), "cannot accept children yet") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExpandRejectsAppSlot(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<div><slot /></div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.ExpandApp(f, map[string]*parser.Template{}); err == nil || !strings.Contains(err.Error(), "slot can only be used") {
+		t.Fatalf("error = %v", err)
 	}
 }

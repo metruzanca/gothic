@@ -401,3 +401,65 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		}
 	}
 }
+
+func TestGenerateComponentSlot(t *testing.T) {
+	f, err := parser.Parse("slot.gth", []byte(`package app
+
+view Card(title string) {
+	<section class="card">
+		<h2>{ title }</h2>
+		<slot />
+	</section>
+}
+
+view App(model Model) {
+	<div>
+		<Card title="Hello">
+			<p class="body">Slotted body</p>
+		</Card>
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	components := parser.ComponentSet{}
+	for _, tpl := range f.Templates {
+		if tpl.Name != "App" {
+			components[tpl.Name] = tpl
+		}
+	}
+	expanded, err := parser.ExpandApp(f, components)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Title string }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(expanded, app, generator.Options{
+		FileName:   "slot.gth",
+		ModuleBase: "slot",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`write("<section")`,
+		`write(" class=\"card")`,
+		`write("Slotted body")`,
+		`write("<p")`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+}

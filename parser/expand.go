@@ -28,6 +28,9 @@ func ExpandApp(f *File, components ComponentSet) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := rejectSlots(expanded.Children); err != nil {
+		return nil, err
+	}
 	return &File{
 		Package:    f.Package,
 		Procedures: f.Procedures,
@@ -103,6 +106,8 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			}
 		}
 		return loop, nil
+	case *Slot:
+		return &Slot{}, nil
 	case *If:
 		out := &If{Cond: substExpr(n.Cond, env)}
 		for _, child := range n.Then {
@@ -137,6 +142,9 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, fmt.Errorf("unknown component %s", call.Name)
 	}
 	if component.Stateful {
+		if len(call.Children) > 0 {
+			return nil, fmt.Errorf("stateful component %s cannot accept children yet", call.Name)
+		}
 		props := make([]Prop, len(call.Props))
 		for i, prop := range call.Props {
 			props[i] = Prop{Name: prop.Name, Value: substExpr(prop.Value, env)}
@@ -172,10 +180,29 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, name)
 	}
 
+	children, err := expandNodes(call.Children, env, stack, components)
+	if err != nil {
+		return nil, err
+	}
+	if err := rejectSlots(children); err != nil {
+		return nil, err
+	}
 	expanded, err := expandTemplate(component, childEnv, append(stack, call.Name), components)
 	if err != nil {
 		return nil, err
 	}
+	slots := 0
+	nodes, err := insertSlots(expanded.Children, children, &slots)
+	if err != nil {
+		return nil, err
+	}
+	if slots > 1 {
+		return nil, fmt.Errorf("component %s must declare one <slot />, found %d", call.Name, slots)
+	}
+	if slots == 0 && len(children) > 0 {
+		return nil, fmt.Errorf("component %s does not accept children; add <slot /> to its view", call.Name)
+	}
+	expanded.Children = nodes
 	if len(expanded.Children) != 1 {
 		return nil, fmt.Errorf("component %s must expand to one root element", call.Name)
 	}
@@ -187,6 +214,85 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		root.Key = substExpr(call.Key, env)
 	}
 	return root, nil
+}
+
+func expandNodes(nodes []Node, env map[string]ast.Expr, stack []string, components ComponentSet) ([]Node, error) {
+	out := make([]Node, 0, len(nodes))
+	for _, node := range nodes {
+		expanded, err := expandNode(node, env, stack, components)
+		if err != nil {
+			return nil, err
+		}
+		if expanded != nil {
+			out = append(out, expanded)
+		}
+	}
+	return out, nil
+}
+
+func insertSlots(nodes []Node, children []Node, slots *int) ([]Node, error) {
+	out := make([]Node, 0, len(nodes))
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *Slot:
+			*slots = *slots + 1
+			out = append(out, children...)
+		case *Element:
+			replaced, err := insertSlots(n.Children, children, slots)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = replaced
+			out = append(out, n)
+		case *For:
+			replaced, err := insertSlots(n.Children, children, slots)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = replaced
+			out = append(out, n)
+		case *If:
+			thenNodes, err := insertSlots(n.Then, children, slots)
+			if err != nil {
+				return nil, err
+			}
+			elseNodes, err := insertSlots(n.Else, children, slots)
+			if err != nil {
+				return nil, err
+			}
+			n.Then = thenNodes
+			n.Else = elseNodes
+			out = append(out, n)
+		default:
+			out = append(out, node)
+		}
+	}
+	return out, nil
+}
+
+func rejectSlots(nodes []Node) error {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *Slot:
+			return fmt.Errorf("slot can only be used inside a pure component view")
+		case *Element:
+			if err := rejectSlots(n.Children); err != nil {
+				return err
+			}
+		case *For:
+			if err := rejectSlots(n.Children); err != nil {
+				return err
+			}
+		case *If:
+			if err := rejectSlots(n.Then); err != nil {
+				return err
+			}
+			if err := rejectSlots(n.Else); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func componentCycle(stack []string, name string) string {

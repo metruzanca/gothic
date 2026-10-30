@@ -617,6 +617,8 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 		return g.writeFor(b, n)
 	case *parser.If:
 		return g.writeIf(b, n)
+	case *parser.Slot:
+		return fmt.Errorf("slot is only supported in pure components")
 	case *parser.ComponentCall:
 		return g.writeStatefulCall(b, n)
 	default:

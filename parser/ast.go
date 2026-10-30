@@ -87,11 +87,17 @@ type If struct {
 
 func (*If) node() {}
 
-// ComponentCall invokes a component view with named props.
+// Slot marks where a pure component's children are inserted.
+type Slot struct{}
+
+func (*Slot) node() {}
+
+// ComponentCall invokes a component view with named props and optional children.
 type ComponentCall struct {
-	Name  string
-	Key   ast.Expr
-	Props []Prop
+	Name     string
+	Key      ast.Expr
+	Props    []Prop
+	Children []Node
 }
 
 func (*ComponentCall) node() {}
