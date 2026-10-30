@@ -34,6 +34,9 @@ Use namespaced tags in `.gth` views:
 <ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Button label="Cancel" primary={ false } onclick={ nil } />
 <ui.Card title="Card title" body="Card body" />
+<ui.Field label="Your name">
+	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
+</ui.Field>
 <ui.Counter label="Increment on client" />
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
@@ -52,6 +55,7 @@ Pure components:
 
 - `Button` with `label`, `primary`, and `onclick gothic.Msg`
 - `Card` with `title` and `body`
+- `Field` with `label` and a default slot for the App's input
 
 Stateful components:
 
@@ -61,7 +65,8 @@ Stateful components:
 - `Disclosure` with `item DisclosureItem`, keeping its expanded state
 
 `Counter` uses `Button` internally as a pure component. The app generator
-expands pure UI kit components into the consumer app.
+expands pure UI kit components into the consumer app. `Field` receives its
+children from the App view, so events and state stay in the App.
 
 ## Development
 

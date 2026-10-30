@@ -18,6 +18,7 @@ builds against this checkout. A consumer would use tagged module versions.
 
 - `ui.Button`
 - `ui.Card`
+- `ui.Field` wrapping a controlled input and a stateful Counter
 - `ui.Tabs`
 - `ui.Accordion`
 - `ui.Disclosure` in a conditional branch and in a paginated list
@@ -26,6 +27,7 @@ builds against this checkout. A consumer would use tagged module versions.
 - a short `.gth` usage snippet for each component
 - a server-backed Button action that emits a message to the app, runs an RPC
   procedure, and receives the new count as model state
+- slotted content that keeps its input event and state in the App
 - a scrollable list with 20 disclosures across two pages of 10
 
 The client counter, Tabs, Accordion, and Disclosure stay purely client-side.

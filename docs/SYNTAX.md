@@ -193,10 +193,45 @@ Rules for pure components:
 - They are stateless. They cannot declare `state`.
 - They render exactly one root element.
 - They should reference only their props and package-level declarations.
-- Component children and slots are not supported yet.
+- They may declare one default `<slot />` to receive children.
 - Components cannot be called from Go code yet.
 - Capitalized tags are always components, so camelCase SVG tags are not
   supported yet.
+
+### Component children
+
+A pure component can receive children and place them with one `<slot />`:
+
+```gothic
+view Field(label string) {
+	<div class="ui-field">
+		<span class="ui-field-label">{ label }</span>
+		<slot />
+	</div>
+}
+```
+
+```gothic
+<ui.Field label="Your name">
+	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
+</ui.Field>
+```
+
+Children are expanded in the caller's scope, so they can use the App model,
+loop variables, events, conditionals, loops, and stateful components. The
+component supplies layout only. A slot renders nothing when the component is
+called without children.
+
+Rules for children and slots:
+
+- one default slot per pure component,
+- `<slot />` cannot take attributes or children,
+- a slot cannot be the component root,
+- named slots and fallback content are not supported yet,
+- stateful components cannot accept children yet,
+- children on a component without a slot are an error,
+- a slot outside a pure component is an error,
+- `<slot />` is reserved and cannot be used as an HTML element.
 
 ### Stateful components
 
@@ -534,6 +569,8 @@ The proof of concept supports:
 - app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
+- children and a single default `<slot />` in pure components,
+- stateful components inside slotted content,
 - `if`, `else if`, and `else` in views, including inside loops and pure
   components,
 - stateful components inside conditional branches, with unmount and state reset,
@@ -562,7 +599,8 @@ Not supported yet:
 - controlled components, props in component Init/Update, and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
-- component children and slots,
+- children on stateful components,
+- named slots and fallback slot content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,

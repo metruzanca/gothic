@@ -204,6 +204,8 @@ Supported now:
 - one `App` view with a single model parameter,
 - pure components with props, in the app file or separate files,
 - compile-time component expansion and nested pure components,
+- children and a single default `<slot />` in pure components,
+- stateful components inside slotted content,
 - self-contained stateful components with their own model, Init, Update, and view,
 - stateful components in static positions, conditional branches, and keyed lists,
 - stateful components with internal loops and conditionals as list items,
@@ -238,7 +240,8 @@ Not supported yet:
 - controlled components, props in component Init/Update, and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
-- component children and slots,
+- children on stateful components,
+- named slots and fallback slot content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
@@ -258,13 +261,13 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Component children and slots, the preferred composition mechanism over
-   callback props.
-2. Browser JavaScript interop and first-class URL state.
-3. Actionable diagnostics with source excerpts and hints.
-4. Component commands, component-declared procedures, and props in component
+1. Browser JavaScript interop and first-class URL state.
+2. Actionable diagnostics with source excerpts and hints.
+3. Component commands, component-declared procedures, and props in component
    Init/Update.
-5. Nested stateful components.
+4. Nested stateful components.
+5. Children on stateful components, named slots, and fallback content if a
+   real use case appears.
 6. More Go statements and expressions in `Update` and commands, including
    indexing and slicing.
 7. `Batch` and `Sequence` commands.
