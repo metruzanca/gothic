@@ -338,7 +338,7 @@ func (g *gen) componentProps(comp *generator.Stateful, call *parser.ComponentCal
 		return "", nil
 	}
 	used := map[string]bool{}
-	parts := make([]string, 0, len(comp.Props))
+	values := map[string]string{}
 	for _, prop := range call.Props {
 		field, ok, err := matchPropField(comp.Props, prop.Name)
 		if err != nil {
@@ -355,12 +355,19 @@ func (g *gen) componentProps(comp *generator.Stateful, call *parser.ComponentCal
 		if err != nil {
 			return "", err
 		}
-		parts = append(parts, field.Name+": "+expr)
+		values[field.Name] = expr
 	}
+	parts := make([]string, 0, len(comp.Props))
 	for _, field := range comp.Props {
-		if !used[field.Name] {
-			return "", parser.NodeError(call, "provide all props, or make the field a pointer for optional props", "component %s: missing prop %q", call.Name, field.Name)
+		value, ok := values[field.Name]
+		if !ok {
+			if strings.HasPrefix(field.Type, "*") {
+				value = "null"
+			} else {
+				return "", parser.NodeError(call, "provide all props, or make the field a pointer for optional props", "component %s: missing prop %q", call.Name, field.Name)
+			}
 		}
+		parts = append(parts, field.Name+": "+value)
 	}
 	return "{" + strings.Join(parts, ", ") + "}", nil
 }
@@ -1355,11 +1362,16 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		}
 		return fmt.Sprintf("%s %s %s", x, e.Op.String(), y), nil
 	case *ast.UnaryExpr:
+		if e.Op == token.AND {
+			return "", g.exprErr(ctx, "use a pointer-valued model field or nil for optional props", "address-of expressions are not supported in views")
+		}
 		x, err := g.expr(e.X, ctx)
 		if err != nil {
 			return "", err
 		}
 		return e.Op.String() + x, nil
+	case *ast.StarExpr:
+		return g.expr(e.X, ctx)
 	case *ast.ParenExpr:
 		x, err := g.expr(e.X, ctx)
 		if err != nil {

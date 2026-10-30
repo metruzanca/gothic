@@ -772,6 +772,9 @@ func (g *templateGen) goPropsLiteral(comp *Stateful, call *parser.ComponentCall)
 	}
 	for _, field := range comp.Props {
 		if !used[field.Name] {
+			if strings.HasPrefix(field.Type, "*") {
+				continue
+			}
 			return "", parser.NodeError(call, "provide all props, or make the field a pointer for optional props", "component %s: missing prop %q", call.Name, field.Name)
 		}
 	}

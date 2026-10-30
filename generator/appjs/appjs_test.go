@@ -938,3 +938,151 @@ func TestComponentDestroyLifecycle(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateOptionalComponentProps(t *testing.T) {
+	appView, err := parser.Parse("box.gth", []byte(`package app
+
+view App(model Model) {
+	<div><Box /></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	box := &generator.Stateful{
+		Name: "Box", PropsType: "BoxProps",
+		Props:     []parser.Param{{Name: "Hint", Type: "*string"}},
+		MountFunc: "mountBox", CreateFunc: "createBox",
+		ModuleURL: "/_gothic/modules/box.js",
+	}
+	out, err := appjs.Generate(appView, app, appjs.Options{FileName: "box.gth", Stateful: []*generator.Stateful{box}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	if !strings.Contains(src, `{Hint: null}`) {
+		t.Errorf("optional prop should default to null\n\n%s", src)
+	}
+}
+
+func TestGenerateProvidedOptionalComponentProp(t *testing.T) {
+	appView, err := parser.Parse("box.gth", []byte(`package app
+
+view App(model Model) {
+	<div><Box hint={ model.Hint } /></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Hint *string }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	box := &generator.Stateful{
+		Name: "Box", PropsType: "BoxProps",
+		Props:     []parser.Param{{Name: "Hint", Type: "*string"}},
+		MountFunc: "mountBox", CreateFunc: "createBox",
+		ModuleURL: "/_gothic/modules/box.js",
+	}
+	out, err := appjs.Generate(appView, app, appjs.Options{FileName: "box.gth", Stateful: []*generator.Stateful{box}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `{Hint: model.Hint}`) {
+		t.Errorf("provided optional prop missing\n\n%s", out)
+	}
+}
+
+func TestGeneratePointerDeref(t *testing.T) {
+	view, err := parser.Parse("box.gth", []byte(`package ui
+
+view Box(model BoxModel, props BoxProps) {
+	<div>
+		if props.Hint != nil {
+			<p>{ *props.Hint }</p>
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("box.go", []byte(`package ui
+
+type BoxProps struct{ Hint *string }
+type BoxModel struct{}
+
+func (m BoxModel) Init() Cmd { return nil }
+func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("BoxModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Box", View: view.Templates[0], App: component, ModelJSON: `{}`,
+		PropsType: "BoxProps", Props: []parser.Param{{Name: "Hint", Type: "*string"}},
+		MountFunc: "mountBox", CreateFunc: "createBox",
+	}}, appjs.Options{FileName: "box.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`props.Hint != null`,
+		`String(props.Hint)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectAddressOfProp(t *testing.T) {
+	appView, err := parser.Parse("box.gth", []byte(`package app
+
+view App(model Model) {
+	<div><Box hint={ &model.Text } /></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Text string }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	box := &generator.Stateful{
+		Name: "Box", PropsType: "BoxProps",
+		Props:     []parser.Param{{Name: "Hint", Type: "*string"}},
+		MountFunc: "mountBox", CreateFunc: "createBox",
+		ModuleURL: "/_gothic/modules/box.js",
+	}
+	_, err = appjs.Generate(appView, app, appjs.Options{FileName: "box.gth", Stateful: []*generator.Stateful{box}})
+	if err == nil || !strings.Contains(err.Error(), "address-of expressions") {
+		t.Fatalf("error = %v", err)
+	}
+}
