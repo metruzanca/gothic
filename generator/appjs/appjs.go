@@ -785,7 +785,7 @@ async function run(cmd) {
 func (g *gen) emitInit(b *strings.Builder) error {
 	b.WriteString("function init() {\n")
 	if g.app.Init != nil {
-		ctx := &exprCtx{}
+		ctx := &exprCtx{allowJS: true}
 		for _, st := range g.app.Init.Body.List {
 			if err := g.stmt(b, st, ctx, 1); err != nil {
 				return err
@@ -798,7 +798,7 @@ func (g *gen) emitInit(b *strings.Builder) error {
 
 func (g *gen) emitUpdate(b *strings.Builder) error {
 	b.WriteString("function update(m, msg) {\n")
-	ctx := &exprCtx{inUpdate: true}
+	ctx := &exprCtx{inUpdate: true, allowJS: true}
 	for _, st := range g.app.Update.Body.List {
 		if err := g.stmt(b, st, ctx, 1); err != nil {
 			return err
@@ -813,7 +813,7 @@ func (g *gen) emitCommand(b *strings.Builder, fn *ast.FuncDecl) error {
 		return fmt.Errorf("commands with parameters are not supported yet")
 	}
 	fmt.Fprintf(b, "async function %s() {\n", fn.Name.Name)
-	ctx := &exprCtx{async: true}
+	ctx := &exprCtx{async: true, allowJS: true}
 	for _, st := range fn.Body.List {
 		if err := g.stmt(b, st, ctx, 1); err != nil {
 			return err
@@ -827,6 +827,7 @@ type exprCtx struct {
 	locals   map[string]bool
 	async    bool
 	inUpdate bool
+	allowJS  bool
 }
 
 func (g *gen) stmt(b *strings.Builder, s ast.Stmt, ctx *exprCtx, indent int) error {
@@ -1111,6 +1112,11 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 			}
 			return x + ".message", nil
 		}
+		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "js" {
+				return g.jsCall(sel.Sel.Name, e.Args, ctx)
+			}
+		}
 		fun, err := g.expr(e.Fun, ctx)
 		if err != nil {
 			return "", err
@@ -1159,13 +1165,77 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 	}
 }
 
+func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) {
+	if !ctx.allowJS {
+		return "", fmt.Errorf("js.%s can only be used in Init, Update, or commands", name)
+	}
+	parts := make([]string, len(args))
+	for i, arg := range args {
+		v, err := g.expr(arg, ctx)
+		if err != nil {
+			return "", err
+		}
+		parts[i] = v
+	}
+	switch name {
+	case "Alert":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.Alert expects one argument")
+		}
+		return fmt.Sprintf("window.alert(%s)", parts[0]), nil
+	case "Log":
+		return "console.log(" + strings.Join(parts, ", ") + ")", nil
+	case "SetTitle":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.SetTitle expects one argument")
+		}
+		return fmt.Sprintf("(document.title = String(%s))", parts[0]), nil
+	case "GetItem":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.GetItem expects one argument")
+		}
+		return fmt.Sprintf("(localStorage.getItem(%s) ?? \"\")", parts[0]), nil
+	case "SetItem":
+		if len(parts) != 2 {
+			return "", fmt.Errorf("js.SetItem expects two arguments")
+		}
+		return fmt.Sprintf("localStorage.setItem(%s, %s)", parts[0], parts[1]), nil
+	case "RemoveItem":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.RemoveItem expects one argument")
+		}
+		return fmt.Sprintf("localStorage.removeItem(%s)", parts[0]), nil
+	case "Copy":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.Copy expects one argument")
+		}
+		call := fmt.Sprintf("navigator.clipboard.writeText(%s)", parts[0])
+		if ctx.async {
+			call = "await " + call
+		}
+		return call, nil
+	case "Focus":
+		if len(parts) != 1 {
+			return "", fmt.Errorf("js.Focus expects one argument")
+		}
+		return fmt.Sprintf("document.querySelector(%s)?.focus()", parts[0]), nil
+	case "Reload":
+		if len(parts) != 0 {
+			return "", fmt.Errorf("js.Reload takes no arguments")
+		}
+		return "location.reload()", nil
+	default:
+		return "", fmt.Errorf("unknown js function %s", name)
+	}
+}
+
 func (g *gen) funcLit(e *ast.FuncLit) (string, error) {
 	if e.Type.Params != nil && len(e.Type.Params.List) > 0 {
 		return "", fmt.Errorf("command functions cannot take parameters")
 	}
 	var b strings.Builder
 	b.WriteString("async () => {\n")
-	ctx := &exprCtx{async: true}
+	ctx := &exprCtx{async: true, allowJS: true}
 	for _, st := range e.Body.List {
 		if err := g.stmt(&b, st, ctx, 1); err != nil {
 			return "", err

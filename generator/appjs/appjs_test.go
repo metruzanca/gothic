@@ -454,3 +454,94 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		}
 	}
 }
+
+func TestGenerateJSCalls(t *testing.T) {
+	view, err := parser.Parse("js.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ model.Stored }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Stored string }
+type SaveClicked struct{ Text string }
+type ClearClicked struct{}
+
+func (m Model) Init() Cmd {
+	js.SetTitle("start")
+	return nil
+}
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg := msg.(type) {
+	case SaveClicked:
+		js.SetItem("title", msg.Text)
+		m.Stored = js.GetItem("title")
+		js.SetTitle(m.Stored)
+		js.Log("saved", msg.Text)
+	case ClearClicked:
+		js.RemoveItem("title")
+		js.Alert("cleared")
+		return m, copyTitle
+	}
+	return m, nil
+}
+
+func copyTitle() Msg {
+	js.Copy("title")
+	return nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`(document.title = String("start"));`,
+		`localStorage.setItem("title", msg.Text);`,
+		`m.Stored = (localStorage.getItem("title") ?? "");`,
+		`(document.title = String(m.Stored));`,
+		`console.log("saved", msg.Text);`,
+		`localStorage.removeItem("title");`,
+		`window.alert("cleared");`,
+		`await navigator.clipboard.writeText("title");`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectJSCallsInViews(t *testing.T) {
+	view, err := parser.Parse("js.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ js.GetItem("title") }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	if err == nil || !strings.Contains(err.Error(), "only be used in Init, Update, or commands") {
+		t.Fatalf("error = %v", err)
+	}
+}
