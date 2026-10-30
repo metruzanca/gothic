@@ -58,6 +58,10 @@ type Msg = any
 // Cmd is a command that performs work and returns a message.
 type Cmd func() Msg
 
+// PropsChanged is dispatched to a stateful component when its props change.
+// Components can handle it in Update to react to new prop values.
+type PropsChanged struct{}
+
 // Model is a Bubble Tea-style application model.
 type Model interface {
 	Init() Cmd

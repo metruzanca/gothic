@@ -15,7 +15,7 @@ type AccordionClicked struct{ Index int }
 
 func (m AccordionModel) Init() gothic.Cmd { return nil }
 
-func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
+func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (AccordionModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case AccordionClicked:
 		next := msg.Index + 1
@@ -24,6 +24,10 @@ func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
 		} else {
 			m.Open = next
 		}
+	case gothic.PropsChanged:
+	}
+	if m.Open > len(items) {
+		m.Open = 0
 	}
 	return m, nil
 }

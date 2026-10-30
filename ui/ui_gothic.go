@@ -25,7 +25,7 @@ type AccordionClicked struct{ Index int }
 
 func (m AccordionModel) Init() gothic.Cmd { return nil }
 
-func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
+func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (AccordionModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case AccordionClicked:
 		next := msg.Index + 1
@@ -34,6 +34,10 @@ func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
 		} else {
 			m.Open = next
 		}
+	case gothic.PropsChanged:
+	}
+	if m.Open > len(items) {
+		m.Open = 0
 	}
 	return m, nil
 }
@@ -62,16 +66,23 @@ type DisclosureItem struct {
 
 type DisclosureModel struct {
 	Expanded bool
+	ItemID   int
 }
 
 type DisclosureToggled struct{}
 
 func (m DisclosureModel) Init() gothic.Cmd { return nil }
 
-func (m DisclosureModel) Update(msg gothic.Msg) (DisclosureModel, gothic.Cmd) {
+func (m DisclosureModel) Update(msg gothic.Msg, item DisclosureItem) (DisclosureModel, gothic.Cmd) {
 	switch msg.(type) {
 	case DisclosureToggled:
 		m.Expanded = !m.Expanded
+		m.ItemID = item.ID
+	case gothic.PropsChanged:
+		if m.ItemID != item.ID {
+			m.Expanded = false
+			m.ItemID = item.ID
+		}
 	}
 	return m, nil
 }
@@ -89,10 +100,17 @@ type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
 
-func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
+func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
+	case gothic.PropsChanged:
+	}
+	if m.Active >= len(items) {
+		m.Active = len(items) - 1
+	}
+	if m.Active < 0 {
+		m.Active = 0
 	}
 	return m, nil
 }

@@ -15,10 +15,17 @@ type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
 
-func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
+func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
+	case gothic.PropsChanged:
+	}
+	if m.Active >= len(items) {
+		m.Active = len(items) - 1
+	}
+	if m.Active < 0 {
+		m.Active = 0
 	}
 	return m, nil
 }

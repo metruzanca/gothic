@@ -10,16 +10,23 @@ type DisclosureItem struct {
 
 type DisclosureModel struct {
 	Expanded bool
+	ItemID   int
 }
 
 type DisclosureToggled struct{}
 
 func (m DisclosureModel) Init() gothic.Cmd { return nil }
 
-func (m DisclosureModel) Update(msg gothic.Msg) (DisclosureModel, gothic.Cmd) {
+func (m DisclosureModel) Update(msg gothic.Msg, item DisclosureItem) (DisclosureModel, gothic.Cmd) {
 	switch msg.(type) {
 	case DisclosureToggled:
 		m.Expanded = !m.Expanded
+		m.ItemID = item.ID
+	case gothic.PropsChanged:
+		if m.ItemID != item.ID {
+			m.Expanded = false
+			m.ItemID = item.ID
+		}
 	}
 	return m, nil
 }

@@ -52,7 +52,7 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
   renderList0(items);
   }
 
-  function update(m, msg) {
+  function update(m, msg, items) {
     switch (msg.tag) {
     case "AccordionClicked":
     {
@@ -64,19 +64,27 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
       }
       break;
     }
+    case "PropsChanged":
+    {
+      break;
+    }
+    }
+    if (m.Open > ((items) ?? []).length) {
+      m.Open = 0;
     }
     return [m, null];
   }
 
   function dispatch(msg) {
-    const result = update(model, msg);
+    const result = update(model, msg, items);
     model = result[0];
     render(model);
   }
   render(model);
   return { updateProps(nextItems) {
-    items = nextItems;
-    render(model);
+    let changed = false;
+    if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
+    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
   } };
 }
 
@@ -125,8 +133,9 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   }
   render(model);
   return { updateProps(nextLabel) {
-    label = nextLabel;
-    render(model);
+    let changed = false;
+    if (!Object.is(label, nextLabel)) { label = nextLabel; changed = true; }
+    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
   } };
 }
 
@@ -155,7 +164,7 @@ export function createCounter(id, label) {
   return wrapper;
 }
 
-const INITIAL_Disclosure = {"Expanded":false};
+const INITIAL_Disclosure = {"Expanded":false,"ItemID":0};
 
 export function mountDisclosure(root, item, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Disclosure);
@@ -192,11 +201,20 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
     textLocal(root, "0", item.Title);
   }
 
-  function update(m, msg) {
+  function update(m, msg, item) {
     switch (msg.tag) {
     case "DisclosureToggled":
     {
       m.Expanded = !m.Expanded;
+      m.ItemID = item.ID;
+      break;
+    }
+    case "PropsChanged":
+    {
+      if (m.ItemID != item.ID) {
+        m.Expanded = false;
+        m.ItemID = item.ID;
+      }
       break;
     }
     }
@@ -204,14 +222,15 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
   }
 
   function dispatch(msg) {
-    const result = update(model, msg);
+    const result = update(model, msg, item);
     model = result[0];
     render(model);
   }
   render(model);
   return { updateProps(nextItem) {
-    item = nextItem;
-    render(model);
+    let changed = false;
+    if (!Object.is(item, nextItem)) { item = nextItem; changed = true; }
+    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
   } };
 }
 
@@ -281,26 +300,37 @@ export function mountTabs(root, items, __gothicParentDispatch) {
   renderList1(items);
   }
 
-  function update(m, msg) {
+  function update(m, msg, items) {
     switch (msg.tag) {
     case "TabClicked":
     {
       m.Active = msg.Index;
       break;
     }
+    case "PropsChanged":
+    {
+      break;
+    }
+    }
+    if (m.Active >= ((items) ?? []).length) {
+      m.Active = ((items) ?? []).length - 1;
+    }
+    if (m.Active < 0) {
+      m.Active = 0;
     }
     return [m, null];
   }
 
   function dispatch(msg) {
-    const result = update(model, msg);
+    const result = update(model, msg, items);
     model = result[0];
     render(model);
   }
   render(model);
   return { updateProps(nextItems) {
-    items = nextItems;
-    render(model);
+    let changed = false;
+    if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
+    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
   } };
 }
 

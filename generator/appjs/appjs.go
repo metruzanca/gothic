@@ -172,6 +172,7 @@ type gen struct {
 	localHelpers     bool
 	allowNested      bool
 	appModule        bool
+	updateProps      []string
 }
 
 func (g *gen) helper(name string) string {
@@ -855,8 +856,83 @@ func (g *gen) emitInit(b *strings.Builder) error {
 	return nil
 }
 
+func (g *gen) updateNames() (string, string) {
+	recv, msg := "m", "msg"
+	fn := g.app.Update
+	if fn == nil {
+		return recv, msg
+	}
+	if fn.Recv != nil && len(fn.Recv.List) > 0 && len(fn.Recv.List[0].Names) > 0 {
+		recv = fn.Recv.List[0].Names[0].Name
+	}
+	if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 && len(fn.Type.Params.List[0].Names) > 0 {
+		msg = fn.Type.Params.List[0].Names[0].Name
+	}
+	return recv, msg
+}
+
+func typeText(e ast.Expr) string {
+	var b strings.Builder
+	if err := format.Node(&b, token.NewFileSet(), e); err != nil {
+		return fmt.Sprintf("%T", e)
+	}
+	return b.String()
+}
+
+func propSignature(props []parser.Param) string {
+	parts := make([]string, len(props))
+	for i, p := range props {
+		parts[i] = p.Name + " " + p.Type
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (g *gen) updatePropNames(comp *generator.Stateful) ([]string, error) {
+	fn := comp.App.Update
+	if fn == nil || fn.Type.Params == nil {
+		return nil, nil
+	}
+	type param struct {
+		name string
+		typ  string
+	}
+	var params []param
+	for _, field := range fn.Type.Params.List {
+		if len(field.Names) == 0 {
+			return nil, parser.PosError(g.appPos(fn.Pos()), "name the Update parameters", "Update parameters must be named")
+		}
+		typ := typeText(field.Type)
+		for _, name := range field.Names {
+			params = append(params, param{name: name.Name, typ: typ})
+		}
+	}
+	if len(params) == 0 {
+		return nil, parser.PosError(g.appPos(fn.Pos()), "add a message parameter", "Update must take a message parameter")
+	}
+	props := params[1:]
+	if len(props) == 0 {
+		return nil, nil
+	}
+	if len(props) != len(comp.Props) {
+		return nil, parser.PosError(g.appPos(fn.Pos()), "match the view props: Update(msg gothic.Msg, "+propSignature(comp.Props)+"), or omit them", "Update has %d prop parameters, want 0 or %d", len(props), len(comp.Props))
+	}
+	names := make([]string, len(props))
+	for i, p := range props {
+		if p.typ != comp.Props[i].Type {
+			return nil, parser.PosError(g.appPos(fn.Pos()), "match the view prop type "+comp.Props[i].Type, "Update prop %s has type %s, want %s", p.name, p.typ, comp.Props[i].Type)
+		}
+		names[i] = p.name
+	}
+	return names, nil
+}
+
 func (g *gen) emitUpdate(b *strings.Builder) error {
-	b.WriteString("function update(m, msg) {\n")
+	recv, msgName := g.updateNames()
+	params := recv + ", " + msgName
+	if len(g.updateProps) > 0 {
+		params += ", " + strings.Join(g.updateProps, ", ")
+	}
+	fmt.Fprintf(b, "function update(%s) {\n", params)
 	ctx := &exprCtx{inUpdate: true, allowJS: true}
 	for _, st := range g.app.Update.Body.List {
 		if err := g.stmt(b, st, ctx, 1); err != nil {
@@ -1141,7 +1217,11 @@ func (g *gen) typeSwitch(b *strings.Builder, s *ast.TypeSwitchStmt, ctx *exprCtx
 		for _, e := range cc.List {
 			id, ok := e.(*ast.Ident)
 			if !ok {
-				return fmt.Errorf("unsupported type switch case type")
+				if sel, ok := e.(*ast.SelectorExpr); ok {
+					id = sel.Sel
+				} else {
+					return parser.PosError(ctx.pos, "use a message type name", "unsupported type switch case %s", goExprText(e))
+				}
 			}
 			fmt.Fprintf(b, "%scase %s:\n", pad, jsString(id.Name))
 		}
@@ -1535,6 +1615,26 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		nextPropList := strings.Join(nextNames, ", ")
 
 		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
+		propParams, err := g.updatePropNames(comp)
+		if err != nil {
+			return nil, wrapFile(comp.Name, err)
+		}
+		g.updateProps = propParams
+		reserved := map[string]bool{
+			"m": true, "msg": true, "model": true, "dispatch": true, "render": true,
+			"update": true, "init": true, "emit": true, "root": true,
+			"__gothicParentDispatch": true, "props": true,
+		}
+		for _, p := range comp.Props {
+			if reserved[p.Name] {
+				return nil, parser.PosError(comp.View.NodePosition, "rename the prop", "component %s: prop %q conflicts with a generated JavaScript name", comp.Name, p.Name)
+			}
+		}
+		for _, name := range propParams {
+			if reserved[name] {
+				return nil, parser.PosError(g.appPos(comp.App.Update.Pos()), "rename the Update parameter", "component %s: Update parameter %q conflicts with a generated JavaScript name", comp.Name, name)
+			}
+		}
 		var bindings strings.Builder
 		if err := g.emitViewBindings(&bindings); err != nil {
 			return nil, wrapFile(comp.Name, err)
@@ -1554,13 +1654,27 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		b.WriteString(indentJS(bindings.String(), "  "))
 		b.WriteString(indentJS(renderCall.String(), "  "))
 		b.WriteString(indentJS(updateFn.String(), "  "))
-		fmt.Fprintf(&b, "  function dispatch(msg) {\n    const result = update(%s, msg);\n    %s = result[0];\n    render(%s);\n  }\n", modelName, modelName, modelName)
+		dispatchArgs := modelName + ", msg"
+		if len(g.updateProps) > 0 {
+			names := make([]string, len(comp.Props))
+			for i, p := range comp.Props {
+				names[i] = p.Name
+			}
+			dispatchArgs += ", " + strings.Join(names, ", ")
+		}
+		fmt.Fprintf(&b, "  function dispatch(msg) {\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n  }\n", dispatchArgs, modelName, modelName)
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
 		fmt.Fprintf(&b, "  return { updateProps(%s) {\n", nextPropList)
-		for _, p := range comp.Props {
-			fmt.Fprintf(&b, "    %s = next%s;\n", p.Name, jsTitle(p.Name))
+		if len(comp.Props) > 0 {
+			b.WriteString("    let changed = false;\n")
+			for _, p := range comp.Props {
+				fmt.Fprintf(&b, "    if (!Object.is(%s, next%s)) { %s = next%s; changed = true; }\n", p.Name, jsTitle(p.Name), p.Name, jsTitle(p.Name))
+			}
+			b.WriteString("    if (changed) { dispatch({tag: \"PropsChanged\"}); } else { render(" + modelName + "); }\n")
+		} else {
+			fmt.Fprintf(&b, "    render(%s);\n", modelName)
 		}
-		fmt.Fprintf(&b, "    render(%s);\n  } };\n}\n\n", modelName)
+		b.WriteString("  } };\n}\n\n")
 
 		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
 		locals := map[string]bool{}

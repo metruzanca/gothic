@@ -699,3 +699,106 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		t.Fatalf("hint = %q", pe.Hint)
 	}
 }
+
+func TestGenerateComponentPropsInUpdate(t *testing.T) {
+	view, err := parser.Parse("tabs.gth", []byte(`package ui
+
+view Tabs(model TabsModel, items []Tab) {
+	<div>{ model.Active }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
+
+type TabsModel struct{ Active int }
+type Tab struct{ Label string }
+type TabClicked struct{ Index int }
+
+func (m TabsModel) Init() Cmd { return nil }
+
+func (m TabsModel) Update(msg Msg, items []Tab) (TabsModel, Cmd) {
+	switch msg := msg.(type) {
+	case TabClicked:
+		m.Active = msg.Index
+	case gothic.PropsChanged:
+		if m.Active >= len(items) {
+			m.Active = len(items) - 1
+		}
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("TabsModel")
+	if component == nil {
+		t.Fatal("component app not found")
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name:       "Tabs",
+		View:       view.Templates[0],
+		App:        component,
+		ModelJSON:  `{"Active":0}`,
+		Props:      []parser.Param{{Name: "items", Type: "[]Tab"}},
+		MountFunc:  "mountTabs",
+		CreateFunc: "createTabs",
+	}}, appjs.Options{FileName: "tabs.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`function update(m, msg, items) {`,
+		`const result = update(model, msg, items);`,
+		`case "PropsChanged":`,
+		`if (!Object.is(items, nextItems))`,
+		`dispatch({tag: "PropsChanged"});`,
+		`updateProps(nextItems)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectComponentUpdatePropMismatch(t *testing.T) {
+	view, err := parser.Parse("tabs.gth", []byte(`package ui
+
+view Tabs(model TabsModel, items []Tab) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
+
+type TabsModel struct{}
+type Tab struct{}
+
+func (m TabsModel) Init() Cmd { return nil }
+func (m TabsModel) Update(msg Msg, items string) (TabsModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("TabsModel")
+	_, err = appjs.GenerateComponents([]*generator.Stateful{{
+		Name:       "Tabs",
+		View:       view.Templates[0],
+		App:        component,
+		ModelJSON:  `{}`,
+		Props:      []parser.Param{{Name: "items", Type: "[]Tab"}},
+		MountFunc:  "mountTabs",
+		CreateFunc: "createTabs",
+	}}, appjs.Options{FileName: "tabs.gth"})
+	if err == nil || !strings.Contains(err.Error(), "Update prop items has type string, want []Tab") {
+		t.Fatalf("error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "tabs.go:") {
+		t.Fatalf("error lacks a source position: %v", err)
+	}
+}
