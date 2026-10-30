@@ -296,7 +296,8 @@ Stateful components in this phase:
 - may contain their own loops and conditionals,
 - can read their view props in `Update`,
 - run `Init` once on mount,
-- cannot use commands or procedures,
+- can run commands from `Init` and `Update`,
+- cannot declare procedures or call App procedures,
 - can emit messages to the parent from event attributes,
 - cannot contain other stateful components,
 - reset their state when unmounted by a branch swap or keyed list removal.
@@ -329,8 +330,32 @@ assign new slices or structs instead of mutating in place.
 #### Component Init
 
 `Init` runs once after the first render. It can perform synchronous `js`
-effects, but it cannot take props or return a command yet. Both cases fail
-generation with a hint.
+effects and can return a command. It cannot take props yet.
+
+#### Component commands
+
+Component `Init` and `Update` can return commands. Generated commands run in the
+component's own loop and dispatch their result back to the component:
+
+```go
+func (m BoxModel) Update(msg gothic.Msg) (BoxModel, gothic.Cmd) {
+	switch msg.(type) {
+	case Load:
+		return m, func() gothic.Msg {
+			return Loaded{}
+		}
+	case Loaded:
+		m.Status = "loaded"
+	}
+	return m, nil
+}
+```
+
+Procedures remain App-owned. Component code cannot call an App procedure. Emit
+an action to the App instead, and let the App run the procedure.
+
+Unmounting destroys the component. Command results that resolve after unmount
+are ignored, and prop updates are ignored.
 
 Emit a parent message with `emit` in a component event:
 
@@ -674,6 +699,7 @@ The proof of concept supports:
   loops,
 - component Update props and `gothic.PropsChanged`,
 - component Init running once on mount,
+- component commands with unmount guards,
 - `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
 - message structs with zero or simple fields,
@@ -697,8 +723,8 @@ The proof of concept supports:
 
 Not supported yet:
 
-- component commands and component-declared procedures,
-- component Init commands and props in component Init,
+- component-declared procedures; procedures are App-only,
+- props in component Init,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,

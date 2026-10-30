@@ -117,7 +117,8 @@ The ping/pong proof of concept runs end to end.
 - Pure components accept children through a default slot; slotted events and state stay in the App.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
 - Components unmount when their branch or list item leaves, so state resets on remount.
-- Components read props in Update, react to `PropsChanged`, and run Init on mount.
+- Components read props in Update, react to `PropsChanged`, run Init on mount, and run their own commands.
+- Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Gothicbook is a small design system demo for the UI kit, including slotted form fields, a server-backed action, and a scrollable, paginated list of expandable disclosures.
@@ -137,7 +138,7 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 
 ## What comes next
 
-1. Component commands, props in component Init, and nested stateful components.
+1. Props in component Init and nested stateful components.
 2. Path parameters, nested routers, and route matching helpers.
 3. `Batch` and `Sequence` commands.
 4. Typed procedure argument validation and the no-JS form fallback.

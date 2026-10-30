@@ -213,7 +213,9 @@ Supported now:
 - stateful components with internal loops and conditionals as list items,
 - stateful components unmount and reset when a branch or list item leaves,
 - component Update can read view props and react to `PropsChanged`,
-- component Init runs once on mount, without props or commands yet,
+- component Init runs once on mount, without props yet,
+- component Init and Update commands with an unmount guard,
+- components are destroyed before their branch or list item leaves the DOM,
 - precompiled external components from installable packages,
 - the independently versioned gothic UI kit,
 - `Msg = any` with messages as ordinary Go structs,
@@ -245,8 +247,8 @@ Supported now:
 
 Not supported yet:
 
-- component commands and component-declared procedures,
-- component Init commands and props in component Init,
+- component-declared procedures; procedures are App-only,
+- props in component Init,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
@@ -272,7 +274,7 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Component commands and props in component Init.
+1. Props in component Init and prop-seeded initial state.
 2. Nested stateful components.
 3. Children on stateful components, named slots, and fallback content if a
    real use case appears.
@@ -295,13 +297,15 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful component support is still narrow: no commands, no parent events,
-  no nested stateful components, and no props in Init. Prop change detection
-  is reference-based.
+- Stateful component support is still narrow: no declared procedures, no
+  nested stateful components, and no props in Init. Prop change detection is
+  reference-based. Commands are guarded after unmount, but there is no general
+  cancellation.
 - The external UI manifest and generated UI module must stay in sync.
-- Conditional branches and keyed list removal rebuild DOM and reset component
-  state. State held only in the DOM, such as caret position, is lost. There is
-  no component destroy hook yet.
+- Conditional branches and keyed list removal rebuild DOM, destroy component
+  instances, and reset component state. State held only in the DOM, such as
+  caret position, is lost. Destroy guards late command results but does not
+  cancel the work.
 - The `js` package is deliberately small. Any new browser API is a design
   decision, not an arbitrary escape hatch.
 - The model is serialized whole. Large models may need selective state later.
