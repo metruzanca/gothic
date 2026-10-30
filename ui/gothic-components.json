@@ -8,9 +8,10 @@
       "go": "Accordion",
       "mount": "mountAccordion",
       "create": "createAccordion",
+      "props_type": "AccordionProps",
       "props": [
         {
-          "name": "items",
+          "name": "Items",
           "type": "[]AccordionItem"
         }
       ],
@@ -21,9 +22,10 @@
       "go": "Counter",
       "mount": "mountCounter",
       "create": "createCounter",
+      "props_type": "CounterProps",
       "props": [
         {
-          "name": "label",
+          "name": "Label",
           "type": "string"
         }
       ],
@@ -34,9 +36,10 @@
       "go": "Disclosure",
       "mount": "mountDisclosure",
       "create": "createDisclosure",
+      "props_type": "DisclosureProps",
       "props": [
         {
-          "name": "item",
+          "name": "Item",
           "type": "DisclosureItem"
         }
       ],
@@ -47,9 +50,10 @@
       "go": "Tabs",
       "mount": "mountTabs",
       "create": "createTabs",
+      "props_type": "TabsProps",
       "props": [
         {
-          "name": "items",
+          "name": "Items",
           "type": "[]Tab"
         }
       ],

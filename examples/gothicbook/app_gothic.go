@@ -674,7 +674,7 @@ func App(model Model) gothic.Component {
 		if err := write("</span>"); err != nil {
 			return err
 		}
-		if err := ui.Counter("c0", "", "Increment inside a slot").Render(ctx, w); err != nil {
+		if err := ui.Counter("c0", "", ui.CounterProps{Label: "Increment inside a slot"}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("</div>"); err != nil {
@@ -764,7 +764,7 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := ui.Tabs("c1", "", model.Tabs).Render(ctx, w); err != nil {
+		if err := ui.Tabs("c1", "", ui.TabsProps{Items: model.Tabs}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<div"); err != nil {
@@ -915,7 +915,7 @@ func App(model Model) gothic.Component {
 		if err := write("</h2>"); err != nil {
 			return err
 		}
-		if err := ui.Accordion("c2", "", model.Accordion).Render(ctx, w); err != nil {
+		if err := ui.Accordion("c2", "", ui.AccordionProps{Items: model.Accordion}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<div"); err != nil {
@@ -1053,7 +1053,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:if:0:then-->"); err != nil {
 				return err
 			}
-			if err := ui.Disclosure("c3", "", model.FeatureDisclosure).Render(ctx, w); err != nil {
+			if err := ui.Disclosure("c3", "", ui.DisclosureProps{Item: model.FeatureDisclosure}).Render(ctx, w); err != nil {
 				return err
 			}
 		} else {
@@ -1131,7 +1131,7 @@ func App(model Model) gothic.Component {
 			return err
 		}
 		for _, item := range model.Visible {
-			if err := ui.Disclosure("c4", fmt.Sprint(item.ID), item).Render(ctx, w); err != nil {
+			if err := ui.Disclosure("c4", fmt.Sprint(item.ID), ui.DisclosureProps{Item: item}).Render(ctx, w); err != nil {
 				return err
 			}
 		}
@@ -1334,7 +1334,7 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := ui.Counter("c5", "", "Increment on client").Render(ctx, w); err != nil {
+		if err := ui.Counter("c5", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<button data-gothic-class-7=\"ui-button-primary\" data-gothic-on=\"8\""); err != nil {

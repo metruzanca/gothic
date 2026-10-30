@@ -11,15 +11,15 @@ let model = readState("app");
 on(root, "0", "click", (event) => dispatch((null)));
 on(root, "1", "click", (event) => dispatch((null)));
 on(root, "2", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
-const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), "Increment inside a slot", dispatch);
-const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), model.Tabs, dispatch);
+const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), {Label: "Increment inside a slot"}, dispatch);
+const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), {Items: model.Tabs}, dispatch);
 on(root, "3", "click", (event) => dispatch(({tag: "FewerTabs"})));
 on(root, "4", "click", (event) => dispatch(({tag: "MoreTabs"})));
-const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), model.Accordion, dispatch);
+const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), {Items: model.Accordion}, dispatch);
 on(root, "5", "click", (event) => dispatch(({tag: "ToggleExample"})));
 on(root, "6", "click", (event) => dispatch(({tag: "PrevPage"})));
 on(root, "7", "click", (event) => dispatch(({tag: "NextPage"})));
-const c5 = mountCounter(root.querySelector('[data-gothic-component-id="c5"]'), "Increment on client", dispatch);
+const c5 = mountCounter(root.querySelector('[data-gothic-component-id="c5"]'), {Label: "Increment on client"}, dispatch);
 on(root, "8", "click", (event) => dispatch(({tag: "IncrementClicked"})));
 
 function render(model) {
@@ -35,7 +35,7 @@ function render(model) {
   ifBlock(root, "0",
     model.ShowExample,
     () => { const frag = document.createDocumentFragment();
-  const e0 = createDisclosure("c3", model.FeatureDisclosure);
+  const e0 = createDisclosure("c3", {Item: model.FeatureDisclosure});
   frag.appendChild(e0);
   return frag; },
     () => { const frag = document.createDocumentFragment();
@@ -47,17 +47,17 @@ function render(model) {
     (region) => {   const gc4Node = region.querySelector('[data-gothic-component-id="c3"]');
 let gc4Inst = gc4Node && gc4Node.__gothicInstances && gc4Node.__gothicInstances["c3"];
 if (!gc4Inst) {
-  gc4Inst = mountDisclosure(gc4Node, model.FeatureDisclosure, dispatch);
+  gc4Inst = mountDisclosure(gc4Node, {Item: model.FeatureDisclosure}, dispatch);
   gc4Node.__gothicInstances = { "c3": gc4Inst };
 } else {
-  gc4Inst.updateProps(model.FeatureDisclosure);
+  gc4Inst.updateProps({Item: model.FeatureDisclosure});
 }
  },
     (region) => {  });
-  c0.updateProps("Increment inside a slot");
-  c1.updateProps(model.Tabs);
-  c2.updateProps(model.Accordion);
-  c5.updateProps("Increment on client");
+  c0.updateProps({Label: "Increment inside a slot"});
+  c1.updateProps({Items: model.Tabs});
+  c2.updateProps({Items: model.Accordion});
+  c5.updateProps({Label: "Increment on client"});
   text(root, "0", ("Save changes"));
   text(root, "1", ("Cancel"));
   text(root, "2", ("Usage"));
@@ -89,18 +89,18 @@ if (!gc4Inst) {
   text(root, "28", ("Usage"));
   text(root, "29", (model.ServerCode));
   const renderList0 = list(root, "0", (item, __i0) => {
-  const node = createDisclosure("c4", item);
+  const node = createDisclosure("c4", {Item: item});
   node.setAttribute("data-gothic-key", String(item.ID));
-  const inst = mountDisclosure(node, item, dispatch);
+  const inst = mountDisclosure(node, {Item: item}, dispatch);
   node.__gothicInstances = { "c4": inst };
   return node;
 }, (node, item, __i0) => {
   let inst = node.__gothicInstances && node.__gothicInstances["c4"];
   if (!inst) {
-    inst = mountDisclosure(node, item, dispatch);
+    inst = mountDisclosure(node, {Item: item}, dispatch);
     node.__gothicInstances = { "c4": inst };
   } else {
-    inst.updateProps(item);
+    inst.updateProps({Item: item});
   }
 }, (item, __i0) => String(item.ID));
 renderList0(model.Visible);

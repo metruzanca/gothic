@@ -61,12 +61,13 @@ type libraryManifest struct {
 }
 
 type libraryComponent struct {
-	Name     string        `json:"name"`
-	Go       string        `json:"go"`
-	Mount    string        `json:"mount"`
-	Create   string        `json:"create"`
-	Props    []libraryProp `json:"props"`
-	Listable bool          `json:"listable"`
+	Name      string        `json:"name"`
+	Go        string        `json:"go"`
+	Mount     string        `json:"mount"`
+	Create    string        `json:"create"`
+	PropsType string        `json:"props_type,omitempty"`
+	Props     []libraryProp `json:"props"`
+	Listable  bool          `json:"listable"`
 }
 
 type libraryProp struct {
@@ -390,6 +391,36 @@ func validateApp(f *viewparser.File) error {
 	return nil
 }
 
+func statefulProps(t *viewparser.Template, messages map[string][]goapp.Field) (string, []viewparser.Param, error) {
+	if len(t.ParamList) == 1 {
+		return "", nil, nil
+	}
+	if len(t.ParamList) != 2 {
+		return "", nil, viewparser.PosError(t.NodePosition, "declare only a model and an optional props struct", "stateful component %s must take a model and one props struct", t.Name)
+	}
+	p := t.ParamList[1]
+	if p.Name != "props" {
+		return "", nil, viewparser.PosError(t.NodePosition, "name the props parameter props", "stateful component %s: props parameter must be named props, got %s", t.Name, p.Name)
+	}
+	fields, ok := messages[p.Type]
+	if !ok {
+		return "", nil, viewparser.PosError(t.NodePosition, "define type "+p.Type+" struct{...} above the component", "stateful component %s: props type %s not found", t.Name, p.Type)
+	}
+	props := make([]viewparser.Param, len(fields))
+	for i, f := range fields {
+		props[i] = viewparser.Param{Name: f.Name, Type: f.Type}
+		if strings.EqualFold(f.Name, "key") {
+			return "", nil, viewparser.PosError(t.NodePosition, "rename the Key field", "stateful component %s: props field Key is reserved for list keys", t.Name)
+		}
+		for j := 0; j < i; j++ {
+			if strings.EqualFold(props[j].Name, props[i].Name) {
+				return "", nil, viewparser.PosError(t.NodePosition, "rename one of the ambiguous fields", "stateful component %s: props fields %s and %s differ only by case", t.Name, props[j].Name, props[i].Name)
+			}
+		}
+	}
+	return p.Type, props, nil
+}
+
 func buildStateful(s *source, views []*viewparser.Template, registry viewparser.ComponentSet) ([]*generator.Stateful, error) {
 	components := make([]*generator.Stateful, 0, len(views))
 	for _, t := range views {
@@ -415,6 +446,10 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 		if err != nil {
 			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
 		}
+		propsType, props, err := statefulProps(t, s.app.Messages)
+		if err != nil {
+			return nil, err
+		}
 		name := t.Name
 		components = append(components, &generator.Stateful{
 			Name:       name,
@@ -424,7 +459,8 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 			CreateFunc: "create" + viewparserName(name),
 			ModelType:  modelType,
 			ModelJSON:  modelJSON,
-			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
+			PropsType:  propsType,
+			Props:      props,
 			View:       expanded,
 			App:        app,
 			Listable:   true,
@@ -571,10 +607,9 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
 		}
-		for _, p := range t.ParamList[1:] {
-			if p.Name == "emit" {
-				return 0, 0, fmt.Errorf("library component %s: prop %q is reserved", t.Name, p.Name)
-			}
+		propsType, props, err := statefulProps(t, sv.app.Messages)
+		if err != nil {
+			return 0, 0, err
 		}
 		expanded, err := viewparser.ExpandTemplate(t, pure)
 		if err != nil {
@@ -596,7 +631,8 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			CreateFunc: "create" + viewparserName(name),
 			ModelType:  t.ParamList[0].Type,
 			ModelJSON:  modelJSON,
-			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
+			PropsType:  propsType,
+			Props:      props,
 			View:       expanded,
 			App:        sv.app.ComponentApp(t.ParamList[0].Type),
 			Listable:   true,
@@ -637,7 +673,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		manifest.Components = append(manifest.Components, libraryComponent{
 			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
-			Props: props, Listable: comp.Listable,
+			PropsType: comp.PropsType, Props: props, Listable: comp.Listable,
 		})
 	}
 	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
@@ -684,9 +720,6 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 			statefulNames[comp.Name] = true
 			props := make([]viewparser.Param, len(comp.Props))
 			for i, p := range comp.Props {
-				if p.Name == "emit" {
-					return nil, nil, fmt.Errorf("component %s: prop %q is reserved", comp.Name, p.Name)
-				}
 				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
 			}
 			out = append(out, &generator.Stateful{
@@ -694,6 +727,7 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 				GoName:      comp.Go,
 				MountFunc:   comp.Mount,
 				CreateFunc:  comp.Create,
+				PropsType:   comp.PropsType,
 				Props:       props,
 				Listable:    comp.Listable,
 				External:    true,

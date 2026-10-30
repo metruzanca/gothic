@@ -206,6 +206,7 @@ type Model struct{ Items []Item }
 func (m Model) Init() gothic.Cmd { return nil }
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) { return m, nil }
 
+type CounterProps struct{ Label string }
 type CounterModel struct{ Count int }
 type IncClicked struct{ By int }
 
@@ -218,8 +219,8 @@ func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
 	return m, nil
 }
 
-view Counter(model CounterModel, label string) {
-	<button onclick={ IncClicked{By: 1} }>{ label }: { model.Count }</button>
+view Counter(model CounterModel, props CounterProps) {
+	<button onclick={ IncClicked{By: 1} }>{ props.Label }: { model.Count }</button>
 }
 
 view App(model Model) {
@@ -252,8 +253,8 @@ view App(model Model) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`export function mountCounter(root, label, __gothicParentDispatch)`,
-		`export function createCounter(id, label)`,
+		`export function mountCounter(root, props, __gothicParentDispatch)`,
+		`export function createCounter(id, props)`,
 		`readComponentState`,
 		`cloneInitial`,
 		`localHelpers`,

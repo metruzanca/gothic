@@ -7,6 +7,10 @@ type Tab struct {
 	Panel string
 }
 
+type TabsProps struct {
+	Items []Tab
+}
+
 type TabsModel struct {
 	Active int
 }
@@ -15,14 +19,14 @@ type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
 
-func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
 	}
-	if m.Active >= len(items) {
-		m.Active = len(items) - 1
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
 	}
 	if m.Active < 0 {
 		m.Active = 0
@@ -30,15 +34,15 @@ func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
 	return m, nil
 }
 
-view Tabs(model TabsModel, items []Tab) {
+view Tabs(model TabsModel, props TabsProps) {
 	<div class="ui-tabs">
 		<div class="ui-tabs-list">
-			for i, item := range items {
+			for i, item := range props.Items {
 				<button class="ui-tab" key={ i } class:active={ model.Active == i } onclick={ TabClicked{Index: i} }>{ item.Label }</button>
 			}
 		</div>
 		<div class="ui-tabs-panels">
-			for i, item := range items {
+			for i, item := range props.Items {
 				<div class="ui-tab-panel" key={ i } class:hidden={ model.Active != i }>{ item.Panel }</div>
 			}
 		</div>

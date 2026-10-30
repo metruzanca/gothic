@@ -8,6 +8,10 @@ type DisclosureItem struct {
 	Details []string
 }
 
+type DisclosureProps struct {
+	Item DisclosureItem
+}
+
 type DisclosureModel struct {
 	Expanded bool
 	ItemID   int
@@ -17,28 +21,28 @@ type DisclosureToggled struct{}
 
 func (m DisclosureModel) Init() gothic.Cmd { return nil }
 
-func (m DisclosureModel) Update(msg gothic.Msg, item DisclosureItem) (DisclosureModel, gothic.Cmd) {
+func (m DisclosureModel) Update(msg gothic.Msg, props DisclosureProps) (DisclosureModel, gothic.Cmd) {
 	switch msg.(type) {
 	case DisclosureToggled:
 		m.Expanded = !m.Expanded
-		m.ItemID = item.ID
+		m.ItemID = props.Item.ID
 	case gothic.PropsChanged:
-		if m.ItemID != item.ID {
+		if m.ItemID != props.Item.ID {
 			m.Expanded = false
-			m.ItemID = item.ID
+			m.ItemID = props.Item.ID
 		}
 	}
 	return m, nil
 }
 
-view Disclosure(model DisclosureModel, item DisclosureItem) {
+view Disclosure(model DisclosureModel, props DisclosureProps) {
 	<div class="ui-disclosure" class:ui-disclosure-expanded={ model.Expanded }>
 		<button class="ui-disclosure-toggle" onclick={ DisclosureToggled{} }>
-			{ item.Title }
+			{ props.Item.Title }
 		</button>
 		if model.Expanded {
 			<ul class="ui-disclosure-details">
-				for _, detail := range item.Details {
+				for _, detail := range props.Item.Details {
 					<li>{ detail }</li>
 				}
 			</ul>

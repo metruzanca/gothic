@@ -17,6 +17,10 @@ type AccordionItem struct {
 	Body  string
 }
 
+type AccordionProps struct {
+	Items []AccordionItem
+}
+
 type AccordionModel struct {
 	Open int
 }
@@ -25,7 +29,7 @@ type AccordionClicked struct{ Index int }
 
 func (m AccordionModel) Init() gothic.Cmd { return nil }
 
-func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (AccordionModel, gothic.Cmd) {
+func (m AccordionModel) Update(msg gothic.Msg, props AccordionProps) (AccordionModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case AccordionClicked:
 		next := msg.Index + 1
@@ -36,10 +40,14 @@ func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (Accordion
 		}
 	case gothic.PropsChanged:
 	}
-	if m.Open > len(items) {
+	if m.Open > len(props.Items) {
 		m.Open = 0
 	}
 	return m, nil
+}
+
+type CounterProps struct {
+	Label string
 }
 
 type CounterModel struct {
@@ -64,6 +72,10 @@ type DisclosureItem struct {
 	Details []string
 }
 
+type DisclosureProps struct {
+	Item DisclosureItem
+}
+
 type DisclosureModel struct {
 	Expanded bool
 	ItemID   int
@@ -73,15 +85,15 @@ type DisclosureToggled struct{}
 
 func (m DisclosureModel) Init() gothic.Cmd { return nil }
 
-func (m DisclosureModel) Update(msg gothic.Msg, item DisclosureItem) (DisclosureModel, gothic.Cmd) {
+func (m DisclosureModel) Update(msg gothic.Msg, props DisclosureProps) (DisclosureModel, gothic.Cmd) {
 	switch msg.(type) {
 	case DisclosureToggled:
 		m.Expanded = !m.Expanded
-		m.ItemID = item.ID
+		m.ItemID = props.Item.ID
 	case gothic.PropsChanged:
-		if m.ItemID != item.ID {
+		if m.ItemID != props.Item.ID {
 			m.Expanded = false
-			m.ItemID = item.ID
+			m.ItemID = props.Item.ID
 		}
 	}
 	return m, nil
@@ -92,6 +104,10 @@ type Tab struct {
 	Panel string
 }
 
+type TabsProps struct {
+	Items []Tab
+}
+
 type TabsModel struct {
 	Active int
 }
@@ -100,14 +116,14 @@ type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
 
-func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
 	}
-	if m.Active >= len(items) {
-		m.Active = len(items) - 1
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
 	}
 	if m.Active < 0 {
 		m.Active = 0
@@ -115,7 +131,7 @@ func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
 	return m, nil
 }
 
-func __gothicAccordionView(model AccordionModel, items []AccordionItem) gothic.Component {
+func __gothicAccordionView(model AccordionModel, props AccordionProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -139,7 +155,7 @@ func __gothicAccordionView(model AccordionModel, items []AccordionItem) gothic.C
 		if err := write("<!--g:each:0:open-->"); err != nil {
 			return err
 		}
-		for i, item := range items {
+		for i, item := range props.Items {
 			if err := write("<div"); err != nil {
 				return err
 			}
@@ -228,7 +244,7 @@ func __gothicAccordionView(model AccordionModel, items []AccordionItem) gothic.C
 	})
 }
 
-func Accordion(id string, key string, items []AccordionItem) gothic.Component {
+func Accordion(id string, key string, props AccordionProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model AccordionModel
 		stateJSON, err := json.Marshal(model)
@@ -267,7 +283,7 @@ func Accordion(id string, key string, items []AccordionItem) gothic.Component {
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicAccordionView(model, items).Render(ctx, w); err != nil {
+		if err := __gothicAccordionView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")
@@ -275,7 +291,7 @@ func Accordion(id string, key string, items []AccordionItem) gothic.Component {
 	})
 }
 
-func __gothicCounterView(model CounterModel, label string) gothic.Component {
+func __gothicCounterView(model CounterModel, props CounterProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -316,7 +332,7 @@ func __gothicCounterView(model CounterModel, label string) gothic.Component {
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint((label)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((props.Label)))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {
@@ -356,7 +372,7 @@ func __gothicCounterView(model CounterModel, label string) gothic.Component {
 	})
 }
 
-func Counter(id string, key string, label string) gothic.Component {
+func Counter(id string, key string, props CounterProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model CounterModel
 		stateJSON, err := json.Marshal(model)
@@ -395,7 +411,7 @@ func Counter(id string, key string, label string) gothic.Component {
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicCounterView(model, label).Render(ctx, w); err != nil {
+		if err := __gothicCounterView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")
@@ -403,7 +419,7 @@ func Counter(id string, key string, label string) gothic.Component {
 	})
 }
 
-func __gothicDisclosureView(model DisclosureModel, item DisclosureItem) gothic.Component {
+func __gothicDisclosureView(model DisclosureModel, props DisclosureProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -444,7 +460,7 @@ func __gothicDisclosureView(model DisclosureModel, item DisclosureItem) gothic.C
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint(props.Item.Title))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {
@@ -475,7 +491,7 @@ func __gothicDisclosureView(model DisclosureModel, item DisclosureItem) gothic.C
 			if err := write("<!--g:each:0:open-->"); err != nil {
 				return err
 			}
-			for _, detail := range item.Details {
+			for _, detail := range props.Item.Details {
 				if err := write("<li>"); err != nil {
 					return err
 				}
@@ -513,7 +529,7 @@ func __gothicDisclosureView(model DisclosureModel, item DisclosureItem) gothic.C
 	})
 }
 
-func Disclosure(id string, key string, item DisclosureItem) gothic.Component {
+func Disclosure(id string, key string, props DisclosureProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model DisclosureModel
 		stateJSON, err := json.Marshal(model)
@@ -552,7 +568,7 @@ func Disclosure(id string, key string, item DisclosureItem) gothic.Component {
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicDisclosureView(model, item).Render(ctx, w); err != nil {
+		if err := __gothicDisclosureView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")
@@ -560,7 +576,7 @@ func Disclosure(id string, key string, item DisclosureItem) gothic.Component {
 	})
 }
 
-func __gothicTabsView(model TabsModel, items []Tab) gothic.Component {
+func __gothicTabsView(model TabsModel, props TabsProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -596,7 +612,7 @@ func __gothicTabsView(model TabsModel, items []Tab) gothic.Component {
 		if err := write("<!--g:each:0:open-->"); err != nil {
 			return err
 		}
-		for i, item := range items {
+		for i, item := range props.Items {
 			if err := write("<button data-gothic-class-0=\"active\" data-gothic-on=\"0\""); err != nil {
 				return err
 			}
@@ -657,7 +673,7 @@ func __gothicTabsView(model TabsModel, items []Tab) gothic.Component {
 		if err := write("<!--g:each:1:open-->"); err != nil {
 			return err
 		}
-		for i, item := range items {
+		for i, item := range props.Items {
 			if err := write("<div data-gothic-class-1=\"hidden\""); err != nil {
 				return err
 			}
@@ -710,7 +726,7 @@ func __gothicTabsView(model TabsModel, items []Tab) gothic.Component {
 	})
 }
 
-func Tabs(id string, key string, items []Tab) gothic.Component {
+func Tabs(id string, key string, props TabsProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model TabsModel
 		stateJSON, err := json.Marshal(model)
@@ -749,7 +765,7 @@ func Tabs(id string, key string, items []Tab) gothic.Component {
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicTabsView(model, items).Render(ctx, w); err != nil {
+		if err := __gothicTabsView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")

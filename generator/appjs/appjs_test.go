@@ -349,12 +349,12 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 func TestGenerateComponentWithLoopsAndConditionals(t *testing.T) {
 	view, err := parser.Parse("disclosure.gth", []byte(`package ui
 
-view Disclosure(model DisclosureModel, title string, details []string) {
+view Disclosure(model DisclosureModel, props DisclosureProps) {
 	<div class="ui-disclosure">
-		<button onclick={ DisclosureToggled{} }>{ title }</button>
+		<button onclick={ DisclosureToggled{} }>{ props.Title }</button>
 		if model.Expanded {
 			<ul>
-				for _, detail := range details {
+				for _, detail := range props.Details {
 					<li>{ detail }</li>
 				}
 			</ul>
@@ -367,6 +367,7 @@ view Disclosure(model DisclosureModel, title string, details []string) {
 	}
 	app, err := goapp.ParseComponents("ui.go", []byte(`package ui
 
+type DisclosureProps struct{ Title string; Details []string }
 type DisclosureModel struct{ Expanded bool }
 type DisclosureToggled struct{}
 
@@ -385,9 +386,10 @@ func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil 
 		View:      view.Templates[0],
 		App:       componentApp,
 		ModelJSON: `{"Expanded":false}`,
+		PropsType: "DisclosureProps",
 		Props: []parser.Param{
-			{Name: "title", Type: "string"},
-			{Name: "details", Type: "[]string"},
+			{Name: "Title", Type: "string"},
+			{Name: "Details", Type: "[]string"},
 		},
 		MountFunc:  "mountDisclosure",
 		CreateFunc: "createDisclosure",
@@ -397,7 +399,7 @@ func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil 
 	}
 	src := string(out)
 	for _, want := range []string{
-		`export function createDisclosure(id, title, details)`,
+		`export function createDisclosure(id, props)`,
 		`document.createComment("g:if:0:open")`,
 		`document.createComment("g:each:0:open")`,
 		`data-gothic-component-id`,
@@ -703,7 +705,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 func TestGenerateComponentPropsInUpdate(t *testing.T) {
 	view, err := parser.Parse("tabs.gth", []byte(`package ui
 
-view Tabs(model TabsModel, items []Tab) {
+view Tabs(model TabsModel, props TabsProps) {
 	<div>{ model.Active }</div>
 }
 `))
@@ -712,19 +714,20 @@ view Tabs(model TabsModel, items []Tab) {
 	}
 	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
 
+type TabsProps struct{ Items []Tab }
 type TabsModel struct{ Active int }
 type Tab struct{ Label string }
 type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() Cmd { return nil }
 
-func (m TabsModel) Update(msg Msg, items []Tab) (TabsModel, Cmd) {
+func (m TabsModel) Update(msg Msg, props TabsProps) (TabsModel, Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
-		if m.Active >= len(items) {
-			m.Active = len(items) - 1
+		if m.Active >= len(props.Items) {
+			m.Active = len(props.Items) - 1
 		}
 	}
 	return m, nil
@@ -742,7 +745,8 @@ func (m TabsModel) Update(msg Msg, items []Tab) (TabsModel, Cmd) {
 		View:       view.Templates[0],
 		App:        component,
 		ModelJSON:  `{"Active":0}`,
-		Props:      []parser.Param{{Name: "items", Type: "[]Tab"}},
+		PropsType:  "TabsProps",
+		Props:      []parser.Param{{Name: "Items", Type: "[]Tab"}},
 		MountFunc:  "mountTabs",
 		CreateFunc: "createTabs",
 	}}, appjs.Options{FileName: "tabs.gth"})
@@ -751,12 +755,12 @@ func (m TabsModel) Update(msg Msg, items []Tab) (TabsModel, Cmd) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`function update(m, msg, items) {`,
-		`const result = update(model, msg, items);`,
+		`function update(m, msg, props) {`,
+		`const result = update(model, msg, props);`,
 		`case "PropsChanged":`,
-		`if (!Object.is(items, nextItems))`,
+		`if (!Object.is(props.Items, nextProps.Items))`,
 		`dispatch({tag: "PropsChanged"});`,
-		`updateProps(nextItems)`,
+		`updateProps(nextProps)`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -767,7 +771,7 @@ func (m TabsModel) Update(msg Msg, items []Tab) (TabsModel, Cmd) {
 func TestRejectComponentUpdatePropMismatch(t *testing.T) {
 	view, err := parser.Parse("tabs.gth", []byte(`package ui
 
-view Tabs(model TabsModel, items []Tab) {
+view Tabs(model TabsModel, props TabsProps) {
 	<div></div>
 }
 `))
@@ -776,11 +780,12 @@ view Tabs(model TabsModel, items []Tab) {
 	}
 	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
 
+type TabsProps struct{ Items []Tab }
 type TabsModel struct{}
 type Tab struct{}
 
 func (m TabsModel) Init() Cmd { return nil }
-func (m TabsModel) Update(msg Msg, items string) (TabsModel, Cmd) { return m, nil }
+func (m TabsModel) Update(msg Msg, props string) (TabsModel, Cmd) { return m, nil }
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -791,11 +796,12 @@ func (m TabsModel) Update(msg Msg, items string) (TabsModel, Cmd) { return m, ni
 		View:       view.Templates[0],
 		App:        component,
 		ModelJSON:  `{}`,
-		Props:      []parser.Param{{Name: "items", Type: "[]Tab"}},
+		PropsType:  "TabsProps",
+		Props:      []parser.Param{{Name: "Items", Type: "[]Tab"}},
 		MountFunc:  "mountTabs",
 		CreateFunc: "createTabs",
 	}}, appjs.Options{FileName: "tabs.gth"})
-	if err == nil || !strings.Contains(err.Error(), "Update prop items has type string, want []Tab") {
+	if err == nil || !strings.Contains(err.Error(), "Update prop props has type string, want TabsProps") {
 		t.Fatalf("error = %v", err)
 	}
 	if !strings.Contains(err.Error(), "tabs.go:") {

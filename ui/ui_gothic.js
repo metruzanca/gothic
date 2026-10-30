@@ -14,7 +14,7 @@ function readComponentState(root) {
 
 const INITIAL_Accordion = {"Open":0};
 
-export function mountAccordion(root, items, __gothicParentDispatch) {
+export function mountAccordion(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Accordion);
   let alive = true;
   function emit(msg) {
@@ -50,10 +50,10 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
     classToggleLocal(node, "0", model.Open != i + 1);
     textLocal(node, "1", item.Body);
   }, (item, i) => String(i));
-  renderList0(items);
+  renderList0(props.Items);
   }
 
-  function update(m, msg, items) {
+  function update(m, msg, props) {
     switch (msg.tag) {
     case "AccordionClicked":
     {
@@ -70,7 +70,7 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
       break;
     }
     }
-    if (m.Open > ((items) ?? []).length) {
+    if (m.Open > ((props.Items) ?? []).length) {
       m.Open = 0;
     }
     return [m, null];
@@ -82,7 +82,7 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
 
   function dispatch(msg) {
     if (!alive) return;
-    const result = update(model, msg, items);
+    const result = update(model, msg, props);
     model = result[0];
     render(model);
     if (result[1]) run(result[1]);
@@ -94,15 +94,15 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
   }
   render(model);
   run(init());
-  return { updateProps(nextItems) {
+  return { updateProps(nextProps) {
     if (!alive) return;
     let changed = false;
-    if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
-    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
+    if (!Object.is(props.Items, nextProps.Items)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
   }, destroy() { alive = false; } };
 }
 
-export function createAccordion(id, items) {
+export function createAccordion(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "Accordion");
   wrapper.setAttribute('data-gothic-component-id', id);
@@ -117,7 +117,7 @@ export function createAccordion(id, items) {
 
 const INITIAL_Counter = {"Count":0};
 
-export function mountCounter(root, label, __gothicParentDispatch) {
+export function mountCounter(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Counter);
   let alive = true;
   function emit(msg) {
@@ -126,7 +126,7 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   onLocal(root, "0", "click", (event) => dispatch(({tag: "CounterClicked", By: 1})));
   function render(model) {
     classToggleLocal(root, "0", (true));
-    textLocal(root, "0", (label));
+    textLocal(root, "0", (props.Label));
     textLocal(root, "1", model.Count);
   }
 
@@ -159,15 +159,15 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   }
   render(model);
   run(init());
-  return { updateProps(nextLabel) {
+  return { updateProps(nextProps) {
     if (!alive) return;
     let changed = false;
-    if (!Object.is(label, nextLabel)) { label = nextLabel; changed = true; }
-    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
+    if (!Object.is(props.Label, nextProps.Label)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
   }, destroy() { alive = false; } };
 }
 
-export function createCounter(id, label) {
+export function createCounter(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "Counter");
   wrapper.setAttribute('data-gothic-component-id', id);
@@ -179,7 +179,7 @@ export function createCounter(id, label) {
     e1.setAttribute("data-gothic-class-0", "ui-button-primary");
     e1.setAttribute("data-gothic-on", "0");
     e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String((label))));
+    e1.appendChild(document.createTextNode(String((props.Label))));
     e1.appendChild(document.createComment("g:text:0:close"));
     e0.appendChild(e1);
     const e2 = document.createElement("strong");
@@ -194,7 +194,7 @@ export function createCounter(id, label) {
 
 const INITIAL_Disclosure = {"Expanded":false,"ItemID":0};
 
-export function mountDisclosure(root, item, __gothicParentDispatch) {
+export function mountDisclosure(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Disclosure);
   let alive = true;
   function emit(msg) {
@@ -224,25 +224,25 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
   }, (node, detail, __i0) => {
     textLocal(node, "1", detail);
   });
-  renderList0(item.Details);
+  renderList0(props.Item.Details);
    },
       (region) => {  });
-    textLocal(root, "0", item.Title);
+    textLocal(root, "0", props.Item.Title);
   }
 
-  function update(m, msg, item) {
+  function update(m, msg, props) {
     switch (msg.tag) {
     case "DisclosureToggled":
     {
       m.Expanded = !m.Expanded;
-      m.ItemID = item.ID;
+      m.ItemID = props.Item.ID;
       break;
     }
     case "PropsChanged":
     {
-      if (m.ItemID != item.ID) {
+      if (m.ItemID != props.Item.ID) {
         m.Expanded = false;
-        m.ItemID = item.ID;
+        m.ItemID = props.Item.ID;
       }
       break;
     }
@@ -256,7 +256,7 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
 
   function dispatch(msg) {
     if (!alive) return;
-    const result = update(model, msg, item);
+    const result = update(model, msg, props);
     model = result[0];
     render(model);
     if (result[1]) run(result[1]);
@@ -268,15 +268,15 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
   }
   render(model);
   run(init());
-  return { updateProps(nextItem) {
+  return { updateProps(nextProps) {
     if (!alive) return;
     let changed = false;
-    if (!Object.is(item, nextItem)) { item = nextItem; changed = true; }
-    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
+    if (!Object.is(props.Item, nextProps.Item)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
   }, destroy() { alive = false; } };
 }
 
-export function createDisclosure(id, item) {
+export function createDisclosure(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "Disclosure");
   wrapper.setAttribute('data-gothic-component-id', id);
@@ -288,7 +288,7 @@ export function createDisclosure(id, item) {
     e1.setAttribute("class", "ui-disclosure-toggle");
     e1.setAttribute("data-gothic-on", "0");
     e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String(item.Title)));
+    e1.appendChild(document.createTextNode(String(props.Item.Title)));
     e1.appendChild(document.createComment("g:text:0:close"));
     e0.appendChild(e1);
     e0.appendChild(document.createComment("g:if:0:open"));
@@ -299,7 +299,7 @@ export function createDisclosure(id, item) {
 
 const INITIAL_Tabs = {"Active":0};
 
-export function mountTabs(root, items, __gothicParentDispatch) {
+export function mountTabs(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Tabs);
   let alive = true;
   function emit(msg) {
@@ -324,7 +324,7 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     onLocal(node, "0", "click", (event) => dispatch({tag: "TabClicked", Index: i}));
     textLocal(node, "0", item.Label);
   }, (item, i) => String(i));
-  renderList0(items);
+  renderList0(props.Items);
     const renderList1 = listLocal(root, "1", (item, i) => {
     const e0 = document.createElement("div");
     e0.setAttribute("data-gothic-key", String(i));
@@ -340,10 +340,10 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     classToggleLocal(node, "1", model.Active != i);
     textLocal(node, "1", item.Panel);
   }, (item, i) => String(i));
-  renderList1(items);
+  renderList1(props.Items);
   }
 
-  function update(m, msg, items) {
+  function update(m, msg, props) {
     switch (msg.tag) {
     case "TabClicked":
     {
@@ -355,8 +355,8 @@ export function mountTabs(root, items, __gothicParentDispatch) {
       break;
     }
     }
-    if (m.Active >= ((items) ?? []).length) {
-      m.Active = ((items) ?? []).length - 1;
+    if (m.Active >= ((props.Items) ?? []).length) {
+      m.Active = ((props.Items) ?? []).length - 1;
     }
     if (m.Active < 0) {
       m.Active = 0;
@@ -370,7 +370,7 @@ export function mountTabs(root, items, __gothicParentDispatch) {
 
   function dispatch(msg) {
     if (!alive) return;
-    const result = update(model, msg, items);
+    const result = update(model, msg, props);
     model = result[0];
     render(model);
     if (result[1]) run(result[1]);
@@ -382,15 +382,15 @@ export function mountTabs(root, items, __gothicParentDispatch) {
   }
   render(model);
   run(init());
-  return { updateProps(nextItems) {
+  return { updateProps(nextProps) {
     if (!alive) return;
     let changed = false;
-    if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
-    if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
+    if (!Object.is(props.Items, nextProps.Items)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
   }, destroy() { alive = false; } };
 }
 
-export function createTabs(id, items) {
+export function createTabs(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "Tabs");
   wrapper.setAttribute('data-gothic-component-id', id);

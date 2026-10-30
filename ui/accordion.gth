@@ -7,6 +7,10 @@ type AccordionItem struct {
 	Body  string
 }
 
+type AccordionProps struct {
+	Items []AccordionItem
+}
+
 type AccordionModel struct {
 	Open int
 }
@@ -15,7 +19,7 @@ type AccordionClicked struct{ Index int }
 
 func (m AccordionModel) Init() gothic.Cmd { return nil }
 
-func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (AccordionModel, gothic.Cmd) {
+func (m AccordionModel) Update(msg gothic.Msg, props AccordionProps) (AccordionModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case AccordionClicked:
 		next := msg.Index + 1
@@ -26,15 +30,15 @@ func (m AccordionModel) Update(msg gothic.Msg, items []AccordionItem) (Accordion
 		}
 	case gothic.PropsChanged:
 	}
-	if m.Open > len(items) {
+	if m.Open > len(props.Items) {
 		m.Open = 0
 	}
 	return m, nil
 }
 
-view Accordion(model AccordionModel, items []AccordionItem) {
+view Accordion(model AccordionModel, props AccordionProps) {
 	<div class="ui-accordion">
-		for i, item := range items {
+		for i, item := range props.Items {
 			<div class="ui-accordion-item" key={ i }>
 				<button class="ui-accordion-header" onclick={ AccordionClicked{Index: i} }>{ item.Title }</button>
 				<div class="ui-accordion-body" class:hidden={ model.Open != i + 1 }>{ item.Body }</div>

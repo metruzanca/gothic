@@ -47,6 +47,7 @@ type Stateful struct {
 	CreateFunc  string
 	ModelType   string
 	ModelJSON   string
+	PropsType   string
 	Props       []parser.Param
 	View        *parser.Template
 	App         *goapp.App
@@ -55,6 +56,18 @@ type Stateful struct {
 	ImportAlias string
 	ImportPath  string
 	ModuleURL   string
+}
+
+// PropsGoType returns the Go type used for the component props, qualified for
+// external components.
+func (c *Stateful) PropsGoType() string {
+	if c.PropsType == "" {
+		return ""
+	}
+	if c.External {
+		return c.ImportAlias + "." + c.PropsType
+	}
+	return c.PropsType
 }
 
 // ComponentsModuleFileName returns the generated JavaScript file name for app components.
@@ -692,20 +705,13 @@ func (g *templateGen) emitWrite(b *strings.Builder, s string) {
 }
 
 func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
-	props := comp.Props
-	propSig := ""
-	propNames := ""
-	if len(props) > 0 {
-		parts := make([]string, len(props))
-		names := make([]string, len(props))
-		for i, p := range props {
-			parts[i] = p.Name + " " + p.Type
-			names[i] = p.Name
-		}
-		propSig = ", " + strings.Join(parts, ", ")
-		propNames = ", " + strings.Join(names, ", ")
+	propsSig := ""
+	viewProps := ""
+	if comp.PropsType != "" {
+		propsSig = ", props " + comp.PropsGoType()
+		viewProps = ", props"
 	}
-	fmt.Fprintf(b, "func %s(id string, key string%s) gothic.Component {\n", comp.GoName, propSig)
+	fmt.Fprintf(b, "func %s(id string, key string%s) gothic.Component {\n", comp.GoName, propsSig)
 	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
 	fmt.Fprintf(b, "\t\tvar model %s\n", comp.ModelType)
 	b.WriteString("\t\tstateJSON, err := json.Marshal(model)\n")
@@ -722,8 +728,54 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 	b.WriteString("\t\tif _, err := io.WriteString(w, \"<script type=\\\"application/json\\\" data-gothic-component-state>\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
 	b.WriteString("\t\tif _, err := w.Write(stateJSON); err != nil {\n\t\t\treturn err\n\t\t}\n")
 	b.WriteString("\t\tif _, err := io.WriteString(w, \"</script>\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
-	fmt.Fprintf(b, "\t\tif err := %s(model%s).Render(ctx, w); err != nil {\n\t\t\treturn err\n\t\t}\n", comp.ViewName, propNames)
+	fmt.Fprintf(b, "\t\tif err := %s(model%s).Render(ctx, w); err != nil {\n\t\t\treturn err\n\t\t}\n", comp.ViewName, viewProps)
 	b.WriteString("\t\t_, err = io.WriteString(w, \"</div>\")\n\t\treturn err\n\t})\n}\n\n")
+}
+
+func matchPropField(fields []parser.Param, tag string) (parser.Param, bool, error) {
+	var match parser.Param
+	found := 0
+	for _, f := range fields {
+		if strings.EqualFold(f.Name, tag) {
+			match = f
+			found++
+		}
+	}
+	if found > 1 {
+		return parser.Param{}, false, fmt.Errorf("ambiguous prop %q", tag)
+	}
+	return match, found == 1, nil
+}
+
+func (g *templateGen) goPropsLiteral(comp *Stateful, call *parser.ComponentCall) (string, error) {
+	if comp.PropsType == "" {
+		if len(call.Props) > 0 {
+			return "", parser.NodeError(call, "check the component signature", "component %s does not accept props", call.Name)
+		}
+		return "", nil
+	}
+	used := map[string]bool{}
+	parts := make([]string, 0, len(comp.Props))
+	for _, prop := range call.Props {
+		field, ok, err := matchPropField(comp.Props, prop.Name)
+		if err != nil {
+			return "", parser.NodeError(call, "rename the prop field to avoid ambiguity", "component %s: %v", call.Name, err)
+		}
+		if !ok {
+			return "", parser.NodeError(call, "check the props struct fields", "component %s: unknown prop %q", call.Name, prop.Name)
+		}
+		if used[field.Name] {
+			return "", parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, prop.Name)
+		}
+		used[field.Name] = true
+		parts = append(parts, field.Name+": "+goExpr(prop.Value))
+	}
+	for _, field := range comp.Props {
+		if !used[field.Name] {
+			return "", parser.NodeError(call, "provide all props, or make the field a pointer for optional props", "component %s: missing prop %q", call.Name, field.Name)
+		}
+	}
+	return comp.PropsGoType() + "{" + strings.Join(parts, ", ") + "}", nil
 }
 
 func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.ComponentCall) error {
@@ -734,36 +786,21 @@ func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.Compone
 	if comp == nil {
 		return parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
-	props := map[string]ast.Expr{}
-	for _, p := range call.Props {
-		if _, ok := props[p.Name]; ok {
-			return parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, p.Name)
-		}
-		props[p.Name] = p.Value
-	}
-	args := make([]string, 0, len(comp.Props)+2)
 	id := fmt.Sprintf("c%d", g.componentN)
 	g.componentN++
-	args = append(args, strconv.Quote(id))
+	args := []string{strconv.Quote(id)}
 	if call.Key != nil {
 		g.usesFmt = true
 		args = append(args, "fmt.Sprint("+goExpr(call.Key)+")")
 	} else {
 		args = append(args, `""`)
 	}
-	seen := map[string]bool{}
-	for _, p := range comp.Props {
-		v, ok := props[p.Name]
-		if !ok {
-			return parser.NodeError(call, "check the component signature", "component %s: missing prop %q", call.Name, p.Name)
-		}
-		seen[p.Name] = true
-		args = append(args, goExpr(v))
+	props, err := g.goPropsLiteral(comp, call)
+	if err != nil {
+		return err
 	}
-	for name := range props {
-		if !seen[name] {
-			return parser.NodeError(call, "check the component signature", "component %s: unknown prop %q", call.Name, name)
-		}
+	if comp.PropsType != "" {
+		args = append(args, props)
 	}
 	callee := comp.GoName
 	if comp.External {

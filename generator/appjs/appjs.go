@@ -175,7 +175,7 @@ type gen struct {
 	localHelpers     bool
 	allowNested      bool
 	appModule        bool
-	updateProps      []string
+	updatePropsParam string
 	allowProcedures  bool
 	procedureNames   map[string]bool
 }
@@ -299,7 +299,7 @@ func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall
 	if comp == nil {
 		return parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
-	args, err := g.componentArgs(comp, call, exprCtx{locals: ctx.locals, pos: call.NodePosition})
+	props, err := g.componentProps(comp, call, exprCtx{locals: ctx.locals, pos: call.NodePosition})
 	if err != nil {
 		return err
 	}
@@ -308,40 +308,61 @@ func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall
 	id := fmt.Sprintf("c%d", idx)
 	inst := id
 	mountCall := comp.MountFunc + "(root.querySelector('[data-gothic-component-id=\"" + id + "\"]')"
-	if args != "" {
-		mountCall += ", " + args
-	}
+	mountCall += commaArgs(props)
 	mountCall += ", dispatch)"
 	fmt.Fprintf(b, "const %s = %s;\n", inst, mountCall)
-	g.componentUpdates = append(g.componentUpdates, fmt.Sprintf("%s.updateProps(%s);", inst, args))
+	g.componentUpdates = append(g.componentUpdates, fmt.Sprintf("%s.updateProps(%s);", inst, props))
 	return nil
 }
 
-func (g *gen) componentArgs(comp *generator.Stateful, call *parser.ComponentCall, ctx exprCtx) (string, error) {
-	props := map[string]ast.Expr{}
-	for _, p := range call.Props {
-		if _, exists := props[p.Name]; exists {
-			return "", parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, p.Name)
+func matchPropField(fields []parser.Param, tag string) (parser.Param, bool, error) {
+	var match parser.Param
+	found := 0
+	for _, f := range fields {
+		if strings.EqualFold(f.Name, tag) {
+			match = f
+			found++
 		}
-		props[p.Name] = p.Value
 	}
-	args := make([]string, 0, len(comp.Props))
-	for _, p := range comp.Props {
-		v, ok := props[p.Name]
-		if !ok {
-			return "", parser.NodeError(call, "check the component signature", "component %s: missing prop %q", call.Name, p.Name)
+	if found > 1 {
+		return parser.Param{}, false, fmt.Errorf("ambiguous prop %q", tag)
+	}
+	return match, found == 1, nil
+}
+
+func (g *gen) componentProps(comp *generator.Stateful, call *parser.ComponentCall, ctx exprCtx) (string, error) {
+	if comp.PropsType == "" {
+		if len(call.Props) > 0 {
+			return "", parser.NodeError(call, "check the component signature", "component %s does not accept props", call.Name)
 		}
-		expr, err := g.expr(v, ctx)
+		return "", nil
+	}
+	used := map[string]bool{}
+	parts := make([]string, 0, len(comp.Props))
+	for _, prop := range call.Props {
+		field, ok, err := matchPropField(comp.Props, prop.Name)
+		if err != nil {
+			return "", parser.NodeError(call, "rename the prop field to avoid ambiguity", "component %s: %v", call.Name, err)
+		}
+		if !ok {
+			return "", parser.NodeError(call, "check the props struct fields", "component %s: unknown prop %q", call.Name, prop.Name)
+		}
+		if used[field.Name] {
+			return "", parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, prop.Name)
+		}
+		used[field.Name] = true
+		expr, err := g.expr(prop.Value, ctx)
 		if err != nil {
 			return "", err
 		}
-		args = append(args, expr)
-		delete(props, p.Name)
+		parts = append(parts, field.Name+": "+expr)
 	}
-	for name := range props {
-		return "", parser.NodeError(call, "check the component signature", "component %s: unknown prop %q", call.Name, name)
+	for _, field := range comp.Props {
+		if !used[field.Name] {
+			return "", parser.NodeError(call, "provide all props, or make the field a pointer for optional props", "component %s: missing prop %q", call.Name, field.Name)
+		}
 	}
-	return strings.Join(args, ", "), nil
+	return "{" + strings.Join(parts, ", ") + "}", nil
 }
 
 func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
@@ -434,7 +455,7 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 		indexName = fmt.Sprintf("__i%d", idx)
 	}
 	locals := map[string]bool{f.Value: true, indexName: true}
-	args, err := g.componentArgs(comp, call, exprCtx{locals: locals, pos: call.NodePosition})
+	props, err := g.componentProps(comp, call, exprCtx{locals: locals, pos: call.NodePosition})
 	if err != nil {
 		return "", err
 	}
@@ -448,15 +469,15 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "const %s = %s(%s, %s, (%s, %s) => {\n", renderName, g.helper("list"), rootExpr, jsString(fmt.Sprintf("%d", idx)), f.Value, indexName)
-	fmt.Fprintf(&b, "  const node = %s(%s%s);\n", comp.CreateFunc, jsString(compID), commaArgs(args))
+	fmt.Fprintf(&b, "  const node = %s(%s%s);\n", comp.CreateFunc, jsString(compID), commaArgs(props))
 	if keyExpr != "" {
 		fmt.Fprintf(&b, "  node.setAttribute(\"data-gothic-key\", String(%s));\n", keyExpr)
 	}
-	fmt.Fprintf(&b, "  const inst = %s(node%s, dispatch);\n", comp.MountFunc, commaArgs(args))
+	fmt.Fprintf(&b, "  const inst = %s(node%s, dispatch);\n", comp.MountFunc, commaArgs(props))
 	fmt.Fprintf(&b, "  node.__gothicInstances = { %s: inst };\n", jsString(compID))
 	b.WriteString("  return node;\n}, (node, " + f.Value + ", " + indexName + ") => {\n")
 	fmt.Fprintf(&b, "  let inst = node.__gothicInstances && node.__gothicInstances[%s];\n", jsString(compID))
-	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, dispatch);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(args), jsString(compID), args)
+	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, dispatch);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(props), jsString(compID), props)
 	b.WriteString("}")
 	if keyExpr != "" {
 		fmt.Fprintf(&b, ", (%s, %s) => String(%s)", f.Value, indexName, keyExpr)
@@ -559,7 +580,7 @@ func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string
 	if comp == nil {
 		return "", "", "", parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
-	args, err := g.componentArgs(comp, call, ctx)
+	props, err := g.componentProps(comp, call, ctx)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -572,7 +593,7 @@ func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string
 	g.varN++
 
 	var build strings.Builder
-	fmt.Fprintf(&build, "const %s = %s(%s%s);\n", varName, comp.CreateFunc, jsString(id), commaArgs(args))
+	fmt.Fprintf(&build, "const %s = %s(%s%s);\n", varName, comp.CreateFunc, jsString(id), commaArgs(props))
 	if call.Key != nil {
 		key, err := g.expr(call.Key, ctx)
 		if err != nil {
@@ -592,9 +613,9 @@ if (!%s) {
 		nodeName, id,
 		instName, nodeName, nodeName, nodeName, jsString(id),
 		instName,
-		instName, comp.MountFunc, nodeName, commaArgs(args),
+		instName, comp.MountFunc, nodeName, commaArgs(props),
 		nodeName, jsString(id), instName,
-		instName, args)
+		instName, props)
 
 	return varName, build.String(), bind, nil
 }
@@ -892,10 +913,10 @@ func propSignature(props []parser.Param) string {
 	return strings.Join(parts, ", ")
 }
 
-func (g *gen) updatePropNames(comp *generator.Stateful) ([]string, error) {
+func (g *gen) updatePropsParamName(comp *generator.Stateful) (string, error) {
 	fn := comp.App.Update
 	if fn == nil || fn.Type.Params == nil {
-		return nil, nil
+		return "", nil
 	}
 	type param struct {
 		name string
@@ -904,7 +925,7 @@ func (g *gen) updatePropNames(comp *generator.Stateful) ([]string, error) {
 	var params []param
 	for _, field := range fn.Type.Params.List {
 		if len(field.Names) == 0 {
-			return nil, parser.PosError(g.appPos(fn.Pos()), "name the Update parameters", "Update parameters must be named")
+			return "", parser.PosError(g.appPos(fn.Pos()), "name the Update parameters", "Update parameters must be named")
 		}
 		typ := typeText(field.Type)
 		for _, name := range field.Names {
@@ -912,30 +933,26 @@ func (g *gen) updatePropNames(comp *generator.Stateful) ([]string, error) {
 		}
 	}
 	if len(params) == 0 {
-		return nil, parser.PosError(g.appPos(fn.Pos()), "add a message parameter", "Update must take a message parameter")
+		return "", parser.PosError(g.appPos(fn.Pos()), "add a message parameter", "Update must take a message parameter")
 	}
 	props := params[1:]
 	if len(props) == 0 {
-		return nil, nil
+		return "", nil
 	}
-	if len(props) != len(comp.Props) {
-		return nil, parser.PosError(g.appPos(fn.Pos()), "match the view props: Update(msg gothic.Msg, "+propSignature(comp.Props)+"), or omit them", "Update has %d prop parameters, want 0 or %d", len(props), len(comp.Props))
+	if len(props) != 1 {
+		return "", parser.PosError(g.appPos(fn.Pos()), "take one props parameter: Update(msg gothic.Msg, props "+comp.PropsType+")", "Update has %d prop parameters, want 0 or 1", len(props))
 	}
-	names := make([]string, len(props))
-	for i, p := range props {
-		if p.typ != comp.Props[i].Type {
-			return nil, parser.PosError(g.appPos(fn.Pos()), "match the view prop type "+comp.Props[i].Type, "Update prop %s has type %s, want %s", p.name, p.typ, comp.Props[i].Type)
-		}
-		names[i] = p.name
+	if props[0].typ != comp.PropsType {
+		return "", parser.PosError(g.appPos(fn.Pos()), "match the props type "+comp.PropsType, "Update prop %s has type %s, want %s", props[0].name, props[0].typ, comp.PropsType)
 	}
-	return names, nil
+	return props[0].name, nil
 }
 
 func (g *gen) emitUpdate(b *strings.Builder) error {
 	recv, msgName := g.updateNames()
 	params := recv + ", " + msgName
-	if len(g.updateProps) > 0 {
-		params += ", " + strings.Join(g.updateProps, ", ")
+	if g.updatePropsParam != "" {
+		params += ", " + g.updatePropsParam
 	}
 	fmt.Fprintf(b, "function update(%s) {\n", params)
 	ctx := &exprCtx{inUpdate: true, allowJS: true}
@@ -1619,41 +1636,19 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		initial := "INITIAL_" + jsIdent(comp.Name)
 		fmt.Fprintf(&b, "const %s = %s;\n\n", initial, comp.ModelJSON)
 
-		propNames := make([]string, len(comp.Props))
-		for i, p := range comp.Props {
-			propNames[i] = p.Name
-		}
-		propList := strings.Join(propNames, ", ")
 		propSig := ""
-		if propList != "" {
-			propSig = ", " + propList
+		if comp.PropsType != "" {
+			propSig = ", props"
 		}
-		nextNames := make([]string, len(comp.Props))
-		for i, p := range comp.Props {
-			nextNames[i] = "next" + jsTitle(p.Name)
-		}
-		nextPropList := strings.Join(nextNames, ", ")
 
 		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames}
-		propParams, err := g.updatePropNames(comp)
+		updatePropParam, err := g.updatePropsParamName(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
 		}
-		g.updateProps = propParams
-		reserved := map[string]bool{
-			"m": true, "msg": true, "model": true, "dispatch": true, "render": true,
-			"update": true, "init": true, "emit": true, "root": true,
-			"__gothicParentDispatch": true, "props": true,
-		}
-		for _, p := range comp.Props {
-			if reserved[p.Name] {
-				return nil, parser.PosError(comp.View.NodePosition, "rename the prop", "component %s: prop %q conflicts with a generated JavaScript name", comp.Name, p.Name)
-			}
-		}
-		for _, name := range propParams {
-			if reserved[name] {
-				return nil, parser.PosError(g.appPos(comp.App.Update.Pos()), "rename the Update parameter", "component %s: Update parameter %q conflicts with a generated JavaScript name", comp.Name, name)
-			}
+		g.updatePropsParam = updatePropParam
+		if updatePropParam == "m" || updatePropParam == "msg" {
+			return nil, parser.PosError(g.appPos(comp.App.Update.Pos()), "rename the props parameter", "component %s: Update props parameter %q conflicts with a generated name", comp.Name, updatePropParam)
 		}
 		var bindings strings.Builder
 		if err := g.emitViewBindings(&bindings); err != nil {
@@ -1693,12 +1688,8 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		b.WriteString(indentJS(commandFns.String(), "  "))
 		dispatchArgs := modelName + ", msg"
-		if len(g.updateProps) > 0 {
-			names := make([]string, len(comp.Props))
-			for i, p := range comp.Props {
-				names[i] = p.Name
-			}
-			dispatchArgs += ", " + strings.Join(names, ", ")
+		if updatePropParam != "" {
+			dispatchArgs += ", props"
 		}
 		fmt.Fprintf(&b, "  function dispatch(msg) {\n    if (!alive) return;\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n    if (result[1]) run(result[1]);\n  }\n", dispatchArgs, modelName, modelName)
 		b.WriteString("  async function run(cmd) {\n    if (!cmd || !alive) return;\n    const msg = await cmd();\n    if (alive && msg) dispatch(msg);\n  }\n")
@@ -1706,15 +1697,15 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		if initFn != "" {
 			b.WriteString("  run(init());\n")
 		}
-		fmt.Fprintf(&b, "  return { updateProps(%s) {\n    if (!alive) return;\n", nextPropList)
-		if len(comp.Props) > 0 {
-			b.WriteString("    let changed = false;\n")
-			for _, p := range comp.Props {
-				fmt.Fprintf(&b, "    if (!Object.is(%s, next%s)) { %s = next%s; changed = true; }\n", p.Name, jsTitle(p.Name), p.Name, jsTitle(p.Name))
-			}
-			b.WriteString("    if (changed) { dispatch({tag: \"PropsChanged\"}); } else { render(" + modelName + "); }\n")
-		} else {
+		if comp.PropsType == "" {
+			b.WriteString("  return { updateProps() {\n    if (!alive) return;\n")
 			fmt.Fprintf(&b, "    render(%s);\n", modelName)
+		} else {
+			b.WriteString("  return { updateProps(nextProps) {\n    if (!alive) return;\n    let changed = false;\n")
+			for _, field := range comp.Props {
+				fmt.Fprintf(&b, "    if (!Object.is(props.%s, nextProps.%s)) changed = true;\n", field.Name, field.Name)
+			}
+			b.WriteString("    if (changed) { props = nextProps; dispatch({tag: \"PropsChanged\"}); } else { render(" + modelName + "); }\n")
 		}
 		b.WriteString("  }, destroy() { alive = false; } };\n}\n\n")
 
