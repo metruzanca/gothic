@@ -164,7 +164,33 @@ are used to generate the Go `View` method and the JavaScript renderer.
 
 ### Pure components
 
-A pure component is a view function with named props:
+Pure components can declare a props struct:
+
+```go
+type BadgeProps struct {
+	Text   string
+	Hidden bool
+}
+
+view Badge(props BadgeProps) {
+	<span class="badge" class:hidden={ props.Hidden }>{ props.Text }</span>
+}
+```
+
+Invoke a component with a capitalized tag. Named tags map to exported struct
+fields case-insensitively:
+
+```gothic
+<Badge text={ model.Status } />
+<Badge text="ready" hidden />
+```
+
+- `text` maps to `Text`.
+- `hidden` maps to `Hidden` and passes `true`.
+- Non-pointer fields are required.
+- Pointer fields are optional. Omitting the tag leaves the field nil.
+
+Older pure components can still declare individual props:
 
 ```gothic
 view Badge(text string) {
@@ -172,21 +198,11 @@ view Badge(text string) {
 }
 ```
 
-Invoke a component with a capitalized tag. Props use string literals,
-expressions, or boolean shorthand:
-
-```gothic
-<Badge text={ model.Status } />
-<Badge text="ready" />
-```
-
-A bare prop passes `true`, for example `<Card hidden />` when `Card` declares a
-`hidden bool` parameter.
+New components should prefer a props struct. Pure components with a props
+struct use one parameter named `props`.
 
 The compiler expands components into the app before generating Go and
-JavaScript. Props are substituted directly into the component body. Components
-can call other components, including components from other files in the same
-package.
+JavaScript. Props are substituted as a struct literal.
 
 Rules for pure components:
 
@@ -198,14 +214,18 @@ Rules for pure components:
 - Capitalized tags are always components, so camelCase SVG tags are not
   supported yet.
 
-### Component children
+#### Component children
 
 A pure component can receive children and place them with one `<slot />`:
 
-```gothic
-view Field(label string) {
+```go
+type FieldProps struct {
+	Label string
+}
+
+view Field(props FieldProps) {
 	<div class="ui-field">
-		<span class="ui-field-label">{ label }</span>
+		<span class="ui-field-label">{ props.Label }</span>
 		<slot />
 	</div>
 }
@@ -236,28 +256,36 @@ Rules for children and slots:
 ### Stateful components
 
 A stateful component is a view whose first parameter is a model with `Init` and
-`Update` methods. The remaining parameters are props:
+`Update` methods. A second parameter is a props struct:
 
 ```go
+type TabsProps struct {
+	Items []Tab
+}
+
 type TabsModel struct {
 	Active int
 }
 
-func (m TabsModel) Init() gothic.Cmd { return nil }
+func (m TabsModel) Init(props TabsProps) gothic.Cmd { return nil }
 
-func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
+	case gothic.PropsChanged:
+	}
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
 	}
 	return m, nil
 }
 ```
 
 ```gothic
-view Tabs(model TabsModel, items []Tab) {
+view Tabs(model TabsModel, props TabsProps) {
 	<div class="tabs">
-		for i, item := range items {
+		for i, item := range props.Items {
 			<button key={ i } class:active={ model.Active == i } onclick={ TabClicked{Index: i} }>
 				{ item.Label }
 			</button>
@@ -266,9 +294,18 @@ view Tabs(model TabsModel, items []Tab) {
 }
 ```
 
+Call sites still use named tags:
+
+```gothic
+<Tabs items={ model.Tabs } />
+```
+
+Stateful components require a props struct when they take props. Components
+with no props keep `view Box(model BoxModel)`, `Init()`, and `Update(msg)`.
+
 Each instance owns its own state. The parent passes props but does not read or
-write child state. State starts at the model zero value. Use `<Tabs items={ model.Tabs } />`
-inside `App` or another view.
+write child state. State starts at the model zero value. Props are passed to the
+view, `Init`, and `Update`.
 
 Stateful components can render in static positions, inside `if` branches, and
 as keyed list items. A list-created component may contain its own loops and
@@ -294,7 +331,7 @@ Stateful components in this phase:
 - support static positions, conditional branches, and keyed lists,
 - must be the loop body root when used in a list,
 - may contain their own loops and conditionals,
-- can read their view props in `Update`,
+- take a props struct in the view, `Init`, and `Update`,
 - run `Init` once on mount,
 - can run commands from `Init` and `Update`,
 - cannot declare procedures or call App procedures,
@@ -302,35 +339,70 @@ Stateful components in this phase:
 - cannot contain other stateful components,
 - reset their state when unmounted by a branch swap or keyed list removal.
 
-#### Props in Update
+#### Props structs
 
-A component can take its view props as trailing `Update` parameters:
+A props struct uses exported Go fields. Tag names match fields
+case-insensitively.
 
 ```go
-func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case TabClicked:
-		m.Active = msg.Index
-	case gothic.PropsChanged:
-	}
-	if m.Active >= len(items) {
-		m.Active = len(items) - 1
-	}
-	return m, nil
+type TabsProps struct {
+	Items  []Tab
+	Active *int
 }
 ```
 
-`Update(msg)` remains valid when a component does not need props. To use props,
-declare all of them, in view order. The compiler checks the count and types.
+- Non-pointer fields are required.
+- Pointer fields are optional. If the tag is omitted, the field is nil in Go
+  and `null` in the client props object.
+- A pointer value is passed as its value or `null`, not as a pointer object.
 
-When a prop reference changes, the component dispatches `gothic.PropsChanged`.
-Handle it in `Update` to react to new values. Comparison is by reference, so
-assign new slices or structs instead of mutating in place.
+```gothic
+<Tabs items={ model.Tabs } active={ model.ActiveTab } />
+```
 
-#### Component Init
+If `model.ActiveTab` is nil, the component sees `props.Active == nil` and can
+use a default.
 
-`Init` runs once after the first render. It can perform synchronous `js`
-effects and can return a command. It cannot take props yet.
+Use `*props.Active` after a nil check:
+
+```gothic
+if props.Active != nil {
+	<p>{ *props.Active }</p>
+}
+```
+
+Address-of expressions such as `&model.Field` are not supported in views. Store
+a pointer-valued field in the model or pass `nil`.
+
+#### Props in Init and Update
+
+`Init` and `Update` can take the props struct:
+
+```go
+func (m TabsModel) Init(props TabsProps) gothic.Cmd
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd)
+```
+
+Components with no props use `Init()` and `Update(msg)`.
+
+When any prop reference changes, the component dispatches
+`gothic.PropsChanged`. Handle it in `Update` to react:
+
+```go
+switch msg.(type) {
+case gothic.PropsChanged:
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
+	}
+}
+```
+
+Comparison is by reference, so assign new slices or structs instead of
+mutating in place.
+
+`Init` cannot seed the initial model with props yet. Component state still
+starts at the zero value. Use props directly in the view or `Update` until a
+prop-aware model constructor exists.
 
 #### Component commands
 
@@ -359,9 +431,16 @@ are ignored, and prop updates are ignored.
 
 Emit a parent message with `emit` in a component event:
 
+```go
+type ButtonProps struct {
+	Label   string
+	Onclick gothic.Msg
+}
+```
+
 ```gothic
-view Button(model ButtonModel, label string, onclick gothic.Msg) {
-	<button onclick={ emit(onclick) }>{ label }</button>
+view Button(model ButtonModel, props ButtonProps) {
+	<button onclick={ emit(props.Onclick) }>{ props.Label }</button>
 }
 ```
 
@@ -685,8 +764,11 @@ The proof of concept supports:
 
 - one application model per package,
 - one `App` view with a single model parameter,
-- pure components with multiple named props,
-- stateful components with their own model, Init, Update, and view,
+- pure components with a props struct, or individual props during migration,
+- stateful components with their own model, a props struct, Init, Update, and view,
+- named tag props mapped case-insensitively to props struct fields,
+- optional pointer props with nil and null semantics,
+- props in component Init and Update,
 - app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
@@ -697,7 +779,7 @@ The proof of concept supports:
 - stateful components inside conditional branches, with unmount and state reset,
 - stateful components as keyed list items, including components with internal
   loops,
-- component Update props and `gothic.PropsChanged`,
+- `gothic.PropsChanged` on prop changes,
 - component Init running once on mount,
 - component commands with unmount guards,
 - `for` loops directly inside conditional branches when the body is one element,
@@ -724,7 +806,8 @@ The proof of concept supports:
 Not supported yet:
 
 - component-declared procedures; procedures are App-only,
-- props in component Init,
+- prop-seeded component initial state; component models still start at the zero value,
+- address-of expressions in views,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,

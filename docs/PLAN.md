@@ -204,7 +204,11 @@ Supported now:
 
 - one application model per package,
 - one `App` view with a single model parameter,
-- pure components with props, in the app file or separate files,
+- pure components with a props struct, or individual props during migration,
+- stateful components with a props struct,
+- named tag props mapped case-insensitively to struct fields,
+- optional pointer props with nil and null semantics,
+- props in component Init and Update,
 - compile-time component expansion and nested pure components,
 - children and a single default `<slot />` in pure components,
 - stateful components inside slotted content,
@@ -212,8 +216,8 @@ Supported now:
 - stateful components in static positions, conditional branches, and keyed lists,
 - stateful components with internal loops and conditionals as list items,
 - stateful components unmount and reset when a branch or list item leaves,
-- component Update can read view props and react to `PropsChanged`,
-- component Init runs once on mount, without props yet,
+- component Update and Init receive the props struct,
+- component Init runs once on mount,
 - component Init and Update commands with an unmount guard,
 - components are destroyed before their branch or list item leaves the DOM,
 - precompiled external components from installable packages,
@@ -248,7 +252,8 @@ Supported now:
 Not supported yet:
 
 - component-declared procedures; procedures are App-only,
-- props in component Init,
+- prop-seeded component initial state; component models still start at the zero value,
+- address-of expressions in views,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
@@ -274,7 +279,7 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Props in component Init and prop-seeded initial state.
+1. Prop-seeded component initial state.
 2. Nested stateful components.
 3. Children on stateful components, named slots, and fallback content if a
    real use case appears.
@@ -298,9 +303,9 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no declared procedures, no
-  nested stateful components, and no props in Init. Prop change detection is
-  reference-based. Commands are guarded after unmount, but there is no general
-  cancellation.
+  nested stateful components, and no prop-seeded initial state. Prop change
+  detection is reference-based. Commands are guarded after unmount, but there
+  is no general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as
