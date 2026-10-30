@@ -9,6 +9,8 @@ import (
 
 type Model struct {
 	Tabs          []ui.Tab
+	ManyTabs      []ui.Tab
+	FewTabs       []ui.Tab
 	Accordion     []ui.AccordionItem
 	Count         int
 	ButtonCode    string
@@ -34,6 +36,10 @@ func NewModel(count int) Model {
 			{Label: "Overview", Panel: "The first panel shows the overview."},
 			{Label: "Details", Panel: "The second panel shows more detail."},
 			{Label: "Settings", Panel: "The third panel holds settings."},
+		},
+		FewTabs: []ui.Tab{
+			{Label: "Overview", Panel: "The first panel shows the overview."},
+			{Label: "Details", Panel: "The second panel shows more detail."},
 		},
 		Accordion: []ui.AccordionItem{
 			{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
@@ -62,6 +68,7 @@ func NewModel(count int) Model {
 		PageTwo:   sampleDisclosures(11, 10),
 		PageLabel: "Showing 1-10 of 20",
 	}
+	m.ManyTabs = m.Tabs
 	m.Visible = m.PageOne
 	return m
 }
@@ -93,6 +100,8 @@ type IncrementClicked struct{}
 type CountUpdated struct{ Count int }
 type CountFailed struct{ Message string }
 type ToggleExample struct{}
+type FewerTabs struct{}
+type MoreTabs struct{}
 type NextPage struct{}
 type PrevPage struct{}
 type SlotTextChanged struct{ Text string }
@@ -120,6 +129,10 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.Count = msg.Count
 	case ToggleExample:
 		m.ShowExample = !m.ShowExample
+	case FewerTabs:
+		m.Tabs = m.FewTabs
+	case MoreTabs:
+		m.Tabs = m.ManyTabs
 	case NextPage:
 		m.Page = 1
 		m.Visible = m.PageTwo
@@ -179,7 +192,12 @@ view App(model Model) {
 
 		<section class="section">
 			<h2>Tabs</h2>
+			<p>Select the third tab, then remove a tab. The component clamps its active index from the items prop.</p>
 			<ui.Tabs items={ model.Tabs } />
+			<div class="row">
+				<ui.Button label="Fewer tabs" primary={ false } onclick={ FewerTabs{} } />
+				<ui.Button label="More tabs" primary={ false } onclick={ MoreTabs{} } />
+			</div>
 			<Code title="Usage" code={ model.TabsCode } />
 		</section>
 

@@ -13,21 +13,25 @@ on(root, "1", "click", (event) => dispatch((null)));
 on(root, "2", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
 const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), "Increment inside a slot", dispatch);
 const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), model.Tabs, dispatch);
+on(root, "3", "click", (event) => dispatch(({tag: "FewerTabs"})));
+on(root, "4", "click", (event) => dispatch(({tag: "MoreTabs"})));
 const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), model.Accordion, dispatch);
-on(root, "3", "click", (event) => dispatch(({tag: "ToggleExample"})));
-on(root, "4", "click", (event) => dispatch(({tag: "PrevPage"})));
-on(root, "5", "click", (event) => dispatch(({tag: "NextPage"})));
+on(root, "5", "click", (event) => dispatch(({tag: "ToggleExample"})));
+on(root, "6", "click", (event) => dispatch(({tag: "PrevPage"})));
+on(root, "7", "click", (event) => dispatch(({tag: "NextPage"})));
 const c5 = mountCounter(root.querySelector('[data-gothic-component-id="c5"]'), "Increment on client", dispatch);
-on(root, "6", "click", (event) => dispatch(({tag: "IncrementClicked"})));
+on(root, "8", "click", (event) => dispatch(({tag: "IncrementClicked"})));
 
 function render(model) {
   classToggle(root, "0", (true));
   classToggle(root, "1", (false));
   attr(root, "0", model.SlotText);
-  classToggle(root, "2", (true));
+  classToggle(root, "2", (false));
   classToggle(root, "3", (false));
   classToggle(root, "4", (true));
-  classToggle(root, "5", (true));
+  classToggle(root, "5", (false));
+  classToggle(root, "6", (true));
+  classToggle(root, "7", (true));
   ifBlock(root, "0",
     model.ShowExample,
     () => { const frag = document.createDocumentFragment();
@@ -68,20 +72,22 @@ if (!gc4Inst) {
   text(root, "11", ("A stateful child"));
   text(root, "12", ("Usage"));
   text(root, "13", (model.SlotCode));
-  text(root, "14", ("Usage"));
-  text(root, "15", (model.TabsCode));
+  text(root, "14", ("Fewer tabs"));
+  text(root, "15", ("More tabs"));
   text(root, "16", ("Usage"));
-  text(root, "17", (model.AccordionCode));
-  text(root, "18", ("Toggle panel"));
-  text(root, "19", ("Previous page"));
-  text(root, "20", ("Next page"));
-  text(root, "21", model.PageLabel);
-  text(root, "22", ("Usage"));
-  text(root, "23", (model.DisclosureCode));
-  text(root, "24", ("Increment on server"));
-  text(root, "25", model.Count);
-  text(root, "26", ("Usage"));
-  text(root, "27", (model.ServerCode));
+  text(root, "17", (model.TabsCode));
+  text(root, "18", ("Usage"));
+  text(root, "19", (model.AccordionCode));
+  text(root, "20", ("Toggle panel"));
+  text(root, "21", ("Previous page"));
+  text(root, "22", ("Next page"));
+  text(root, "23", model.PageLabel);
+  text(root, "24", ("Usage"));
+  text(root, "25", (model.DisclosureCode));
+  text(root, "26", ("Increment on server"));
+  text(root, "27", model.Count);
+  text(root, "28", ("Usage"));
+  text(root, "29", (model.ServerCode));
   const renderList0 = list(root, "0", (item, __i0) => {
   const node = createDisclosure("c4", item);
   node.setAttribute("data-gothic-key", String(item.ID));
@@ -145,6 +151,16 @@ function update(m, msg) {
   case "ToggleExample":
   {
     m.ShowExample = !m.ShowExample;
+    break;
+  }
+  case "FewerTabs":
+  {
+    m.Tabs = m.FewTabs;
+    break;
+  }
+  case "MoreTabs":
+  {
+    m.Tabs = m.ManyTabs;
     break;
   }
   case "NextPage":
