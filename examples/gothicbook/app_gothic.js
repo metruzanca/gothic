@@ -10,17 +10,20 @@ let model = readState("app");
 
 on(root, "0", "click", (event) => dispatch((null)));
 on(root, "1", "click", (event) => dispatch((null)));
-const c0 = mountTabs(root.querySelector('[data-gothic-component-id="c0"]'), model.Tabs, dispatch);
-const c1 = mountAccordion(root.querySelector('[data-gothic-component-id="c1"]'), model.Accordion, dispatch);
-on(root, "2", "click", (event) => dispatch(({tag: "ToggleExample"})));
-on(root, "3", "click", (event) => dispatch(({tag: "PrevPage"})));
-on(root, "4", "click", (event) => dispatch(({tag: "NextPage"})));
-const c4 = mountCounter(root.querySelector('[data-gothic-component-id="c4"]'), "Increment on client", dispatch);
-on(root, "5", "click", (event) => dispatch(({tag: "IncrementClicked"})));
+on(root, "2", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
+const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), "Increment inside a slot", dispatch);
+const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), model.Tabs, dispatch);
+const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), model.Accordion, dispatch);
+on(root, "3", "click", (event) => dispatch(({tag: "ToggleExample"})));
+on(root, "4", "click", (event) => dispatch(({tag: "PrevPage"})));
+on(root, "5", "click", (event) => dispatch(({tag: "NextPage"})));
+const c5 = mountCounter(root.querySelector('[data-gothic-component-id="c5"]'), "Increment on client", dispatch);
+on(root, "6", "click", (event) => dispatch(({tag: "IncrementClicked"})));
 
 function render(model) {
   classToggle(root, "0", (true));
   classToggle(root, "1", (false));
+  attr(root, "0", model.SlotText);
   classToggle(root, "2", (true));
   classToggle(root, "3", (false));
   classToggle(root, "4", (true));
@@ -28,7 +31,7 @@ function render(model) {
   ifBlock(root, "0",
     model.ShowExample,
     () => { const frag = document.createDocumentFragment();
-  const e0 = createDisclosure("c2", model.FeatureDisclosure);
+  const e0 = createDisclosure("c3", model.FeatureDisclosure);
   frag.appendChild(e0);
   return frag; },
     () => { const frag = document.createDocumentFragment();
@@ -37,19 +40,20 @@ function render(model) {
     e1.appendChild(document.createTextNode("The else branch is visible instead."));
   frag.appendChild(e1);
   return frag; },
-    (region) => {   const gc3Node = region.querySelector('[data-gothic-component-id="c2"]');
-let gc3Inst = gc3Node && gc3Node.__gothicInstances && gc3Node.__gothicInstances["c2"];
-if (!gc3Inst) {
-  gc3Inst = mountDisclosure(gc3Node, model.FeatureDisclosure, dispatch);
-  gc3Node.__gothicInstances = { "c2": gc3Inst };
+    (region) => {   const gc4Node = region.querySelector('[data-gothic-component-id="c3"]');
+let gc4Inst = gc4Node && gc4Node.__gothicInstances && gc4Node.__gothicInstances["c3"];
+if (!gc4Inst) {
+  gc4Inst = mountDisclosure(gc4Node, model.FeatureDisclosure, dispatch);
+  gc4Node.__gothicInstances = { "c3": gc4Inst };
 } else {
-  gc3Inst.updateProps(model.FeatureDisclosure);
+  gc4Inst.updateProps(model.FeatureDisclosure);
 }
  },
     (region) => {  });
-  c0.updateProps(model.Tabs);
-  c1.updateProps(model.Accordion);
-  c4.updateProps("Increment on client");
+  c0.updateProps("Increment inside a slot");
+  c1.updateProps(model.Tabs);
+  c2.updateProps(model.Accordion);
+  c5.updateProps("Increment on client");
   text(root, "0", ("Save changes"));
   text(root, "1", ("Cancel"));
   text(root, "2", ("Usage"));
@@ -58,31 +62,37 @@ if (!gc3Inst) {
   text(root, "5", ("Cards group related content with a small surface."));
   text(root, "6", ("Usage"));
   text(root, "7", (model.CardCode));
-  text(root, "8", ("Usage"));
-  text(root, "9", (model.TabsCode));
-  text(root, "10", ("Usage"));
-  text(root, "11", (model.AccordionCode));
-  text(root, "12", ("Toggle panel"));
-  text(root, "13", ("Previous page"));
-  text(root, "14", ("Next page"));
-  text(root, "15", model.PageLabel);
+  text(root, "8", ("Your name"));
+  text(root, "9", " ");
+  text(root, "10", model.SlotText);
+  text(root, "11", ("A stateful child"));
+  text(root, "12", ("Usage"));
+  text(root, "13", (model.SlotCode));
+  text(root, "14", ("Usage"));
+  text(root, "15", (model.TabsCode));
   text(root, "16", ("Usage"));
-  text(root, "17", (model.DisclosureCode));
-  text(root, "18", ("Increment on server"));
-  text(root, "19", model.Count);
-  text(root, "20", ("Usage"));
-  text(root, "21", (model.ServerCode));
+  text(root, "17", (model.AccordionCode));
+  text(root, "18", ("Toggle panel"));
+  text(root, "19", ("Previous page"));
+  text(root, "20", ("Next page"));
+  text(root, "21", model.PageLabel);
+  text(root, "22", ("Usage"));
+  text(root, "23", (model.DisclosureCode));
+  text(root, "24", ("Increment on server"));
+  text(root, "25", model.Count);
+  text(root, "26", ("Usage"));
+  text(root, "27", (model.ServerCode));
   const renderList0 = list(root, "0", (item, __i0) => {
-  const node = createDisclosure("c3", item);
+  const node = createDisclosure("c4", item);
   node.setAttribute("data-gothic-key", String(item.ID));
   const inst = mountDisclosure(node, item, dispatch);
-  node.__gothicInstances = { "c3": inst };
+  node.__gothicInstances = { "c4": inst };
   return node;
 }, (node, item, __i0) => {
-  let inst = node.__gothicInstances && node.__gothicInstances["c3"];
+  let inst = node.__gothicInstances && node.__gothicInstances["c4"];
   if (!inst) {
     inst = mountDisclosure(node, item, dispatch);
-    node.__gothicInstances = { "c3": inst };
+    node.__gothicInstances = { "c4": inst };
   } else {
     inst.updateProps(item);
   }
@@ -149,6 +159,11 @@ function update(m, msg) {
     m.Page = 0;
     m.Visible = m.PageOne;
     m.PageLabel = "Showing 1-10 of 20";
+    break;
+  }
+  case "SlotTextChanged":
+  {
+    m.SlotText = msg.Text;
     break;
   }
   }

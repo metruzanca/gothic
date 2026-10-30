@@ -179,3 +179,29 @@
 	color: var(--ui-muted);
 	line-height: 1.5;
 }
+
+.ui-field {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.ui-field-label {
+	color: var(--ui-muted);
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.ui-field input {
+	width: 100%;
+	padding: 0.6rem 0.75rem;
+	border: 1px solid var(--ui-border);
+	border-radius: 0.5rem;
+	background: var(--ui-surface);
+	color: var(--ui-text);
+	font: inherit;
+}
+
+.ui-field input:focus-visible {
+	outline: 2px solid var(--ui-accent);
+	outline-offset: 1px;
+}

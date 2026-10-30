@@ -17,6 +17,8 @@ type Model struct {
 	AccordionCode string
 	ServerCode        string
 	DisclosureCode    string
+	SlotCode          string
+	SlotText          string
 	ShowExample       bool
 	Page              int
 	PageLabel         string
@@ -45,6 +47,8 @@ func NewModel(count int) Model {
 		AccordionCode: `<ui.Accordion items={ model.Accordion } />`,
 		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
 		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
+		SlotCode:       `<ui.Field label="Your name">\n\t<input value={ model.Name } ... />\n</ui.Field>`,
+		SlotText:       "friend",
 		ShowExample:    true,
 		FeatureDisclosure: ui.DisclosureItem{
 			ID:    999,
@@ -91,6 +95,7 @@ type CountFailed struct{ Message string }
 type ToggleExample struct{}
 type NextPage struct{}
 type PrevPage struct{}
+type SlotTextChanged struct{ Text string }
 
 type Procedures interface {
 	gothic.RPCService
@@ -123,6 +128,8 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.Page = 0
 		m.Visible = m.PageOne
 		m.PageLabel = "Showing 1-10 of 20"
+	case SlotTextChanged:
+		m.SlotText = msg.Text
 	}
 	return m, nil
 }
@@ -155,6 +162,19 @@ view App(model Model) {
 			<h2>Card</h2>
 			<ui.Card title="A simple card" body="Cards group related content with a small surface." />
 			<Code title="Usage" code={ model.CardCode } />
+		</section>
+
+		<section class="section">
+			<h2>Slots</h2>
+			<p>A pure component supplies layout while the App keeps state and events in the slotted content.</p>
+			<ui.Field label="Your name">
+				<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
+			</ui.Field>
+			<p class="server-count">Hello,{ " " }{ model.SlotText }!</p>
+			<ui.Field label="A stateful child">
+				<ui.Counter label="Increment inside a slot" />
+			</ui.Field>
+			<Code title="Usage" code={ model.SlotCode } />
 		</section>
 
 		<section class="section">

@@ -36,6 +36,10 @@ func TestGothicbook(t *testing.T) {
 		`data-gothic-component="Counter"`,
 		`data-gothic-component="Disclosure"`,
 		`class="ui-disclosure-list"`,
+		`class="ui-field`,
+		`class="slot-input`,
+		`Your name`,
+		`Increment inside a slot`,
 		`data-gothic-key="1"`,
 		`Showing 1-10 of 20`,
 		`Design tokens`,
@@ -77,6 +81,7 @@ func TestGothicbook(t *testing.T) {
 		`mountDisclosure`,
 		`createDisclosure`,
 		`model.Visible`,
+		`SlotTextChanged`,
 		`IncrementClicked`,
 		`dispatch`,
 	} {
