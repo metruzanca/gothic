@@ -785,9 +785,14 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 		}
 	}
 	if len(localStateful) > 0 {
+		procedureNames := make(map[string]bool, len(s.app.Procedures))
+		for _, p := range s.app.Procedures {
+			procedureNames[p.Name] = true
+		}
 		compSrc, err := appjs.GenerateComponents(localStateful, appjs.Options{
-			FileName:   s.path,
-			RuntimeURL: "/_gothic/runtime.js",
+			FileName:       s.path,
+			RuntimeURL:     "/_gothic/runtime.js",
+			ProcedureNames: procedureNames,
 		})
 		if err != nil {
 			return 0, err

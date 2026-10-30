@@ -838,7 +838,7 @@ func TestGenerateComponentInit(t *testing.T) {
 	for _, want := range []string{
 		`function init() {`,
 		`(document.title = String("ready"));`,
-		`init();`,
+		`run(init());`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -846,17 +846,54 @@ func TestGenerateComponentInit(t *testing.T) {
 	}
 }
 
-func TestRejectComponentInitCommand(t *testing.T) {
+func TestGenerateComponentInitCommand(t *testing.T) {
 	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd {
-	return func() Msg { return nil }
+	return doThing
+}
+
+func doThing() Msg {
+	js.SetTitle("done")
+	return nil
+}`)
+	component := app.ComponentApp("CounterModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`async function doThing() {`,
+		`(document.title = String("done"));`,
+		`run(init());`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectComponentProcedureCall(t *testing.T) {
+	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd {
+	return load
+}
+
+func load() Msg {
+	Ping()
+	return nil
 }`)
 	component := app.ComponentApp("CounterModel")
 	_, err := appjs.GenerateComponents([]*generator.Stateful{{
 		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
 		MountFunc: "mountCounter", CreateFunc: "createCounter",
-	}}, appjs.Options{FileName: "counter.gth"})
-	if err == nil || !strings.Contains(err.Error(), "Init must return nil") {
+	}}, appjs.Options{FileName: "counter.gth", ProcedureNames: map[string]bool{"Ping": true}})
+	if err == nil || !strings.Contains(err.Error(), "Ping is an App procedure") {
 		t.Fatalf("error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "emit an action") {
+		t.Fatalf("error lacks a hint: %v", err)
 	}
 }
 

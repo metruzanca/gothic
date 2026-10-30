@@ -85,9 +85,15 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
     const result = update(model, msg, items);
     model = result[0];
     render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
   }
   render(model);
-  init();
+  run(init());
   return { updateProps(nextItems) {
     if (!alive) return;
     let changed = false;
@@ -144,9 +150,15 @@ export function mountCounter(root, label, __gothicParentDispatch) {
     const result = update(model, msg);
     model = result[0];
     render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
   }
   render(model);
-  init();
+  run(init());
   return { updateProps(nextLabel) {
     if (!alive) return;
     let changed = false;
@@ -247,9 +259,15 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
     const result = update(model, msg, item);
     model = result[0];
     render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
   }
   render(model);
-  init();
+  run(init());
   return { updateProps(nextItem) {
     if (!alive) return;
     let changed = false;
@@ -355,9 +373,15 @@ export function mountTabs(root, items, __gothicParentDispatch) {
     const result = update(model, msg, items);
     model = result[0];
     render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
   }
   render(model);
-  init();
+  run(init());
   return { updateProps(nextItems) {
     if (!alive) return;
     let changed = false;

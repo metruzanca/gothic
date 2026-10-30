@@ -22,6 +22,8 @@ type Options struct {
 	RuntimeURL          string
 	Stateful            []*generator.Stateful
 	ComponentsModuleURL string
+	// ProcedureNames are App-owned procedures that components must not call.
+	ProcedureNames map[string]bool
 }
 
 // Generate renders the JavaScript application module for the view and app.
@@ -38,19 +40,20 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 		opts.RuntimeURL = "/_gothic/runtime.js"
 	}
 	g := &gen{
-		t:             t,
-		app:           app,
-		rootID:        strings.ToLower(t.Name),
-		modelName:     modelName,
-		varN:          0,
-		tempN:         0,
-		eachN:         0,
-		eventN:        0,
-		stateful:      statefulByName(opts.Stateful),
-		statefulList:  opts.Stateful,
-		componentsURL: opts.ComponentsModuleURL,
-		allowNested:   true,
-		appModule:     true,
+		t:               t,
+		app:             app,
+		rootID:          strings.ToLower(t.Name),
+		modelName:       modelName,
+		varN:            0,
+		tempN:           0,
+		eachN:           0,
+		eventN:          0,
+		stateful:        statefulByName(opts.Stateful),
+		statefulList:    opts.Stateful,
+		componentsURL:   opts.ComponentsModuleURL,
+		allowNested:     true,
+		appModule:       true,
+		allowProcedures: true,
 	}
 
 	var bindings strings.Builder
@@ -173,6 +176,8 @@ type gen struct {
 	allowNested      bool
 	appModule        bool
 	updateProps      []string
+	allowProcedures  bool
+	procedureNames   map[string]bool
 }
 
 func (g *gen) helper(name string) string {
@@ -1302,6 +1307,9 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 				return g.jsCall(sel.Sel.Name, e.Args, ctx)
 			}
 		}
+		if id, ok := e.Fun.(*ast.Ident); ok && !g.allowProcedures && g.procedureNames[id.Name] {
+			return "", g.exprErr(ctx, "procedures are App-owned; emit an action to the App", "%s is an App procedure and cannot be called from a component", id.Name)
+		}
 		fun, err := g.expr(e.Fun, ctx)
 		if err != nil {
 			return "", err
@@ -1566,32 +1574,13 @@ func baseName(path string) string {
 	return path
 }
 
-func returnsNonNil(fn *ast.FuncDecl) bool {
-	bad := false
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		ret, ok := n.(*ast.ReturnStmt)
-		if !ok || len(ret.Results) == 0 {
-			return true
-		}
-		if id, ok := ret.Results[0].(*ast.Ident); ok && id.Name == "nil" {
-			return true
-		}
-		bad = true
-		return false
-	})
-	return bad
-}
-
-func (g *gen) componentInit(comp *generator.Stateful, modelName string) (string, error) {
+func (g *gen) componentInit(comp *generator.Stateful) (string, error) {
 	init := comp.App.Init
 	if init == nil {
 		return "", nil
 	}
 	if init.Type.Params != nil && len(init.Type.Params.List) > 0 {
 		return "", parser.PosError(g.appPos(init.Pos()), "component Init cannot take props yet; return nil", "component %s: Init cannot take parameters yet", comp.Name)
-	}
-	if returnsNonNil(init) {
-		return "", parser.PosError(g.appPos(init.Pos()), "component Init commands are not supported yet; return nil", "component %s: Init must return nil", comp.Name)
 	}
 	var b strings.Builder
 	if err := g.emitInit(&b); err != nil {
@@ -1623,9 +1612,6 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		if comp.App == nil || comp.View == nil {
 			return nil, fmt.Errorf("component %s is missing its app or view", comp.Name)
 		}
-		if len(comp.App.ReferencedCommands) > 0 {
-			return nil, parser.PosError(comp.View.NodePosition, "component commands are not supported yet; use an app action", "component %s uses commands, which are not supported yet", comp.Name)
-		}
 		if len(comp.View.ParamList) == 0 {
 			return nil, parser.PosError(comp.View.NodePosition, "declare the model as the first parameter", "component %s must have a model parameter", comp.Name)
 		}
@@ -1648,7 +1634,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		nextPropList := strings.Join(nextNames, ", ")
 
-		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
+		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames}
 		propParams, err := g.updatePropNames(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
@@ -1682,7 +1668,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			return nil, wrapFile(comp.Name, err)
 		}
 
-		initFn, err := g.componentInit(comp, modelName)
+		initFn, err := g.componentInit(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
 		}
@@ -1695,6 +1681,17 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		b.WriteString(indentJS(renderCall.String(), "  "))
 		b.WriteString(indentJS(updateFn.String(), "  "))
 		b.WriteString(indentJS(initFn, "  "))
+		var commandFns strings.Builder
+		for name := range comp.App.ReferencedCommands {
+			fn := comp.App.Commands[name]
+			if fn == nil {
+				continue
+			}
+			if err := g.emitCommand(&commandFns, fn); err != nil {
+				return nil, wrapFile(comp.Name, err)
+			}
+		}
+		b.WriteString(indentJS(commandFns.String(), "  "))
 		dispatchArgs := modelName + ", msg"
 		if len(g.updateProps) > 0 {
 			names := make([]string, len(comp.Props))
@@ -1703,10 +1700,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			}
 			dispatchArgs += ", " + strings.Join(names, ", ")
 		}
-		fmt.Fprintf(&b, "  function dispatch(msg) {\n    if (!alive) return;\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n  }\n", dispatchArgs, modelName, modelName)
+		fmt.Fprintf(&b, "  function dispatch(msg) {\n    if (!alive) return;\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n    if (result[1]) run(result[1]);\n  }\n", dispatchArgs, modelName, modelName)
+		b.WriteString("  async function run(cmd) {\n    if (!cmd || !alive) return;\n    const msg = await cmd();\n    if (alive && msg) dispatch(msg);\n  }\n")
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
 		if initFn != "" {
-			b.WriteString("  init();\n")
+			b.WriteString("  run(init());\n")
 		}
 		fmt.Fprintf(&b, "  return { updateProps(%s) {\n    if (!alive) return;\n", nextPropList)
 		if len(comp.Props) > 0 {
@@ -1720,7 +1718,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		b.WriteString("  }, destroy() { alive = false; } };\n}\n\n")
 
-		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
+		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames}
 		locals := map[string]bool{}
 		for _, p := range comp.Props {
 			locals[p.Name] = true
