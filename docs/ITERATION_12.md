@@ -1,3 +1,6 @@
+> Historical note: component props later moved to props structs in
+> [Iteration 13](ITERATION_13.md). Component `Init` can now also receive props.
+
 # Iteration 12: component commands and destroy lifecycle
 
 Status: complete. Stateful components can run commands from `Init` and `Update`,

@@ -20,7 +20,7 @@ The syntax is under active development and subject to change. See the
 [Gothicbook](examples/gothicbook), and the
 [router example](examples/router) for working examples.
 
-```templ
+```gothic
 //app.gth
 import (
 	"context"
@@ -61,8 +61,12 @@ func callHello() gothic.Msg {
 	return HelloReceived{Message: message}
 }
 
-view Badge(text string) {
-	<span class="badge">{ text }</span>
+type BadgeProps struct {
+	Text string
+}
+
+view Badge(props BadgeProps) {
+	<span class="badge">{ props.Text }</span>
 }
 
 view App(model Model) {
@@ -133,3 +137,7 @@ UI kit is included.
 - [Component commands and destroy](docs/ITERATION_12.md)
 - [Component props structs](docs/ITERATION_13.md)
 - [Pitch](docs/PITCH.md)
+
+Iteration notes are historical records of the state at that time. Current
+syntax and limits live in [SYNTAX.md](docs/SYNTAX.md) and
+[PLAN.md](docs/PLAN.md).

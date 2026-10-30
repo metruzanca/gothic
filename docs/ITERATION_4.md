@@ -1,3 +1,6 @@
+> Historical note: component props later moved to props structs in
+> [Iteration 13](ITERATION_13.md). Snippets here may show the older prop syntax.
+
 # Iteration 4: stateful components and the UI kit
 
 Status: working proof of concept. This iteration adds self-contained stateful

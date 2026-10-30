@@ -1,3 +1,6 @@
+> Historical note: component props later moved to props structs in
+> [Iteration 13](ITERATION_13.md). Snippets here may show the older prop syntax.
+
 # Iteration 7: stateful composition in branches and lists
 
 Status: complete. Stateful components can live inside conditional branches and

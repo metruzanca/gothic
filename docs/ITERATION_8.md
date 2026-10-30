@@ -1,3 +1,6 @@
+> Historical note: component props later moved to props structs in
+> [Iteration 13](ITERATION_13.md). Snippets here may show the older prop syntax.
+
 # Iteration 8: component children and slots
 
 Status: complete. Pure components can accept children and place them with a

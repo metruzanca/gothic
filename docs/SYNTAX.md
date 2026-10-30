@@ -202,7 +202,8 @@ New components should prefer a props struct. Pure components with a props
 struct use one parameter named `props`.
 
 The compiler expands components into the app before generating Go and
-JavaScript. Props are substituted as a struct literal.
+JavaScript. Props from a struct are substituted as a struct literal; individual
+props are substituted directly.
 
 Rules for pure components:
 

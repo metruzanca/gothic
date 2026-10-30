@@ -30,7 +30,7 @@ TodoMVC CSS is vendored in `style.css`.
   `ClearCompleted`, and `ListTodos`.
 - Command closures in `Update`.
 - Keyed list reconciliation with `key={ todo.ID }`.
-- A separate `TodoItem` component file.
+- A separate `TodoItem` component file with a props struct.
 - Dynamic `value={ ... }` and `checked={ ... }` attributes.
 - `class:completed`, `class:editing`, `class:hidden`, and `class:selected`
   toggles.

@@ -1,3 +1,6 @@
+> Historical note: component props later moved to props structs in
+> [Iteration 13](ITERATION_13.md). Snippets here may show the older prop syntax.
+
 # Iteration 11: component props and Init
 
 Status: complete. Stateful components can read their view props in `Update` and

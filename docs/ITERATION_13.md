@@ -190,7 +190,7 @@ Field names are exported Go names. Types drive optional pointer detection.
 - `a97ac2d` optional pointer props
 - `1fa9a13` local pure props structs
 - `c2d6559` external pure props structs and UI kit migration
-- `c8c664b` props in component `Init`
+- `4107238` props in component `Init`
 
 ## Verification
 
