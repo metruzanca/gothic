@@ -20,7 +20,7 @@ func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
 
 view Counter(model CounterModel, label string) {
 	<div class="ui-counter">
-		<button class="ui-button ui-button-primary" onclick={ CounterClicked{By: 1} }>{ label }</button>
+		<Button label={ label } primary={ true } onclick={ CounterClicked{By: 1} } />
 		<strong class="ui-counter-value">{ model.Count }</strong>
 	</div>
 }

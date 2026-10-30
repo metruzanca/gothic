@@ -1,14 +1,6 @@
 package ui
 
-import "github.com/metruzanca/gothic"
-
-type CardModel struct{}
-
-func (m CardModel) Init() gothic.Cmd { return nil }
-
-func (m CardModel) Update(msg gothic.Msg) (CardModel, gothic.Cmd) { return m, nil }
-
-view Card(model CardModel, title string, body string) {
+view Card(title string, body string) {
 	<section class="ui-card">
 		<h2>{ title }</h2>
 		<p>{ body }</p>

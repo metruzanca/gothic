@@ -20,7 +20,8 @@ builds against this checkout. A consumer would use tagged module versions.
 - `ui.Card`
 - `ui.Tabs`
 - `ui.Accordion`
-- `ui.Counter` as a purely client-side counter next to a server-backed action
+- `ui.Counter` as a purely client-side counter next to a server-backed action,
+  with `Counter` using `Button` internally
 - a short `.gth` usage snippet for each component
 - a server-backed Button action that emits a message to the app, runs an RPC
   procedure, and receives the new count as model state

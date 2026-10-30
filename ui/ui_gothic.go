@@ -38,18 +38,6 @@ func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
 	return m, nil
 }
 
-type ButtonModel struct{}
-
-func (m ButtonModel) Init() gothic.Cmd { return nil }
-
-func (m ButtonModel) Update(msg gothic.Msg) (ButtonModel, gothic.Cmd) { return m, nil }
-
-type CardModel struct{}
-
-func (m CardModel) Init() gothic.Cmd { return nil }
-
-func (m CardModel) Update(msg gothic.Msg) (CardModel, gothic.Cmd) { return m, nil }
-
 type CounterModel struct {
 	Count int
 }
@@ -247,200 +235,6 @@ func Accordion(id string, key string, items []AccordionItem) gothic.Component {
 	})
 }
 
-func __gothicButtonView(model ButtonModel, label string, primary bool, onclick gothic.Msg) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<button data-gothic-class-0=\"ui-button-primary\" data-gothic-on=\"0\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-button"); err != nil {
-			return err
-		}
-		if primary {
-			if err := write(" ui-button-primary"); err != nil {
-				return err
-			}
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(label))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</button>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func Button(id string, key string, label string, primary bool, onclick gothic.Msg) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model ButtonModel
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Button\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicButtonView(model, label, primary, onclick).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
-func __gothicCardView(model CardModel, title string, body string) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<section"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-card"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<h2>"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(title))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</h2>"); err != nil {
-			return err
-		}
-		if err := write("<p>"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(body))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:close-->"); err != nil {
-			return err
-		}
-		if err := write("</p>"); err != nil {
-			return err
-		}
-		if err := write("</section>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func Card(id string, key string, title string, body string) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model CardModel
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Card\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicCardView(model, title, body).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
 func __gothicCounterView(model CounterModel, label string) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
@@ -462,11 +256,16 @@ func __gothicCounterView(model CounterModel, label string) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-on=\"0\""); err != nil {
+		if err := write("<button data-gothic-class-0=\"ui-button-primary\" data-gothic-on=\"0\""); err != nil {
 			return err
 		}
-		if err := write(" class=\"ui-button ui-button-primary"); err != nil {
+		if err := write(" class=\"ui-button"); err != nil {
 			return err
+		}
+		if true {
+			if err := write(" ui-button-primary"); err != nil {
+				return err
+			}
 		}
 		if err := write("\""); err != nil {
 			return err
@@ -477,7 +276,7 @@ func __gothicCounterView(model CounterModel, label string) gothic.Component {
 		if err := write("<!--g:text:0:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(label))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint((label)))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:0:close-->"); err != nil {

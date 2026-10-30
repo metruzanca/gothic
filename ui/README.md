@@ -1,7 +1,9 @@
 # gothic UI kit
 
-A small, proof-of-concept design system for gothic. It ships precompiled Go
-renderers and JavaScript modules in a separately versioned Go module.
+A small, proof-of-concept design system for gothic. Stateful components ship
+precompiled Go renderers and JavaScript modules. Pure components are expanded
+from source by the gothic app generator. The kit lives in a separately
+versioned Go module.
 
 ## Install
 
@@ -44,11 +46,19 @@ owns the message handler and any server procedures it calls.
 
 ## Components
 
+Pure components:
+
 - `Button` with `label`, `primary`, and `onclick gothic.Msg`
 - `Card` with `title` and `body`
+
+Stateful components:
+
 - `Counter` with `label`, keeping count in component state
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
+
+`Counter` uses `Button` internally as a pure component. The app generator
+expands pure UI kit components into the consumer app.
 
 ## Development
 

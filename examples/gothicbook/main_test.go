@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -30,7 +31,6 @@ func TestGothicbook(t *testing.T) {
 		`class="ui-card`,
 		`class="ui-tabs`,
 		`class="ui-accordion`,
-		`data-gothic-component="Button"`,
 		`data-gothic-component="Tabs"`,
 		`data-gothic-component="Counter"`,
 		`Increment on client`,
@@ -66,8 +66,8 @@ func TestGothicbook(t *testing.T) {
 		`from "/_gothic/modules/ui_gothic.js"`,
 		`mountTabs`,
 		`mountAccordion`,
-		`mountButton`,
 		`mountCounter`,
+		`IncrementClicked`,
 		`dispatch`,
 	} {
 		if !strings.Contains(string(js), want) {
@@ -84,9 +84,7 @@ func TestGothicbook(t *testing.T) {
 	for _, want := range []string{
 		`export function mountTabs`,
 		`export function mountAccordion`,
-		`export function mountButton`,
 		`export function mountCounter`,
-		`emit(onclick)`,
 	} {
 		if !strings.Contains(string(uiJS), want) {
 			t.Errorf("UI JS missing %q", want)
@@ -100,8 +98,9 @@ func TestGothicbook(t *testing.T) {
 	}
 	body, _ = io.ReadAll(res.Body)
 	res.Body.Close()
-	if !strings.Contains(string(body), "<!--g:text:8:open-->1<!--g:text:8:close-->") {
-		t.Fatalf("server count did not update\n\n%s", body)
+	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(string(body), "")
+	if !strings.Contains(stripped, "Server count:1") {
+		t.Fatalf("server count did not update\n\n%s", stripped)
 	}
 }
 

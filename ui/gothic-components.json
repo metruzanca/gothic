@@ -17,44 +17,6 @@
       "listable": false
     },
     {
-      "name": "Button",
-      "go": "Button",
-      "mount": "mountButton",
-      "create": "createButton",
-      "props": [
-        {
-          "name": "label",
-          "type": "string"
-        },
-        {
-          "name": "primary",
-          "type": "bool"
-        },
-        {
-          "name": "onclick",
-          "type": "gothic.Msg"
-        }
-      ],
-      "listable": true
-    },
-    {
-      "name": "Card",
-      "go": "Card",
-      "mount": "mountCard",
-      "create": "createCard",
-      "props": [
-        {
-          "name": "title",
-          "type": "string"
-        },
-        {
-          "name": "body",
-          "type": "string"
-        }
-      ],
-      "listable": true
-    },
-    {
       "name": "Counter",
       "go": "Counter",
       "mount": "mountCounter",

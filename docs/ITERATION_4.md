@@ -101,16 +101,16 @@ The UI kit lives in [`ui`](../ui) as a separate Go module:
 go get github.com/metruzanca/gothic/ui
 ```
 
-It contains four proof-of-concept components:
+It contains five proof-of-concept components.
 
-- `Button`
-- `Card`
-- `Tabs`
-- `Accordion`
-- `Counter`
+Pure components: `Button`, `Card`.
 
-Button and Card have empty models and are stateless in behavior. Tabs and
-Accordion own their active or open state.
+Stateful components: `Tabs`, `Accordion`, `Counter`.
+
+`Counter` uses the pure `Button` component internally.
+
+Tabs owns the active tab, Accordion owns the open item, and Counter owns its
+count. The pure components are expanded into the consumer app.
 
 Add the package to an app with a directive:
 
@@ -121,10 +121,11 @@ Add the package to an app with a directive:
 Then use namespaced tags:
 
 ```gothic
-<ui.Button label="Save" primary={ true } />
+<ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
 <ui.Card title="Title" body="Body" />
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
+<ui.Counter label="Increment on client" />
 ```
 
 The CLI resolves the package with `go list`, reads

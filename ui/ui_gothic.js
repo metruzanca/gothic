@@ -84,101 +84,6 @@ export function createAccordion() {
   throw new Error("gothic: Accordion cannot be created inside a list");
 }
 
-const INITIAL_Button = {};
-
-export function mountButton(root, label, primary, onclick, __gothicParentDispatch) {
-  let model = readComponentState(root) || cloneInitial(INITIAL_Button);
-  function emit(msg) {
-    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  onLocal(root, "0", "click", (event) => emit(onclick));
-  function render(model) {
-    classToggleLocal(root, "0", primary);
-    textLocal(root, "0", label);
-  }
-
-  function update(m, msg) {
-    return [m, null];
-  }
-
-  function dispatch(msg) {
-    const result = update(model, msg);
-    model = result[0];
-    render(model);
-  }
-  render(model);
-  return { updateProps(nextLabel, nextPrimary, nextOnclick) {
-    label = nextLabel;
-    primary = nextPrimary;
-    onclick = nextOnclick;
-    render(model);
-  } };
-}
-
-export function createButton(id, label, primary, onclick) {
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('data-gothic-component-id', id);
-  const model = cloneInitial(INITIAL_Button);
-    const e0 = document.createElement("button");
-    e0.setAttribute("class", "ui-button");
-    e0.setAttribute("data-gothic-class-0", "ui-button-primary");
-    e0.setAttribute("data-gothic-on", "0");
-    e0.appendChild(document.createComment("g:text:0:open"));
-    e0.appendChild(document.createTextNode(String(label)));
-    e0.appendChild(document.createComment("g:text:0:close"));
-  wrapper.appendChild(e0);
-  return wrapper;
-}
-
-const INITIAL_Card = {};
-
-export function mountCard(root, title, body, __gothicParentDispatch) {
-  let model = readComponentState(root) || cloneInitial(INITIAL_Card);
-  function emit(msg) {
-    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  function render(model) {
-    textLocal(root, "0", title);
-    textLocal(root, "1", body);
-  }
-
-  function update(m, msg) {
-    return [m, null];
-  }
-
-  function dispatch(msg) {
-    const result = update(model, msg);
-    model = result[0];
-    render(model);
-  }
-  render(model);
-  return { updateProps(nextTitle, nextBody) {
-    title = nextTitle;
-    body = nextBody;
-    render(model);
-  } };
-}
-
-export function createCard(id, title, body) {
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('data-gothic-component-id', id);
-  const model = cloneInitial(INITIAL_Card);
-    const e0 = document.createElement("section");
-    e0.setAttribute("class", "ui-card");
-    const e1 = document.createElement("h2");
-    e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String(title)));
-    e1.appendChild(document.createComment("g:text:0:close"));
-    e0.appendChild(e1);
-    const e2 = document.createElement("p");
-    e2.appendChild(document.createComment("g:text:1:open"));
-    e2.appendChild(document.createTextNode(String(body)));
-    e2.appendChild(document.createComment("g:text:1:close"));
-    e0.appendChild(e2);
-  wrapper.appendChild(e0);
-  return wrapper;
-}
-
 const INITIAL_Counter = {"Count":0};
 
 export function mountCounter(root, label, __gothicParentDispatch) {
@@ -186,9 +91,10 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
-  onLocal(root, "0", "click", (event) => dispatch({tag: "CounterClicked", By: 1}));
+  onLocal(root, "0", "click", (event) => dispatch(({tag: "CounterClicked", By: 1})));
   function render(model) {
-    textLocal(root, "0", label);
+    classToggleLocal(root, "0", (true));
+    textLocal(root, "0", (label));
     textLocal(root, "1", model.Count);
   }
 
@@ -222,10 +128,11 @@ export function createCounter(id, label) {
     const e0 = document.createElement("div");
     e0.setAttribute("class", "ui-counter");
     const e1 = document.createElement("button");
-    e1.setAttribute("class", "ui-button ui-button-primary");
+    e1.setAttribute("class", "ui-button");
+    e1.setAttribute("data-gothic-class-0", "ui-button-primary");
     e1.setAttribute("data-gothic-on", "0");
     e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String(label)));
+    e1.appendChild(document.createTextNode(String((label))));
     e1.appendChild(document.createComment("g:text:0:close"));
     e0.appendChild(e1);
     const e2 = document.createElement("strong");

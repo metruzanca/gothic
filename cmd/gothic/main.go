@@ -221,15 +221,21 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		}
 	}
 
-	if err := validateRegistry(registry); err != nil {
-		return 0, 0, err
-	}
-	external, err := loadExternalComponents(appSource)
+	external, externalPure, err := loadExternalComponents(appSource)
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
 	}
 	for _, ext := range external {
 		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, ParamList: ext.Props}
+	}
+	for name, t := range externalPure {
+		if _, exists := registry[name]; exists {
+			return 0, 0, fmt.Errorf("duplicate component %q", name)
+		}
+		registry[name] = t
+	}
+	if err := validateRegistry(registry); err != nil {
+		return 0, 0, err
 	}
 	expanded, err := viewparser.ExpandApp(appSource.view, registry)
 	if err != nil {
@@ -483,9 +489,13 @@ func readLibraryConfig(dir string) (libraryConfig, bool, error) {
 
 func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Writer) (int, int, error) {
 	sort.Strings(paths)
-	var preludes [][]byte
-	var views []*viewparser.Template
-	apps := map[string]*goapp.App{}
+	type libFile struct {
+		path    string
+		prelude []byte
+		views   []*viewparser.Template
+		app     *goapp.App
+	}
+	files := make([]libFile, 0, len(paths))
 	for _, path := range paths {
 		src, err := os.ReadFile(path)
 		if err != nil {
@@ -499,30 +509,58 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, err
 		}
-		apps[path] = app
-		preludes = append(preludes, appFile.GoSource)
-		views = append(views, appFile.View.Templates...)
+		files = append(files, libFile{path: path, prelude: appFile.GoSource, views: appFile.View.Templates, app: app})
 	}
-	stateful := make([]*generator.Stateful, 0, len(views))
-	for _, t := range views {
-		if len(t.ParamList) == 0 {
-			return 0, 0, fmt.Errorf("library component %s must have a model parameter", t.Name)
-		}
-		var app *goapp.App
-		for _, candidate := range apps {
-			if candidate.Components[t.ParamList[0].Type] != nil {
-				app = candidate
-				break
+
+	pure := viewparser.ComponentSet{}
+	type statefulView struct {
+		t    *viewparser.Template
+		app  *goapp.App
+		file string
+	}
+	var statefulViews []statefulView
+	for _, f := range files {
+		for _, t := range f.views {
+			var app *goapp.App
+			if len(t.ParamList) > 0 {
+				for _, candidate := range files {
+					if candidate.app.Components[t.ParamList[0].Type] != nil {
+						app = candidate.app
+						break
+					}
+				}
 			}
+			if app == nil {
+				if _, exists := pure[t.Name]; exists {
+					return 0, 0, fmt.Errorf("duplicate library component %q", t.Name)
+				}
+				if len(t.Children) != 1 {
+					return 0, 0, fmt.Errorf("library component %s must have one root element", t.Name)
+				}
+				pure[t.Name] = t
+				continue
+			}
+			statefulViews = append(statefulViews, statefulView{t: t, app: app, file: f.path})
 		}
-		if app == nil {
-			return 0, 0, fmt.Errorf("library component %s: model %s not found", t.Name, t.ParamList[0].Type)
+	}
+
+	stateful := make([]*generator.Stateful, 0, len(statefulViews))
+	statefulFiles := map[string]bool{}
+	seenStateful := map[string]bool{}
+	for _, sv := range statefulViews {
+		t := sv.t
+		if seenStateful[t.Name] {
+			return 0, 0, fmt.Errorf("duplicate library component %q", t.Name)
 		}
-		comp := app.Components[t.ParamList[0].Type]
+		seenStateful[t.Name] = true
+		if _, exists := pure[t.Name]; exists {
+			return 0, 0, fmt.Errorf("library component %q is both pure and stateful", t.Name)
+		}
+		comp := sv.app.Components[t.ParamList[0].Type]
 		if comp.Init == nil || comp.Update == nil {
 			return 0, 0, fmt.Errorf("library component %s: model %s needs Init and Update", t.Name, t.ParamList[0].Type)
 		}
-		modelJSON, err := zeroModelJSON(app.Messages[t.ParamList[0].Type])
+		modelJSON, err := zeroModelJSON(sv.app.Messages[t.ParamList[0].Type])
 		if err != nil {
 			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
 		}
@@ -531,6 +569,17 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 				return 0, 0, fmt.Errorf("library component %s: prop %q is reserved", t.Name, p.Name)
 			}
 		}
+		expanded, err := viewparser.ExpandTemplate(t, pure)
+		if err != nil {
+			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
+		}
+		if len(expanded.Children) != 1 {
+			return 0, 0, fmt.Errorf("library component %s must have one root element", t.Name)
+		}
+		if _, ok := expanded.Children[0].(*viewparser.Element); !ok {
+			return 0, 0, fmt.Errorf("library component %s root must be an element", t.Name)
+		}
+		statefulFiles[sv.file] = true
 		name := t.Name
 		stateful = append(stateful, &generator.Stateful{
 			Name:       name,
@@ -541,11 +590,18 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			ModelType:  t.ParamList[0].Type,
 			ModelJSON:  modelJSON,
 			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
-			View:       t,
-			App:        app.ComponentApp(t.ParamList[0].Type),
-			Listable:   !hasFor(t),
+			View:       expanded,
+			App:        sv.app.ComponentApp(t.ParamList[0].Type),
+			Listable:   !hasFor(expanded),
 			ModuleURL:  cfg.ModuleURL,
 		})
+	}
+
+	var preludes [][]byte
+	for _, f := range files {
+		if statefulFiles[f.path] {
+			preludes = append(preludes, f.prelude)
+		}
 	}
 
 	goSrc, err := generator.GenerateLibrary(generator.LibraryOptions{
@@ -593,28 +649,37 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	return n, len(paths), nil
 }
 
-func loadExternalComponents(s *source) ([]*generator.Stateful, error) {
+func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.ComponentSet, error) {
 	paths := componentDirectives(s.src)
 	var out []*generator.Stateful
+	pure := viewparser.ComponentSet{}
 	for _, path := range paths {
 		cmd := exec.Command("go", "list", "-f", "{{.Dir}}", path)
 		cmd.Dir = s.dir
 		data, err := cmd.Output()
 		if err != nil {
-			return nil, fmt.Errorf("resolve component package %s: %w", path, err)
+			return nil, nil, fmt.Errorf("resolve component package %s: %w", path, err)
 		}
 		pkgDir := strings.TrimSpace(string(data))
 		manifestData, err := os.ReadFile(filepath.Join(pkgDir, "gothic-components.json"))
 		if err != nil {
-			return nil, fmt.Errorf("read component manifest for %s: %w", path, err)
+			return nil, nil, fmt.Errorf("read component manifest for %s: %w", path, err)
 		}
 		var manifest libraryManifest
 		if err := json.Unmarshal(manifestData, &manifest); err != nil {
-			return nil, fmt.Errorf("parse component manifest for %s: %w", path, err)
+			return nil, nil, fmt.Errorf("parse component manifest for %s: %w", path, err)
 		}
+		if manifest.Alias == "" {
+			return nil, nil, fmt.Errorf("component package %s: missing alias in manifest", path)
+		}
+		statefulNames := map[string]bool{}
 		for _, comp := range manifest.Components {
+			statefulNames[comp.Name] = true
 			props := make([]viewparser.Param, len(comp.Props))
 			for i, p := range comp.Props {
+				if p.Name == "emit" {
+					return nil, nil, fmt.Errorf("component %s: prop %q is reserved", comp.Name, p.Name)
+				}
 				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
 			}
 			out = append(out, &generator.Stateful{
@@ -630,8 +695,42 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, error) {
 				ModuleURL:   manifest.Module,
 			})
 		}
+
+		entries, err := os.ReadDir(pkgDir)
+		if err != nil {
+			return nil, nil, fmt.Errorf("read component package %s: %w", path, err)
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".gth") {
+				continue
+			}
+			file := filepath.Join(pkgDir, entry.Name())
+			src, err := os.ReadFile(file)
+			if err != nil {
+				return nil, nil, err
+			}
+			appFile, err := viewparser.ParseApp(file, src)
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, t := range appFile.View.Templates {
+				if statefulNames[t.Name] {
+					continue
+				}
+				for _, p := range t.ParamList {
+					if p.Name == "emit" {
+						return nil, nil, fmt.Errorf("component %s: prop %q is reserved", t.Name, p.Name)
+					}
+				}
+				name := manifest.Alias + "." + t.Name
+				if _, exists := pure[name]; exists {
+					return nil, nil, fmt.Errorf("duplicate component %q", name)
+				}
+				pure[name] = t
+			}
+		}
 	}
-	return out, nil
+	return out, pure, nil
 }
 
 func componentDirectives(src []byte) []string {

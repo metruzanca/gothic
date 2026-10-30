@@ -115,7 +115,7 @@ The ping/pong proof of concept runs end to end.
 - The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
 - Pure components compose views with typed props, in the app file or separate files.
 - Stateful components own their model, Init, Update, and view, and work in static positions and keyed lists.
-- The separately versioned UI kit ships Button, Card, Tabs, Accordion, and Counter.
+- The separately versioned UI kit ships pure Button/Card components and stateful Tabs/Accordion/Counter components.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Gothicbook is a small design system demo for the UI kit, including a server-backed action.
 - Procedures accept JSON arguments, and keyed lists update in place.

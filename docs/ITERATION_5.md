@@ -74,7 +74,8 @@ Its message is emitted to the App; it is not executed by the Button component.
 
 Gothicbook adds a small client and server state section:
 
-- a `ui.Counter` that keeps its count entirely inside the component,
+- a `ui.Counter` that keeps its count entirely inside the component and uses
+  the pure `ui.Button` component internally,
 - an in-memory counter in the server,
 - an `Increment` procedure,
 - a `ui.Button` whose `onclick` is `IncrementClicked{}`,
