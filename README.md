@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="logo.svg" alt="Gothic logo" width="96">
+  <img src="assets/gothic-wordmark.svg" alt="Gothic" width="260">
 </p>
-
-# Gothic
 
 Gothic is a batteries-included Go framework for building full-stack apps.
 It prioritizes simplicity and productivity.

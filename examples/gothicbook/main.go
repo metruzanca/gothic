@@ -18,8 +18,11 @@ import (
 //go:embed style.css
 var pageCSS []byte
 
-//go:embed logo.svg
-var pageLogo []byte
+//go:embed assets/gothic-mark.svg
+var pageMark []byte
+
+//go:embed assets/gothic-wordmark.svg
+var pageWordmark []byte
 
 type counterStore struct {
 	count atomic.Int64
@@ -54,9 +57,13 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		_, _ = w.Write(pageCSS)
 	})
-	s.Get("/logo.svg", func(w http.ResponseWriter, r *http.Request) {
+	s.Get("/gothic-mark.svg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
-		_, _ = w.Write(pageLogo)
+		_, _ = w.Write(pageMark)
+	})
+	s.Get("/gothic-wordmark.svg", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/svg+xml")
+		_, _ = w.Write(pageWordmark)
 	})
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		var page bytes.Buffer

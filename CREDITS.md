@@ -1,10 +1,11 @@
 # Credits
 
-## Logo
+## Logo and wordmark
 
-The gothic logo is by [Mackenzie Child](https://mackenziechild.me).
+The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechild.me).
 
 - Website: https://mackenziechild.me
 - X: https://x.com/mackenziechild
 
-The current file is a temporary version. A refined logo will replace it.
+The current files are temporary versions. A refined logo and wordmark will
+replace them.
