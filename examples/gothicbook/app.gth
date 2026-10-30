@@ -117,12 +117,12 @@ view App(model Model) {
 
 		<section class="section">
 			<h2>Conditionals</h2>
-			<p>An if branch renders one panel or the other. Toggling removes the unused branch from the DOM.</p>
+			<p>An if branch renders one panel or the other. Toggling removes the unused branch from the DOM, so stateful components start fresh when the branch returns.</p>
 			<div class="row">
 				<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
 			</div>
 			if model.ShowExample {
-				<ui.Card title="The branch is visible" body="This card is rendered by the then branch of a view conditional." />
+				<ui.Counter label="Increment in a branch" />
 			} else {
 				<p class="server-count">The else branch is visible instead.</p>
 			}

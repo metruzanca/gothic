@@ -351,3 +351,53 @@ func TestGenerateConditionals(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateConditionalStatefulComponent(t *testing.T) {
+	f, err := parser.Parse("cond.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		if model.Show {
+			<Tabs />
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Show bool }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(f, app, generator.Options{
+		FileName:   "cond.gth",
+		ModuleBase: "cond",
+		App:        app,
+		Stateful: []*generator.Stateful{{
+			Name:        "Tabs",
+			GoName:      "Tabs",
+			External:    true,
+			ImportAlias: "ui",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`<!--g:if:0:then-->`,
+		`if model.Show {`,
+		`ui.Tabs("c0", "").Render(ctx, w)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+}

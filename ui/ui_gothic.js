@@ -80,8 +80,16 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
   } };
 }
 
-export function createAccordion() {
-  throw new Error("gothic: Accordion cannot be created inside a list");
+export function createAccordion(id, items) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = cloneInitial(INITIAL_Accordion);
+    const e0 = document.createElement("div");
+    e0.setAttribute("class", "ui-accordion");
+    e0.appendChild(document.createComment("g:each:0:open"));
+    e0.appendChild(document.createComment("g:each:0:close"));
+  wrapper.appendChild(e0);
+  return wrapper;
 }
 
 const INITIAL_Counter = {"Count":0};
@@ -213,7 +221,23 @@ export function mountTabs(root, items, __gothicParentDispatch) {
   } };
 }
 
-export function createTabs() {
-  throw new Error("gothic: Tabs cannot be created inside a list");
+export function createTabs(id, items) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = cloneInitial(INITIAL_Tabs);
+    const e0 = document.createElement("div");
+    e0.setAttribute("class", "ui-tabs");
+    const e1 = document.createElement("div");
+    e1.setAttribute("class", "ui-tabs-list");
+    e1.appendChild(document.createComment("g:each:0:open"));
+    e1.appendChild(document.createComment("g:each:0:close"));
+    e0.appendChild(e1);
+    const e2 = document.createElement("div");
+    e2.setAttribute("class", "ui-tabs-panels");
+    e2.appendChild(document.createComment("g:each:1:open"));
+    e2.appendChild(document.createComment("g:each:1:close"));
+    e0.appendChild(e2);
+  wrapper.appendChild(e0);
+  return wrapper;
 }
 

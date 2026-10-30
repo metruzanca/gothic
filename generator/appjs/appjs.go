@@ -47,6 +47,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 		stateful:      statefulByName(opts.Stateful),
 		statefulList:  opts.Stateful,
 		componentsURL: opts.ComponentsModuleURL,
+		allowNested:   true,
 	}
 
 	var bindings strings.Builder
@@ -67,10 +68,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 			if _, ok := byModule[comp.ModuleURL]; !ok {
 				order = append(order, comp.ModuleURL)
 			}
-			byModule[comp.ModuleURL] = append(byModule[comp.ModuleURL], comp.MountFunc)
-			if comp.Listable {
-				byModule[comp.ModuleURL] = append(byModule[comp.ModuleURL], comp.CreateFunc)
-			}
+			byModule[comp.ModuleURL] = append(byModule[comp.ModuleURL], comp.MountFunc, comp.CreateFunc)
 		}
 		for _, url := range order {
 			fmt.Fprintf(&b, "import { %s } from %s;\n", strings.Join(byModule[url], ", "), jsString(url))
@@ -139,6 +137,7 @@ type gen struct {
 	statefulList     []*generator.Stateful
 	componentsURL    string
 	localHelpers     bool
+	allowNested      bool
 }
 
 func (g *gen) helper(name string) string {
@@ -325,7 +324,9 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 
 	var item strings.Builder
 	var bindings []itemBinding
+	savedVarN := g.varN
 	g.varN = 0
+	defer func() { g.varN = savedVarN }()
 	var rootVar string
 	var keyExpr ast.Expr
 	for _, child := range f.Children {
@@ -375,9 +376,6 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 	comp := g.stateful[call.Name]
 	if comp == nil {
 		return "", fmt.Errorf("unknown stateful component %s", call.Name)
-	}
-	if !comp.Listable {
-		return "", fmt.Errorf("stateful component %s cannot be used inside a list yet", call.Name)
 	}
 	renderName := fmt.Sprintf("renderList%d", idx)
 	compID := fmt.Sprintf("c%d", g.componentN)
@@ -497,6 +495,57 @@ func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
 // ifBranch renders a branch as a build function body and a bind function body.
 // The build body creates a DocumentFragment and returns it. The bind body
 // refreshes bindings for the mounted branch and starts nested conditionals.
+// componentCallCode renders the build and bind code for a stateful component
+// inside a branch or a nested element. The bind code uses __ROOT__ as a
+// placeholder for the scope that contains the component wrapper.
+func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string, string, string, error) {
+	if !g.allowNested {
+		return "", "", "", fmt.Errorf("stateful component %s cannot be nested inside another stateful component yet", call.Name)
+	}
+	comp := g.stateful[call.Name]
+	if comp == nil {
+		return "", "", "", fmt.Errorf("unknown stateful component %s", call.Name)
+	}
+	args, err := g.componentArgs(comp, call, ctx)
+	if err != nil {
+		return "", "", "", err
+	}
+	id := fmt.Sprintf("c%d", g.componentN)
+	g.componentN++
+	tag := fmt.Sprintf("gc%d", g.componentN)
+	nodeName := tag + "Node"
+	instName := tag + "Inst"
+	varName := fmt.Sprintf("e%d", g.varN)
+	g.varN++
+
+	var build strings.Builder
+	fmt.Fprintf(&build, "const %s = %s(%s%s);\n", varName, comp.CreateFunc, jsString(id), commaArgs(args))
+	if call.Key != nil {
+		key, err := g.expr(call.Key, ctx)
+		if err != nil {
+			return "", "", "", err
+		}
+		fmt.Fprintf(&build, "%s.setAttribute(\"data-gothic-key\", String(%s));\n", varName, key)
+	}
+
+	bind := fmt.Sprintf(`const %s = __ROOT__.querySelector('[data-gothic-component-id="%s"]');
+let %s = %s && %s.__gothicInstances && %s.__gothicInstances[%s];
+if (!%s) {
+  %s = %s(%s%s, dispatch);
+  %s.__gothicInstances = { %s: %s };
+} else {
+  %s.updateProps(%s);
+}`,
+		nodeName, id,
+		instName, nodeName, nodeName, nodeName, jsString(id),
+		instName,
+		instName, comp.MountFunc, nodeName, commaArgs(args),
+		nodeName, jsString(id), instName,
+		instName, args)
+
+	return varName, build.String(), bind, nil
+}
+
 func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error) {
 	var build strings.Builder
 	build.WriteString("const frag = document.createDocumentFragment();\n")
@@ -538,9 +587,23 @@ func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error)
 			}
 			nested = append(nested, fmt.Sprintf("%s(region, %s);", g.helper("ifBlock"), args))
 		case *parser.For:
-			return "", "", fmt.Errorf("for loops directly inside an if branch are not supported yet; wrap the loop in an element")
+			idx := g.eachN
+			g.eachN++
+			fmt.Fprintf(&build, "  frag.appendChild(document.createComment(%s));\n", jsString(fmt.Sprintf("g:each:%d:open", idx)))
+			fmt.Fprintf(&build, "  frag.appendChild(document.createComment(%s));\n", jsString(fmt.Sprintf("g:each:%d:close", idx)))
+			call, err := g.forCall("__ROOT__", c, idx)
+			if err != nil {
+				return "", "", err
+			}
+			bindings = append(bindings, itemBinding{kind: "code", expr: call})
 		case *parser.ComponentCall:
-			return "", "", fmt.Errorf("stateful component %s inside an if branch is not supported yet", c.Name)
+			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, ctx)
+			if err != nil {
+				return "", "", err
+			}
+			build.WriteString(indentJS(buildStmt, "  "))
+			fmt.Fprintf(&build, "  frag.appendChild(%s);\n", nodeVar)
+			bindings = append(bindings, itemBinding{kind: "code", expr: bindStmt})
 		}
 	}
 	build.WriteString("  return frag;")
@@ -666,7 +729,13 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 			}
 			*bindings = append(*bindings, itemBinding{kind: "code", expr: fmt.Sprintf("%s(__ROOT__, %s);", g.helper("ifBlock"), args)})
 		case *parser.ComponentCall:
-			return "", fmt.Errorf("stateful component %s nested inside an element is not supported yet", c.Name)
+			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, exprCtx{locals: locals})
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(indentJS(buildStmt, "  "))
+			fmt.Fprintf(sb, "  %s.appendChild(%s);\n", v, nodeVar)
+			*bindings = append(*bindings, itemBinding{kind: "code", expr: bindStmt})
 		}
 	}
 	return v, nil
@@ -1264,11 +1333,6 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			fmt.Fprintf(&b, "    %s = next%s;\n", p.Name, jsTitle(p.Name))
 		}
 		fmt.Fprintf(&b, "    render(%s);\n  } };\n}\n\n", modelName)
-
-		if !comp.Listable {
-			fmt.Fprintf(&b, "export function %s() {\n  throw new Error(%s);\n}\n\n", comp.CreateFunc, jsString("gothic: "+comp.Name+" cannot be created inside a list"))
-			continue
-		}
 
 		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
 		locals := map[string]bool{}

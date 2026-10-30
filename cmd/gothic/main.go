@@ -402,7 +402,7 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
 			View:       expanded,
 			App:        app,
-			Listable:   !hasFor(expanded),
+			Listable:   true,
 			ModuleURL:  generator.ComponentsModuleURL(s.base),
 		})
 	}
@@ -449,24 +449,6 @@ func zeroModelJSON(fields []goapp.Field) (string, error) {
 		parts = append(parts, fmt.Sprintf("%q:%s", f.Name, zero))
 	}
 	return "{" + strings.Join(parts, ",") + "}", nil
-}
-
-func hasFor(t *viewparser.Template) bool {
-	var walk func([]viewparser.Node) bool
-	walk = func(nodes []viewparser.Node) bool {
-		for _, n := range nodes {
-			switch n := n.(type) {
-			case *viewparser.Element:
-				if walk(n.Children) {
-					return true
-				}
-			case *viewparser.For:
-				return true
-			}
-		}
-		return false
-	}
-	return walk(t.Children)
 }
 
 func readLibraryConfig(dir string) (libraryConfig, bool, error) {
@@ -592,7 +574,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
 			View:       expanded,
 			App:        sv.app.ComponentApp(t.ParamList[0].Type),
-			Listable:   !hasFor(expanded),
+			Listable:   true,
 			ModuleURL:  cfg.ModuleURL,
 		})
 	}

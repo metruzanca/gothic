@@ -14,7 +14,7 @@
           "type": "[]AccordionItem"
         }
       ],
-      "listable": false
+      "listable": true
     },
     {
       "name": "Counter",
@@ -40,7 +40,7 @@
           "type": "[]Tab"
         }
       ],
-      "listable": false
+      "listable": true
     }
   ]
 }

@@ -248,7 +248,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 }
 
-func TestRejectStatefulComponentInsideConditional(t *testing.T) {
+func TestGenerateConditionalStatefulComponent(t *testing.T) {
 	view := &parser.File{Templates: []*parser.Template{{
 		Name:   "App",
 		Params: "(model Model)",
@@ -273,7 +273,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = appjs.Generate(view, app, appjs.Options{
+	out, err := appjs.Generate(view, app, appjs.Options{
 		FileName: "view.gth",
 		Stateful: []*generator.Stateful{{
 			Name:       "Tabs",
@@ -282,7 +282,130 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 			CreateFunc: "createTabs",
 		}},
 	})
-	if err == nil || !strings.Contains(err.Error(), "inside an if branch is not supported") {
-		t.Fatalf("error = %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`import { mountTabs, createTabs } from "/_gothic/modules/tabs.js";`,
+		`ifBlock(root, "0",`,
+		`createTabs("c0")`,
+		`frag.appendChild(e0);`,
+		`querySelector('[data-gothic-component-id="c0"]')`,
+		`mountTabs(gc1Node, dispatch)`,
+		`__gothicInstances`,
+		`updateProps()`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateLoopInsideConditionalBranch(t *testing.T) {
+	view, err := parser.Parse("branch.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		if model.Show {
+			for _, item := range model.Items {
+				<li>{ item }</li>
+			}
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Show bool; Items []string }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "branch.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`document.createComment("g:each:0:open")`,
+		`document.createComment("g:each:0:close")`,
+		`list(region, "0"`,
+		`model.Items`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateComponentWithLoopsAndConditionals(t *testing.T) {
+	view, err := parser.Parse("disclosure.gth", []byte(`package ui
+
+view Disclosure(model DisclosureModel, title string, details []string) {
+	<div class="ui-disclosure">
+		<button onclick={ DisclosureToggled{} }>{ title }</button>
+		if model.Expanded {
+			<ul>
+				for _, detail := range details {
+					<li>{ detail }</li>
+				}
+			</ul>
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("ui.go", []byte(`package ui
+
+type DisclosureModel struct{ Expanded bool }
+type DisclosureToggled struct{}
+
+func (m DisclosureModel) Init() Cmd { return nil }
+func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	componentApp := app.ComponentApp("DisclosureModel")
+	if componentApp == nil {
+		t.Fatal("component app not found")
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name:      "Disclosure",
+		View:      view.Templates[0],
+		App:       componentApp,
+		ModelJSON: `{"Expanded":false}`,
+		Props: []parser.Param{
+			{Name: "title", Type: "string"},
+			{Name: "details", Type: "[]string"},
+		},
+		MountFunc:  "mountDisclosure",
+		CreateFunc: "createDisclosure",
+	}}, appjs.Options{FileName: "disclosure.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`export function createDisclosure(id, title, details)`,
+		`document.createComment("g:if:0:open")`,
+		`document.createComment("g:each:0:open")`,
+		`data-gothic-component-id`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+	if strings.Contains(src, "cannot be created inside a list") {
+		t.Errorf("CreateFunc should not throw\n\n%s", src)
 	}
 }
