@@ -1689,6 +1689,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 
 		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch) {\n", comp.MountFunc, propSig)
 		fmt.Fprintf(&b, "  let %s = readComponentState(root) || cloneInitial(%s);\n", modelName, initial)
+		b.WriteString("  let alive = true;\n")
 		b.WriteString("  function emit(msg) {\n    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);\n  }\n")
 		b.WriteString(indentJS(bindings.String(), "  "))
 		b.WriteString(indentJS(renderCall.String(), "  "))
@@ -1702,12 +1703,12 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			}
 			dispatchArgs += ", " + strings.Join(names, ", ")
 		}
-		fmt.Fprintf(&b, "  function dispatch(msg) {\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n  }\n", dispatchArgs, modelName, modelName)
+		fmt.Fprintf(&b, "  function dispatch(msg) {\n    if (!alive) return;\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n  }\n", dispatchArgs, modelName, modelName)
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
 		if initFn != "" {
 			b.WriteString("  init();\n")
 		}
-		fmt.Fprintf(&b, "  return { updateProps(%s) {\n", nextPropList)
+		fmt.Fprintf(&b, "  return { updateProps(%s) {\n    if (!alive) return;\n", nextPropList)
 		if len(comp.Props) > 0 {
 			b.WriteString("    let changed = false;\n")
 			for _, p := range comp.Props {
@@ -1717,7 +1718,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		} else {
 			fmt.Fprintf(&b, "    render(%s);\n", modelName)
 		}
-		b.WriteString("  } };\n}\n\n")
+		b.WriteString("  }, destroy() { alive = false; } };\n}\n\n")
 
 		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
 		locals := map[string]bool{}

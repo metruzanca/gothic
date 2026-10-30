@@ -873,3 +873,25 @@ func TestRejectComponentInitProps(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestComponentDestroyLifecycle(t *testing.T) {
+	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd { return nil }`)
+	component := app.ComponentApp("CounterModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`let alive = true;`,
+		`if (!alive) return;`,
+		`destroy() { alive = false; }`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}

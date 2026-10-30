@@ -16,6 +16,7 @@ const INITIAL_Accordion = {"Open":0};
 
 export function mountAccordion(root, items, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Accordion);
+  let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
@@ -80,6 +81,7 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
   }
 
   function dispatch(msg) {
+    if (!alive) return;
     const result = update(model, msg, items);
     model = result[0];
     render(model);
@@ -87,10 +89,11 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
   render(model);
   init();
   return { updateProps(nextItems) {
+    if (!alive) return;
     let changed = false;
     if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
     if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
-  } };
+  }, destroy() { alive = false; } };
 }
 
 export function createAccordion(id, items) {
@@ -110,6 +113,7 @@ const INITIAL_Counter = {"Count":0};
 
 export function mountCounter(root, label, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Counter);
+  let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
@@ -136,6 +140,7 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   }
 
   function dispatch(msg) {
+    if (!alive) return;
     const result = update(model, msg);
     model = result[0];
     render(model);
@@ -143,10 +148,11 @@ export function mountCounter(root, label, __gothicParentDispatch) {
   render(model);
   init();
   return { updateProps(nextLabel) {
+    if (!alive) return;
     let changed = false;
     if (!Object.is(label, nextLabel)) { label = nextLabel; changed = true; }
     if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
-  } };
+  }, destroy() { alive = false; } };
 }
 
 export function createCounter(id, label) {
@@ -178,6 +184,7 @@ const INITIAL_Disclosure = {"Expanded":false,"ItemID":0};
 
 export function mountDisclosure(root, item, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Disclosure);
+  let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
@@ -236,6 +243,7 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
   }
 
   function dispatch(msg) {
+    if (!alive) return;
     const result = update(model, msg, item);
     model = result[0];
     render(model);
@@ -243,10 +251,11 @@ export function mountDisclosure(root, item, __gothicParentDispatch) {
   render(model);
   init();
   return { updateProps(nextItem) {
+    if (!alive) return;
     let changed = false;
     if (!Object.is(item, nextItem)) { item = nextItem; changed = true; }
     if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
-  } };
+  }, destroy() { alive = false; } };
 }
 
 export function createDisclosure(id, item) {
@@ -274,6 +283,7 @@ const INITIAL_Tabs = {"Active":0};
 
 export function mountTabs(root, items, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Tabs);
+  let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
@@ -341,6 +351,7 @@ export function mountTabs(root, items, __gothicParentDispatch) {
   }
 
   function dispatch(msg) {
+    if (!alive) return;
     const result = update(model, msg, items);
     model = result[0];
     render(model);
@@ -348,10 +359,11 @@ export function mountTabs(root, items, __gothicParentDispatch) {
   render(model);
   init();
   return { updateProps(nextItems) {
+    if (!alive) return;
     let changed = false;
     if (!Object.is(items, nextItems)) { items = nextItems; changed = true; }
     if (changed) { dispatch({tag: "PropsChanged"}); } else { render(model); }
-  } };
+  }, destroy() { alive = false; } };
 }
 
 export function createTabs(id, items) {

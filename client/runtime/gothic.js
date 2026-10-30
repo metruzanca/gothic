@@ -87,6 +87,21 @@ function findEl(root, selector, skipComponents) {
   return null;
 }
 
+function destroyComponentTree(node) {
+  if (!node || node.nodeType !== 1) return;
+  const nodes = [];
+  if (node.matches && node.matches("[data-gothic-component]")) nodes.push(node);
+  if (node.querySelectorAll) nodes.push(...node.querySelectorAll("[data-gothic-component]"));
+  for (const n of nodes) {
+    const instances = n.__gothicInstances;
+    if (!instances) continue;
+    for (const inst of Object.values(instances)) {
+      if (inst && typeof inst.destroy === "function") inst.destroy();
+    }
+    n.__gothicInstances = null;
+  }
+}
+
 export function each(root, marker, sig, render) {
   const open = findComment(root, `g:each:${marker}:open`);
   const close = findComment(root, `g:each:${marker}:close`);
@@ -103,6 +118,7 @@ export function each(root, marker, sig, render) {
     const items = sig();
     while (nodes.length > items.length) {
       const node = nodes.pop();
+      destroyComponentTree(node);
       node.remove();
     }
     for (let i = nodes.length; i < items.length; i++) {
@@ -144,7 +160,10 @@ export function list(root, marker, render, hydrate, key, skipComponents = true) 
         }
         next.push(node);
       }
-      for (const node of byKey.values()) node.remove();
+      for (const node of byKey.values()) {
+        destroyComponentTree(node);
+        node.remove();
+      }
 
       let ref = close;
       for (let i = next.length - 1; i >= 0; i--) {
@@ -168,7 +187,9 @@ export function list(root, marker, render, hydrate, key, skipComponents = true) 
       }
     }
     while (nodes.length > items.length) {
-      nodes.pop().remove();
+      const node = nodes.pop();
+      destroyComponentTree(node);
+      node.remove();
     }
     for (let i = nodes.length; i < items.length; i++) {
       const node = render(items[i], i);
@@ -308,6 +329,7 @@ function ifClear(open, close) {
   let node = open.nextSibling;
   while (node && node !== close) {
     const next = node.nextSibling;
+    destroyComponentTree(node);
     node.remove();
     node = next;
   }
