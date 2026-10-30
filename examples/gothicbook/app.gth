@@ -1,0 +1,121 @@
+package main
+
+//gothic:components github.com/metruzanca/gothic/ui
+
+import (
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/ui"
+)
+
+type Model struct {
+	Tabs          []ui.Tab
+	Accordion     []ui.AccordionItem
+	Count         int
+	ButtonCode    string
+	CardCode      string
+	TabsCode      string
+	AccordionCode string
+	ServerCode    string
+}
+
+func NewModel(count int) Model {
+	return Model{
+		Tabs: []ui.Tab{
+			{Label: "Overview", Panel: "The first panel shows the overview."},
+			{Label: "Details", Panel: "The second panel shows more detail."},
+			{Label: "Settings", Panel: "The third panel holds settings."},
+		},
+		Accordion: []ui.AccordionItem{
+			{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
+			{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
+			{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
+		},
+		Count:         count,
+		ButtonCode:    `<ui.Button label="Save changes" primary={ true } onclick={ nil } />`,
+		CardCode:      `<ui.Card title="Card title" body="Card body" />`,
+		TabsCode:      `<ui.Tabs items={ model.Tabs } />`,
+		AccordionCode: `<ui.Accordion items={ model.Accordion } />`,
+		ServerCode:    `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
+	}
+}
+
+type IncrementClicked struct{}
+type CountUpdated struct{ Count int }
+type CountFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Increment(ctx context.Context) (int, error)
+}
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case IncrementClicked:
+		return m, func() gothic.Msg {
+			count, err := Increment()
+			if err != nil {
+				return CountFailed{Message: err.Error()}
+			}
+			return CountUpdated{Count: count}
+		}
+	case CountUpdated:
+		m.Count = msg.Count
+	}
+	return m, nil
+}
+
+view Code(title string, code string) {
+	<div class="code-block">
+		<h3>{ title }</h3>
+		<pre><code>{ code }</code></pre>
+	</div>
+}
+
+view App(model Model) {
+	<main class="page">
+		<header class="hero">
+			<p class="eyebrow">gothic ui kit</p>
+			<h1>Gothicbook</h1>
+			<p>A tiny design system demo for the installable gothic UI package.</p>
+		</header>
+
+		<section class="section">
+			<h2>Button</h2>
+			<div class="row">
+				<ui.Button label="Save changes" primary={ true } onclick={ nil } />
+				<ui.Button label="Cancel" primary={ false } onclick={ nil } />
+			</div>
+			<Code title="Usage" code={ model.ButtonCode } />
+		</section>
+
+		<section class="section">
+			<h2>Card</h2>
+			<ui.Card title="A simple card" body="Cards group related content with a small surface." />
+			<Code title="Usage" code={ model.CardCode } />
+		</section>
+
+		<section class="section">
+			<h2>Tabs</h2>
+			<ui.Tabs items={ model.Tabs } />
+			<Code title="Usage" code={ model.TabsCode } />
+		</section>
+
+		<section class="section">
+			<h2>Accordion</h2>
+			<ui.Accordion items={ model.Accordion } />
+			<Code title="Usage" code={ model.AccordionCode } />
+		</section>
+
+		<section class="section">
+			<h2>Server action</h2>
+			<p>The button emits a message to the app. The app runs a procedure and passes the new count back as props.</p>
+			<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
+			<p class="server-count">Server count: { model.Count }</p>
+			<Code title="Usage" code={ model.ServerCode } />
+		</section>
+	</main>
+}

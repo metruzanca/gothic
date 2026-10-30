@@ -15,8 +15,9 @@ It prioritizes simplicity and productivity.
 
 The syntax is under active development and subject to change. See the
 [ping/pong app](examples/pingpong), the
-[component demo](examples/components), and the
-[TodoMVC app](examples/todo) for working examples.
+[component demo](examples/components), the
+[TodoMVC app](examples/todo), and
+[Gothicbook](examples/gothicbook) for working examples.
 
 Browser globals such as `window.alert` are not yet part of a supported
 JavaScript interop bridge. The example below is illustrative; see the roadmap
@@ -84,11 +85,22 @@ func main() {
 }
 ```
 
+## UI kit
+
+The optional UI kit is a separately versioned Go module:
+
+```sh
+go get github.com/metruzanca/gothic/ui
+```
+
+See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
+
 ## Status
 
 Early, working proof of concept. The ping/pong example runs end to end with
 server rendering, hydration, a Bubble Tea-style update loop, a typed server
-call, and composable pure view components.
+call, composable pure view components, and self-contained stateful components.
+An installable UI kit and the Gothicbook demo are included.
 
 ## Learn more
 
@@ -97,4 +109,6 @@ call, and composable pure view components.
 - [Proof of concept](docs/ITERATION_1.md)
 - [Components](docs/ITERATION_2.md)
 - [TodoMVC on SQLite](docs/ITERATION_3.md)
+- [Stateful components and UI kit](docs/ITERATION_4.md)
+- [App-owned actions](docs/ITERATION_5.md)
 - [Pitch](docs/PITCH.md)

@@ -193,3 +193,90 @@ func TestGenerateReportsNoSources(t *testing.T) {
 		t.Fatalf("output = %q", out.String())
 	}
 }
+
+func TestGenerateStatefulComponents(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "app.gth", `package main
+
+import "github.com/metruzanca/gothic"
+
+type Item struct{ ID int; Name string }
+type Model struct{ Items []Item }
+
+func (m Model) Init() gothic.Cmd { return nil }
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) { return m, nil }
+
+type CounterModel struct{ Count int }
+type IncClicked struct{ By int }
+
+func (m CounterModel) Init() gothic.Cmd { return nil }
+func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case IncClicked:
+		m.Count = m.Count + msg.By
+	}
+	return m, nil
+}
+
+view Counter(model CounterModel, label string) {
+	<button onclick={ IncClicked{By: 1} }>{ label }: { model.Count }</button>
+}
+
+view App(model Model) {
+	<ul>
+		for _, item := range model.Items {
+			<Counter key={ item.ID } label={ item.Name } />
+		}
+	</ul>
+}
+`)
+	var out bytes.Buffer
+	if err := generate(dir, &out); err != nil {
+		t.Fatal(err)
+	}
+	goSrc, err := os.ReadFile(filepath.Join(dir, "app_gothic.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`__gothicCounterComponent`,
+		`data-gothic-component=\"Counter\"`,
+		`data-gothic-key`,
+	} {
+		if !strings.Contains(string(goSrc), want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, goSrc)
+		}
+	}
+	compSrc, err := os.ReadFile(filepath.Join(dir, "app_components_gothic.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`export function mountCounter(root, label, __gothicParentDispatch)`,
+		`export function createCounter(id, label)`,
+		`readComponentState`,
+		`cloneInitial`,
+		`localHelpers`,
+	} {
+		if want == "localHelpers" {
+			continue
+		}
+		if !strings.Contains(string(compSrc), want) {
+			t.Errorf("generated component JS missing %q\n\n%s", want, compSrc)
+		}
+	}
+	appJS, err := os.ReadFile(filepath.Join(dir, "app_gothic.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`from "/_gothic/modules/app_components_gothic.js"`,
+		`mountCounter`,
+		`createCounter`,
+		`String(item.ID)`,
+	} {
+		if !strings.Contains(string(appJS), want) {
+			t.Errorf("generated app JS missing %q\n\n%s", want, appJS)
+		}
+	}
+}

@@ -3,12 +3,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -38,6 +40,37 @@ func main() {
 type result struct {
 	sources int
 	written int
+}
+
+type libraryConfig struct {
+	Kind       string `json:"kind"`
+	Package    string `json:"package"`
+	Alias      string `json:"alias"`
+	ModuleFile string `json:"module_file"`
+	ModuleURL  string `json:"module_url"`
+	GoFile     string `json:"go_file"`
+	Manifest   string `json:"manifest"`
+}
+
+type libraryManifest struct {
+	Package    string             `json:"package"`
+	Alias      string             `json:"alias"`
+	Module     string             `json:"module"`
+	Components []libraryComponent `json:"components"`
+}
+
+type libraryComponent struct {
+	Name     string        `json:"name"`
+	Go       string        `json:"go"`
+	Mount    string        `json:"mount"`
+	Create   string        `json:"create"`
+	Props    []libraryProp `json:"props"`
+	Listable bool          `json:"listable"`
+}
+
+type libraryProp struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 func generate(root string, out io.Writer) error {
@@ -87,6 +120,7 @@ type source struct {
 	path    string
 	dir     string
 	base    string
+	src     []byte
 	appFile *viewparser.AppFile
 	app     *goapp.App
 	view    *viewparser.File
@@ -101,6 +135,7 @@ func loadSource(path string) (*source, error) {
 		path: path,
 		dir:  filepath.Dir(path),
 		base: strings.TrimSuffix(filepath.Base(path), ".gth"),
+		src:  src,
 	}
 	if appFile, err := viewparser.ParseApp(path, src); err == nil {
 		s.appFile = appFile
@@ -119,6 +154,11 @@ func loadSource(path string) (*source, error) {
 }
 
 func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
+	if cfg, ok, err := readLibraryConfig(dir); err != nil {
+		return 0, 0, err
+	} else if ok {
+		return generateLibraryDir(dir, paths, cfg, out)
+	}
 	sort.Strings(paths)
 	sources := make([]*source, 0, len(paths))
 	var apps []*source
@@ -149,7 +189,8 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 
 	appSource := apps[0]
 	registry := viewparser.ComponentSet{}
-	if err := addAppComponents(registry, appSource); err != nil {
+	statefulViews, err := addAppComponents(registry, appSource)
+	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
 	}
 
@@ -183,6 +224,13 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	if err := validateRegistry(registry); err != nil {
 		return 0, 0, err
 	}
+	external, err := loadExternalComponents(appSource)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+	}
+	for _, ext := range external {
+		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, ParamList: ext.Props}
+	}
 	expanded, err := viewparser.ExpandApp(appSource.view, registry)
 	if err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
@@ -190,7 +238,12 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	if err := validateApp(expanded); err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
 	}
-	n, err := generateApp(appSource, expanded, out)
+	stateful, err := buildStateful(appSource, statefulViews, registry)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+	}
+	stateful = append(stateful, external...)
+	n, err := generateApp(appSource, expanded, stateful, out)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -198,24 +251,36 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	return written, len(sources), nil
 }
 
-func addAppComponents(registry viewparser.ComponentSet, s *source) error {
+func addAppComponents(registry viewparser.ComponentSet, s *source) ([]*viewparser.Template, error) {
 	appCount := 0
+	var stateful []*viewparser.Template
 	for _, t := range s.view.Templates {
 		if t.Name == "App" {
 			appCount++
 			continue
 		}
+		if len(t.ParamList) > 0 {
+			comp := s.app.Components[t.ParamList[0].Type]
+			if comp != nil && comp.Init != nil && comp.Update != nil {
+				t.Stateful = true
+				if err := addComponent(registry, t); err != nil {
+					return nil, err
+				}
+				stateful = append(stateful, t)
+				continue
+			}
+		}
 		if err := addComponent(registry, t); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if appCount == 0 {
-		return fmt.Errorf("no App view found")
+		return nil, fmt.Errorf("no App view found")
 	}
 	if appCount > 1 {
-		return fmt.Errorf("duplicate App view")
+		return nil, fmt.Errorf("duplicate App view")
 	}
-	return nil
+	return stateful, nil
 }
 
 func addComponents(registry viewparser.ComponentSet, f *viewparser.File) error {
@@ -245,6 +310,9 @@ func addComponent(registry viewparser.ComponentSet, t *viewparser.Template) erro
 		if !token.IsIdentifier(p.Name) {
 			return fmt.Errorf("component %s: invalid prop name %q", t.Name, p.Name)
 		}
+		if p.Name == "emit" {
+			return fmt.Errorf("component %s: prop %q is reserved", t.Name, p.Name)
+		}
 		if seen[p.Name] {
 			return fmt.Errorf("component %s: duplicate prop %q", t.Name, p.Name)
 		}
@@ -256,6 +324,9 @@ func addComponent(registry viewparser.ComponentSet, t *viewparser.Template) erro
 
 func validateRegistry(registry viewparser.ComponentSet) error {
 	for name, t := range registry {
+		if t.Stateful && len(t.Children) == 0 {
+			continue
+		}
 		if len(t.Children) != 1 {
 			return fmt.Errorf("component %s must have exactly one root element", name)
 		}
@@ -288,30 +359,340 @@ func validateApp(f *viewparser.File) error {
 	return nil
 }
 
-func generateApp(s *source, expanded *viewparser.File, out io.Writer) (int, error) {
+func buildStateful(s *source, views []*viewparser.Template, registry viewparser.ComponentSet) ([]*generator.Stateful, error) {
+	components := make([]*generator.Stateful, 0, len(views))
+	for _, t := range views {
+		if len(t.ParamList) == 0 {
+			return nil, fmt.Errorf("stateful component %s must have a model parameter", t.Name)
+		}
+		modelType := t.ParamList[0].Type
+		app := s.app.ComponentApp(modelType)
+		if app == nil {
+			return nil, fmt.Errorf("stateful component %s: model %s has no Init/Update", t.Name, modelType)
+		}
+		expanded, err := viewparser.ExpandTemplate(t, registry)
+		if err != nil {
+			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
+		}
+		if len(expanded.Children) != 1 {
+			return nil, fmt.Errorf("stateful component %s must have one root element", t.Name)
+		}
+		if _, ok := expanded.Children[0].(*viewparser.Element); !ok {
+			return nil, fmt.Errorf("stateful component %s root must be an element", t.Name)
+		}
+		modelJSON, err := zeroModelJSON(s.app.Messages[modelType])
+		if err != nil {
+			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
+		}
+		name := t.Name
+		components = append(components, &generator.Stateful{
+			Name:       name,
+			GoName:     "__gothic" + viewparserName(name) + "Component",
+			ViewName:   "__gothic" + viewparserName(name) + "View",
+			MountFunc:  "mount" + viewparserName(name),
+			CreateFunc: "create" + viewparserName(name),
+			ModelType:  modelType,
+			ModelJSON:  modelJSON,
+			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
+			View:       expanded,
+			App:        app,
+			Listable:   !hasFor(expanded),
+			ModuleURL:  generator.ComponentsModuleURL(s.base),
+		})
+	}
+	return components, nil
+}
+
+func viewparserName(name string) string {
+	var b strings.Builder
+	for i, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' || (i > 0 && r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+	return b.String()
+}
+
+func zeroModelJSON(fields []goapp.Field) (string, error) {
+	parts := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if f.Name == "" {
+			return "", fmt.Errorf("embedded fields are not supported in component models")
+		}
+		var zero string
+		switch {
+		case f.Type == "string":
+			zero = `""`
+		case f.Type == "bool":
+			zero = "false"
+		case strings.HasPrefix(f.Type, "[]"):
+			zero = "[]"
+		case strings.HasPrefix(f.Type, "map["):
+			zero = "{}"
+		case strings.HasPrefix(f.Type, "*"):
+			zero = "null"
+		case f.Type == "int" || f.Type == "int8" || f.Type == "int16" || f.Type == "int32" || f.Type == "int64" ||
+			f.Type == "uint" || f.Type == "uint8" || f.Type == "uint16" || f.Type == "uint32" || f.Type == "uint64" ||
+			f.Type == "float32" || f.Type == "float64":
+			zero = "0"
+		default:
+			return "", fmt.Errorf("unsupported model field type %s for %s", f.Type, f.Name)
+		}
+		parts = append(parts, fmt.Sprintf("%q:%s", f.Name, zero))
+	}
+	return "{" + strings.Join(parts, ",") + "}", nil
+}
+
+func hasFor(t *viewparser.Template) bool {
+	var walk func([]viewparser.Node) bool
+	walk = func(nodes []viewparser.Node) bool {
+		for _, n := range nodes {
+			switch n := n.(type) {
+			case *viewparser.Element:
+				if walk(n.Children) {
+					return true
+				}
+			case *viewparser.For:
+				return true
+			}
+		}
+		return false
+	}
+	return walk(t.Children)
+}
+
+func readLibraryConfig(dir string) (libraryConfig, bool, error) {
+	var cfg libraryConfig
+	data, err := os.ReadFile(filepath.Join(dir, "gothic.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return cfg, false, nil
+		}
+		return cfg, false, err
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return cfg, false, fmt.Errorf("%s: %w", filepath.Join(dir, "gothic.json"), err)
+	}
+	if cfg.Kind != "library" {
+		return cfg, false, nil
+	}
+	return cfg, true, nil
+}
+
+func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Writer) (int, int, error) {
+	sort.Strings(paths)
+	var preludes [][]byte
+	var views []*viewparser.Template
+	apps := map[string]*goapp.App{}
+	for _, path := range paths {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return 0, 0, err
+		}
+		appFile, err := viewparser.ParseApp(path, src)
+		if err != nil {
+			return 0, 0, err
+		}
+		app, err := goapp.ParseComponents(path, appFile.GoSource)
+		if err != nil {
+			return 0, 0, err
+		}
+		apps[path] = app
+		preludes = append(preludes, appFile.GoSource)
+		views = append(views, appFile.View.Templates...)
+	}
+	stateful := make([]*generator.Stateful, 0, len(views))
+	for _, t := range views {
+		if len(t.ParamList) == 0 {
+			return 0, 0, fmt.Errorf("library component %s must have a model parameter", t.Name)
+		}
+		var app *goapp.App
+		for _, candidate := range apps {
+			if candidate.Components[t.ParamList[0].Type] != nil {
+				app = candidate
+				break
+			}
+		}
+		if app == nil {
+			return 0, 0, fmt.Errorf("library component %s: model %s not found", t.Name, t.ParamList[0].Type)
+		}
+		comp := app.Components[t.ParamList[0].Type]
+		if comp.Init == nil || comp.Update == nil {
+			return 0, 0, fmt.Errorf("library component %s: model %s needs Init and Update", t.Name, t.ParamList[0].Type)
+		}
+		modelJSON, err := zeroModelJSON(app.Messages[t.ParamList[0].Type])
+		if err != nil {
+			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
+		}
+		for _, p := range t.ParamList[1:] {
+			if p.Name == "emit" {
+				return 0, 0, fmt.Errorf("library component %s: prop %q is reserved", t.Name, p.Name)
+			}
+		}
+		name := t.Name
+		stateful = append(stateful, &generator.Stateful{
+			Name:       name,
+			GoName:     name,
+			ViewName:   "__gothic" + viewparserName(name) + "View",
+			MountFunc:  "mount" + viewparserName(name),
+			CreateFunc: "create" + viewparserName(name),
+			ModelType:  t.ParamList[0].Type,
+			ModelJSON:  modelJSON,
+			Props:      append([]viewparser.Param(nil), t.ParamList[1:]...),
+			View:       t,
+			App:        app.ComponentApp(t.ParamList[0].Type),
+			Listable:   !hasFor(t),
+			ModuleURL:  cfg.ModuleURL,
+		})
+	}
+
+	goSrc, err := generator.GenerateLibrary(generator.LibraryOptions{
+		FileName:   filepath.Join(dir, "library.gth"),
+		Package:    "",
+		ModuleFile: cfg.ModuleFile,
+		ModuleURL:  cfg.ModuleURL,
+		Preludes:   preludes,
+		Stateful:   stateful,
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
+		FileName:   filepath.Join(dir, "library.gth"),
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	manifest := libraryManifest{Package: cfg.Package, Alias: cfg.Alias, Module: cfg.ModuleURL}
+	for _, comp := range stateful {
+		props := make([]libraryProp, len(comp.Props))
+		for i, p := range comp.Props {
+			props[i] = libraryProp{Name: p.Name, Type: p.Type}
+		}
+		manifest.Components = append(manifest.Components, libraryComponent{
+			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
+			Props: props, Listable: comp.Listable,
+		})
+	}
+	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return 0, 0, err
+	}
+	manifestBytes = append(manifestBytes, '\n')
+	n, err := writeArtifacts(out, filepath.Join(dir, "library.gth"), []artifact{
+		{filepath.Join(dir, cfg.GoFile), goSrc},
+		{filepath.Join(dir, cfg.ModuleFile), jsSrc},
+		{filepath.Join(dir, cfg.Manifest), manifestBytes},
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return n, len(paths), nil
+}
+
+func loadExternalComponents(s *source) ([]*generator.Stateful, error) {
+	paths := componentDirectives(s.src)
+	var out []*generator.Stateful
+	for _, path := range paths {
+		cmd := exec.Command("go", "list", "-f", "{{.Dir}}", path)
+		cmd.Dir = s.dir
+		data, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("resolve component package %s: %w", path, err)
+		}
+		pkgDir := strings.TrimSpace(string(data))
+		manifestData, err := os.ReadFile(filepath.Join(pkgDir, "gothic-components.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read component manifest for %s: %w", path, err)
+		}
+		var manifest libraryManifest
+		if err := json.Unmarshal(manifestData, &manifest); err != nil {
+			return nil, fmt.Errorf("parse component manifest for %s: %w", path, err)
+		}
+		for _, comp := range manifest.Components {
+			props := make([]viewparser.Param, len(comp.Props))
+			for i, p := range comp.Props {
+				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
+			}
+			out = append(out, &generator.Stateful{
+				Name:        manifest.Alias + "." + comp.Name,
+				GoName:      comp.Go,
+				MountFunc:   comp.Mount,
+				CreateFunc:  comp.Create,
+				Props:       props,
+				Listable:    comp.Listable,
+				External:    true,
+				ImportAlias: manifest.Alias,
+				ImportPath:  manifest.Package,
+				ModuleURL:   manifest.Module,
+			})
+		}
+	}
+	return out, nil
+}
+
+func componentDirectives(src []byte) []string {
+	var paths []string
+	for _, line := range strings.Split(string(src), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "//gothic:components") {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			paths = append(paths, parts[1])
+		}
+	}
+	return paths
+}
+
+func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Stateful, out io.Writer) (int, error) {
 	goSrc, err := generator.GenerateSingle(expanded, s.app, generator.Options{
 		FileName:   s.path,
 		ModuleBase: s.base,
 		App:        s.app,
+		Stateful:   stateful,
 	})
 	if err != nil {
 		return 0, err
 	}
 	jsSrc, err := appjs.Generate(expanded, s.app, appjs.Options{
-		FileName:   s.path,
-		RuntimeURL: "/_gothic/runtime.js",
+		FileName:            s.path,
+		RuntimeURL:          "/_gothic/runtime.js",
+		Stateful:            stateful,
+		ComponentsModuleURL: generator.ComponentsModuleURL(s.base),
 	})
 	if err != nil {
 		return 0, err
+	}
+	artifacts := []artifact{
+		{filepath.Join(s.dir, s.base+"_gothic.go"), goSrc},
+		{filepath.Join(s.dir, s.base+"_gothic.js"), jsSrc},
+	}
+	localStateful := make([]*generator.Stateful, 0, len(stateful))
+	for _, comp := range stateful {
+		if !comp.External {
+			localStateful = append(localStateful, comp)
+		}
+	}
+	if len(localStateful) > 0 {
+		compSrc, err := appjs.GenerateComponents(localStateful, appjs.Options{
+			FileName:   s.path,
+			RuntimeURL: "/_gothic/runtime.js",
+		})
+		if err != nil {
+			return 0, err
+		}
+		artifacts = append(artifacts, artifact{filepath.Join(s.dir, generator.ComponentsModuleFileName(s.base)), compSrc})
 	}
 	legacy := filepath.Join(s.dir, s.base+"_app_gothic.go")
 	if _, err := os.Stat(legacy); err == nil {
 		_ = os.Remove(legacy)
 	}
-	return writeArtifacts(out, s.path, []artifact{
-		{filepath.Join(s.dir, s.base+"_gothic.go"), goSrc},
-		{filepath.Join(s.dir, s.base+"_gothic.js"), jsSrc},
-	})
+	return writeArtifacts(out, s.path, artifacts)
 }
 
 func generateLegacy(s *source, out io.Writer) (int, error) {

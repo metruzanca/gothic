@@ -1,0 +1,39 @@
+package ui
+
+import "github.com/metruzanca/gothic"
+
+type Tab struct {
+	Label string
+	Panel string
+}
+
+type TabsModel struct {
+	Active int
+}
+
+type TabClicked struct{ Index int }
+
+func (m TabsModel) Init() gothic.Cmd { return nil }
+
+func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case TabClicked:
+		m.Active = msg.Index
+	}
+	return m, nil
+}
+
+view Tabs(model TabsModel, items []Tab) {
+	<div class="ui-tabs">
+		<div class="ui-tabs-list">
+			for i, item := range items {
+				<button class="ui-tab" key={ i } class:active={ model.Active == i } onclick={ TabClicked{Index: i} }>{ item.Label }</button>
+			}
+		</div>
+		<div class="ui-tabs-panels">
+			for i, item := range items {
+				<div class="ui-tab-panel" key={ i } class:hidden={ model.Active != i }>{ item.Panel }</div>
+			}
+		</div>
+	</div>
+}

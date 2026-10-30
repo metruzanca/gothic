@@ -29,6 +29,8 @@ type Template struct {
 	ParamList []Param
 	State     []StateDecl
 	Children  []Node
+	// Stateful is set by the compiler for component roots with their own model.
+	Stateful bool
 }
 
 // StateDecl declares component state. Init is a real Go expression.

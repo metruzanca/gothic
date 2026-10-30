@@ -1,0 +1,40 @@
+package ui
+
+import "github.com/metruzanca/gothic"
+
+type AccordionItem struct {
+	Title string
+	Body  string
+}
+
+type AccordionModel struct {
+	Open int
+}
+
+type AccordionClicked struct{ Index int }
+
+func (m AccordionModel) Init() gothic.Cmd { return nil }
+
+func (m AccordionModel) Update(msg gothic.Msg) (AccordionModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case AccordionClicked:
+		next := msg.Index + 1
+		if m.Open == next {
+			m.Open = 0
+		} else {
+			m.Open = next
+		}
+	}
+	return m, nil
+}
+
+view Accordion(model AccordionModel, items []AccordionItem) {
+	<div class="ui-accordion">
+		for i, item := range items {
+			<div class="ui-accordion-item" key={ i }>
+				<button class="ui-accordion-header" onclick={ AccordionClicked{Index: i} }>{ item.Title }</button>
+				<div class="ui-accordion-body" class:hidden={ model.Open != i + 1 }>{ item.Body }</div>
+			</div>
+		}
+	</div>
+}

@@ -60,11 +60,29 @@ function schedule() {
   });
 }
 
-function findComment(root, data) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
-  let node;
-  while ((node = walker.nextNode())) {
-    if (node.nodeValue === data) return node;
+function findComment(root, data, skipComponents) {
+  function walk(node) {
+    for (let child = node.firstChild; child; child = child.nextSibling) {
+      if (child.nodeType === 8 && child.nodeValue === data) return child;
+      if (child.nodeType === 1) {
+        if (skipComponents && child.hasAttribute("data-gothic-component")) continue;
+        const found = walk(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  return walk(root);
+}
+
+function findEl(root, selector, skipComponents) {
+  const candidates = [];
+  if (root.matches?.(selector)) candidates.push(root);
+  if (root.querySelectorAll) candidates.push(...root.querySelectorAll(selector));
+  for (const el of candidates) {
+    if (!skipComponents) return el;
+    const owner = el.closest?.("[data-gothic-component]");
+    if (!owner || owner === root) return el;
   }
   return null;
 }
@@ -95,9 +113,9 @@ export function each(root, marker, sig, render) {
   });
 }
 
-export function list(root, marker, render, hydrate, key) {
-  const open = findComment(root, `g:each:${marker}:open`);
-  const close = findComment(root, `g:each:${marker}:close`);
+export function list(root, marker, render, hydrate, key, skipComponents = true) {
+  const open = findComment(root, `g:each:${marker}:open`, skipComponents);
+  const close = findComment(root, `g:each:${marker}:close`, skipComponents);
   if (!open || !close) return () => {};
 
   const nodes = [];
@@ -160,9 +178,9 @@ export function list(root, marker, render, hydrate, key) {
   };
 }
 
-export function text(root, marker, value) {
-  const open = findComment(root, `g:text:${marker}:open`);
-  const close = findComment(root, `g:text:${marker}:close`);
+export function text(root, marker, value, skipComponents = true) {
+  const open = findComment(root, `g:text:${marker}:open`, skipComponents);
+  const close = findComment(root, `g:text:${marker}:close`, skipComponents);
   if (!open || !close) return;
 
   let node = open.nextSibling;
@@ -176,9 +194,9 @@ export function text(root, marker, value) {
   node.nodeValue = String(value);
 }
 
-export function on(root, marker, event, handler) {
+export function on(root, marker, event, handler, skipComponents = true) {
   const selector = `[data-gothic-on~="${marker}"]`;
-  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  const el = findEl(root, selector, skipComponents);
   if (!el) return;
 
   const markers = (el.getAttribute("data-gothic-on") || "")
@@ -224,10 +242,10 @@ export function readState(id) {
   }
 }
 
-export function attr(root, marker, value) {
+export function attr(root, marker, value, skipComponents = true) {
   const key = `data-gothic-attr-${marker}`;
   const selector = `[${key}]`;
-  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  const el = findEl(root, selector, skipComponents);
   if (!el) return;
 
   const name = el.getAttribute(key);
@@ -247,19 +265,19 @@ export function attr(root, marker, value) {
   }
 }
 
-export function classToggle(root, marker, active) {
+export function classToggle(root, marker, active, skipComponents = true) {
   const key = `data-gothic-class-${marker}`;
   const selector = `[${key}]`;
-  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  const el = findEl(root, selector, skipComponents);
   if (!el) return;
 
   const name = el.getAttribute(key);
   if (name) el.classList.toggle(name, !!active);
 }
 
-export function focus(root, marker, active) {
+export function focus(root, marker, active, skipComponents = true) {
   const selector = `[data-gothic-focus="${marker}"]`;
-  const el = root.matches?.(selector) ? root : root.querySelector(selector);
+  const el = findEl(root, selector, skipComponents);
   if (!el) return;
 
   if (active) {
@@ -274,3 +292,11 @@ export function focus(root, marker, active) {
     el.__gothicFocused = false;
   }
 }
+
+
+export function textLocal(root, marker, value) { return text(root, marker, value, false); }
+export function onLocal(root, marker, event, handler) { return on(root, marker, event, handler, false); }
+export function attrLocal(root, marker, value) { return attr(root, marker, value, false); }
+export function classToggleLocal(root, marker, active) { return classToggle(root, marker, active, false); }
+export function focusLocal(root, marker, active) { return focus(root, marker, active, false); }
+export function listLocal(root, marker, render, hydrate, key) { return list(root, marker, render, hydrate, key, false); }

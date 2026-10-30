@@ -12,6 +12,7 @@ var clientReservedNames = map[string]bool{
 	"attr":        true,
 	"classToggle": true,
 	"focus":       true,
+	"emit":        true,
 	"signal":      true,
 	"each":        true,
 	"on":          true,

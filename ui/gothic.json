@@ -1,0 +1,9 @@
+{
+  "kind": "library",
+  "package": "github.com/metruzanca/gothic/ui",
+  "alias": "ui",
+  "module_file": "ui_gothic.js",
+  "module_url": "/_gothic/modules/ui_gothic.js",
+  "go_file": "ui_gothic.go",
+  "manifest": "gothic-components.json"
+}

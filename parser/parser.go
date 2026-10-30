@@ -741,7 +741,7 @@ func (p *parser) readTagName() string {
 	start := p.pos
 	for !p.eof() {
 		c := p.peek()
-		if isIdentPart(c) || c == '-' {
+		if isIdentPart(c) || c == '-' || c == '.' {
 			p.pos++
 			continue
 		}
@@ -850,7 +850,7 @@ func (p *parser) errf(format string, args ...any) error {
 }
 
 func isComponentName(name string) bool {
-	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && (name[0] >= 'A' && name[0] <= 'Z' || strings.Contains(name, "."))
 }
 
 func isIdentStart(c byte) bool {

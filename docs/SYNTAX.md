@@ -162,9 +162,9 @@ view App(model Model) {
 The app view is a pure function of the model. The model parameter name and type
 are used to generate the Go `View` method and the JavaScript renderer.
 
-### Components
+### Pure components
 
-A component is a pure view function with named props:
+A pure component is a view function with named props:
 
 ```gothic
 view Badge(text string) {
@@ -188,16 +188,96 @@ JavaScript. Props are substituted directly into the component body. Components
 can call other components, including components from other files in the same
 package.
 
-Rules:
+Rules for pure components:
 
-- `App` is the only root and the only view with a model parameter.
-- Components are stateless. They cannot declare `state`.
-- Components render exactly one root element.
-- Components should reference only their props and package-level declarations.
+- They are stateless. They cannot declare `state`.
+- They render exactly one root element.
+- They should reference only their props and package-level declarations.
 - Component children and slots are not supported yet.
 - Components cannot be called from Go code yet.
 - Capitalized tags are always components, so camelCase SVG tags are not
   supported yet.
+
+### Stateful components
+
+A stateful component is a view whose first parameter is a model with `Init` and
+`Update` methods. The remaining parameters are props:
+
+```go
+type TabsModel struct {
+	Active int
+}
+
+func (m TabsModel) Init() gothic.Cmd { return nil }
+
+func (m TabsModel) Update(msg gothic.Msg) (TabsModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case TabClicked:
+		m.Active = msg.Index
+	}
+	return m, nil
+}
+```
+
+```gothic
+view Tabs(model TabsModel, items []Tab) {
+	<div class="tabs">
+		for i, item := range items {
+			<button key={ i } class:active={ model.Active == i } onclick={ TabClicked{Index: i} }>
+				{ item.Label }
+			</button>
+		}
+	</div>
+}
+```
+
+Each instance owns its own state. The parent passes props but does not read or
+write child state. State starts at the model zero value. Use `<Tabs items={ model.Tabs } />`
+inside `App` or another view.
+
+Stateful components in this phase:
+
+- support static positions and keyed lists,
+- must be the loop body root when used in a list,
+- cannot use commands or procedures,
+- can emit messages to the parent from event attributes,
+- cannot contain other stateful components,
+- cannot be created inside a list when their view contains a `for` loop.
+
+Emit a parent message with `emit` in a component event:
+
+```gothic
+view Button(model ButtonModel, label string, onclick gothic.Msg) {
+	<button onclick={ emit(onclick) }>{ label }</button>
+}
+```
+
+The parent passes the message:
+
+```gothic
+<ui.Button label="Add todo" onclick={ AddClicked{} } />
+```
+
+The App owns `AddClicked` in its `Update`, and runs any commands or server
+procedures there. Components do not own server procedures. `emit` is reserved
+and only available to component event expressions.
+
+The installable UI kit is precompiled and uses this model. Add component
+packages with a directive in the app prelude:
+
+```go
+//gothic:components github.com/metruzanca/gothic/ui
+```
+
+Use namespaced tags for external components:
+
+```gothic
+<ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
+<ui.Tabs items={ model.Tabs } />
+```
+
+The compiler reads the package manifest and mounts each external component as a
+self-contained root.
 
 ### Markup
 
@@ -389,8 +469,11 @@ The proof of concept supports:
 - one application model per package,
 - one `App` view with a single model parameter,
 - pure components with multiple named props,
+- stateful components with their own model, Init, Update, and view,
+- app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
+- the installable gothic UI kit,
 - message structs with zero or simple fields,
 - `Update` with a type switch,
 - `append` and assignments,
@@ -402,11 +485,16 @@ The proof of concept supports:
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,
 - hash-based route changes through a `HashChanged` message,
+- component-to-parent action messages through `emit`,
+- App-owned procedures passed to components as action props,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 
 Not supported yet:
 
-- stateful child components, child models, and message mapping,
+- component commands and component-declared procedures,
+- controlled components, props in component Init/Update, and function-valued props,
+- stateful components nested inside other stateful components,
+- list-created stateful components whose views contain loops,
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,

@@ -2,9 +2,9 @@
 
 > Status: proof of concept. The current model is Model-View-Update inspired by
 > [Bubble Tea](https://github.com/charmbracelet/bubbletea). Application logic is
-> ordinary Go. Views are `.gth` files and can be composed from pure
-> components. The phase roadmap will be rewritten after the proof of concept
-> stabilizes.
+> ordinary Go. Views are `.gth` files and can be composed from pure and
+> stateful components. An optional UI kit ships separately. The phase roadmap
+> will be rewritten after the proof of concept stabilizes.
 
 ## Overview
 
@@ -190,6 +190,8 @@ from the server and reconciled. There is no virtual DOM.
 | `examples/pingpong/` | The proof-of-concept app. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
+| `ui/` | Precompiled, independently versioned UI kit module. |
+| `examples/gothicbook/` | The UI kit design system demo. |
 
 The CLI detects an app file when the `.gth` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -201,7 +203,11 @@ Supported now:
 - one application model per package,
 - one `App` view with a single model parameter,
 - pure components with props, in the app file or separate files,
-- compile-time component expansion and nested components,
+- compile-time component expansion and nested pure components,
+- self-contained stateful components with their own model, Init, Update, and view,
+- stateful components in static positions and keyed lists,
+- precompiled external components from installable packages,
+- the independently versioned gothic UI kit,
 - `Msg = any` with messages as ordinary Go structs,
 - `Update` with a type switch,
 - `append`, field access, assignments, `if err != nil`, and returns,
@@ -214,6 +220,8 @@ Supported now:
 - dynamic attributes, class toggles, and focus bindings,
 - message-valued event bindings and event values,
 - hash routing through a `HashChanged` message,
+- component-to-parent action messages through `emit`,
+- App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
 - procedure contracts through an interface embedding `gothic.RPCService`,
@@ -221,7 +229,10 @@ Supported now:
 
 Not supported yet:
 
-- stateful child components, child models, and message mapping,
+- component commands and component-declared procedures,
+- controlled components, props in component Init/Update, and function-valued props,
+- stateful components nested inside other stateful components,
+- list-created stateful components whose views contain loops,
 - multiple app models,
 - component children and slots,
 - Go-callable component functions,
@@ -243,16 +254,17 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Stateful child components and message mapping.
-2. Conditionals in views.
-3. More Go statements and expressions in `Update` and commands.
-4. `Batch` and `Sequence` commands.
-5. Typed procedure argument validation and the no-JS fallback.
-6. `go/packages` for type information and stronger validation.
-7. Manifest, content hashing, and production serving.
-8. Formatter, LSP, and source maps.
-9. Selective vendoring of templ's HTML and whitespace handling with tests.
-10. A designed browser JavaScript interop bridge, such as typed bindings or a
+1. Component commands, component-declared procedures, and props in component Init/Update.
+2. Controlled components, callback props, and nested stateful components.
+3. Conditionals in views.
+4. More Go statements and expressions in `Update` and commands.
+5. `Batch` and `Sequence` commands.
+6. Typed procedure argument validation and the no-JS fallback.
+7. `go/packages` for type information and stronger validation.
+8. Manifest, content hashing, and production serving.
+9. Formatter, LSP, and source maps.
+10. Selective vendoring of templ's HTML and whitespace handling with tests.
+11. A designed browser JavaScript interop bridge, such as typed bindings or a
     client-only declaration syntax, for `window.alert` and similar APIs.
 
 ## Risks
@@ -263,8 +275,10 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful child components need a runtime component instance model that pure
-  expansion does not provide.
+- Stateful component support is still narrow: no commands, no parent events,
+  no nested stateful components, and no internal loops for list-created
+  instances.
+- The external UI manifest and generated UI module must stay in sync.
 - Conditional rendering is not yet designed.
 - Arbitrary browser globals such as `window.alert` have no designed bridge.
   The JavaScript backend can emit selector calls, but the Go prelude must still

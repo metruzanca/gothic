@@ -23,8 +23,19 @@ type App struct {
 	// ProceduresType is the interface that embeds gothic.RPCService.
 	ProceduresType string
 	Procedures     []Procedure
+	// Components are non-app models that declare Init and Update.
+	Components map[string]*Component
 	// Source is the Go prelude, used to generate the app Go file.
 	Source []byte
+}
+
+// Component is a stateful component model and its update loop.
+type Component struct {
+	ModelType          string
+	Init               *ast.FuncDecl
+	Update             *ast.FuncDecl
+	Commands           map[string]*ast.FuncDecl
+	ReferencedCommands map[string]bool
 }
 
 // Field is a struct field.
@@ -55,8 +66,17 @@ func Parse(path string) (*App, error) {
 	return ParseSource(path, src)
 }
 
-// ParseSource extracts the declarations from a Go source.
+// ParseSource extracts the declarations from a Go app source.
 func ParseSource(name string, src []byte) (*App, error) {
+	return parseSource(name, src, true)
+}
+
+// ParseComponents extracts component declarations from a library source.
+func ParseComponents(name string, src []byte) (*App, error) {
+	return parseSource(name, src, false)
+}
+
+func parseSource(name string, src []byte, requireApp bool) (*App, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, name, src, 0)
 	if err != nil {
@@ -67,6 +87,7 @@ func ParseSource(name string, src []byte) (*App, error) {
 		Messages:           map[string][]Field{},
 		Commands:           map[string]*ast.FuncDecl{},
 		ReferencedCommands: map[string]bool{},
+		Components:         map[string]*Component{},
 		Source:             src,
 	}
 	for _, decl := range f.Decls {
@@ -101,32 +122,81 @@ func ParseSource(name string, src []byte) (*App, error) {
 			}
 		case *ast.FuncDecl:
 			if d.Recv != nil {
-				if receiverType(d.Recv) != "Model" {
+				recv := receiverType(d.Recv)
+				if recv == "Model" {
+					switch d.Name.Name {
+					case "Init":
+						app.Init = d
+					case "Update":
+						app.Update = d
+					}
 					continue
+				}
+				if recv == "" {
+					continue
+				}
+				comp := app.Components[recv]
+				if comp == nil {
+					comp = &Component{
+						ModelType:          recv,
+						Commands:           map[string]*ast.FuncDecl{},
+						ReferencedCommands: map[string]bool{},
+					}
+					app.Components[recv] = comp
 				}
 				switch d.Name.Name {
 				case "Init":
-					app.Init = d
+					comp.Init = d
 				case "Update":
-					app.Update = d
+					comp.Update = d
 				}
 				continue
 			}
 			app.Commands[d.Name.Name] = d
 		}
 	}
-	if app.ModelType == "" {
-		return nil, fmt.Errorf("%s: Model type not found", name)
-	}
-	if app.Update == nil {
-		return nil, fmt.Errorf("%s: Model.Update not found", name)
+	if requireApp {
+		if app.ModelType == "" {
+			return nil, fmt.Errorf("%s: Model type not found", name)
+		}
+		if app.Update == nil {
+			return nil, fmt.Errorf("%s: Model.Update not found", name)
+		}
 	}
 	app.collectCommands()
+	for _, comp := range app.Components {
+		if comp.Init == nil || comp.Update == nil {
+			continue
+		}
+		collectCommandsFor(comp.Init, comp.Update, app.Commands, comp.ReferencedCommands)
+	}
 	return app, nil
 }
 
+// ComponentApp returns an App view of one stateful component model.
+func (a *App) ComponentApp(modelType string) *App {
+	comp := a.Components[modelType]
+	if comp == nil {
+		return nil
+	}
+	return &App{
+		Package:            a.Package,
+		ModelType:          comp.ModelType,
+		Messages:           a.Messages,
+		Init:               comp.Init,
+		Update:             comp.Update,
+		Commands:           a.Commands,
+		ReferencedCommands: comp.ReferencedCommands,
+		Source:             a.Source,
+	}
+}
+
 func (a *App) collectCommands() {
-	for _, fn := range []*ast.FuncDecl{a.Init, a.Update} {
+	collectCommandsFor(a.Init, a.Update, a.Commands, a.ReferencedCommands)
+}
+
+func collectCommandsFor(init, update *ast.FuncDecl, commands map[string]*ast.FuncDecl, referenced map[string]bool) {
+	for _, fn := range []*ast.FuncDecl{init, update} {
 		if fn == nil || fn.Body == nil {
 			continue
 		}
@@ -137,8 +207,8 @@ func (a *App) collectCommands() {
 			}
 			for _, res := range ret.Results {
 				if id, ok := res.(*ast.Ident); ok {
-					if _, exists := a.Commands[id.Name]; exists {
-						a.ReferencedCommands[id.Name] = true
+					if _, exists := commands[id.Name]; exists {
+						referenced[id.Name] = true
 					}
 				}
 			}

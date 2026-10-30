@@ -16,7 +16,7 @@ let model = readState("app");
 on(root, "0", "input", (event) => dispatch({tag: "DraftChanged", Text: event.target.value}));
 on(root, "1", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "AddClicked"}); });
 on(root, "2", "change", (event) => dispatch({tag: "ToggleAll", Checked: event.target.checked}));
-const renderList0 = list(root, "0", (todo) => {
+const renderList0 = list(root, "0", (todo, __i0) => {
   const e0 = document.createElement("li");
   e0.setAttribute("data-gothic-key", String(todo.ID));
   e0.setAttribute("data-gothic-class-2", "completed");
@@ -62,7 +62,7 @@ const renderList0 = list(root, "0", (todo) => {
   on(e0, "8", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: (todo).ID}); });
   on(e0, "9", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: (todo).ID}); });
   return e0;
-}, (node, todo) => {
+}, (node, todo, __i0) => {
   classToggle(node, "2", (todo).Completed);
   classToggle(node, "3", (todo.ID == model.EditingID));
   classToggle(node, "4", ((model.Filter) == "active" && (todo).Completed) || ((model.Filter) == "completed" && !(todo).Completed));
@@ -77,7 +77,7 @@ const renderList0 = list(root, "0", (todo) => {
   on(node, "7", "blur", (event) => dispatch({tag: "SaveEdit", ID: (todo).ID}));
   on(node, "8", "keydown", (event) => { if (event.key === "Enter") dispatch({tag: "SaveEdit", ID: (todo).ID}); });
   on(node, "9", "keydown", (event) => { if (event.key === "Escape") dispatch({tag: "CancelEdit", ID: (todo).ID}); });
-}, (todo) => String(todo.ID));
+}, (todo, __i0) => String(todo.ID));
 on(root, "10", "click", (event) => dispatch({tag: "ClearCompletedClicked"}));
 
 function render(model) {
@@ -110,6 +110,8 @@ async function run(cmd) {
   const msg = await cmd();
   if (msg) dispatch(msg);
 }
+
+function emit(msg) { dispatch(msg); }
 
 function init() {
   return loadTodos;

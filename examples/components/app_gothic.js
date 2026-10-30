@@ -6,7 +6,7 @@ const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
 on(root, "0", "click", (event) => dispatch({tag: "AddClicked"}));
-const renderList0 = list(root, "0", (item) => {
+const renderList0 = list(root, "0", (item, __i0) => {
   const e0 = document.createElement("li");
   e0.setAttribute("class", "history");
   e0.appendChild(document.createComment("g:text:1:open"));
@@ -20,7 +20,7 @@ const renderList0 = list(root, "0", (item) => {
   text(e0, "1", (item));
   on(e0, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
   return e0;
-}, (node, item) => {
+}, (node, item, __i0) => {
   text(node, "1", (item));
   on(node, "1", "click", (event) => dispatch({tag: "RepeatClicked", Text: (item)}));
 });
@@ -42,6 +42,8 @@ async function run(cmd) {
   const msg = await cmd();
   if (msg) dispatch(msg);
 }
+
+function emit(msg) { dispatch(msg); }
 
 function init() {
   return null;

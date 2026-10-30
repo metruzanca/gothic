@@ -8,14 +8,14 @@ const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
 on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));
-const renderList0 = list(root, "0", (m) => {
+const renderList0 = list(root, "0", (m, __i0) => {
   const e0 = document.createElement("li");
   e0.appendChild(document.createComment("g:text:0:open"));
   e0.appendChild(document.createTextNode(String(m)));
   e0.appendChild(document.createComment("g:text:0:close"));
   text(e0, "0", m);
   return e0;
-}, (node, m) => {
+}, (node, m, __i0) => {
   text(node, "0", m);
 });
 
@@ -35,6 +35,8 @@ async function run(cmd) {
   const msg = await cmd();
   if (msg) dispatch(msg);
 }
+
+function emit(msg) { dispatch(msg); }
 
 function init() {
   return null;

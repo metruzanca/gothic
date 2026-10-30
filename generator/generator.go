@@ -25,6 +25,37 @@ type Options struct {
 	ModuleBase string
 	// App is set for Bubble Tea-style app views.
 	App *goapp.App
+	// Stateful lists app-local stateful components used by the app.
+	Stateful []*Stateful
+}
+
+// Stateful is a stateful component rendered as an island.
+type Stateful struct {
+	Name        string
+	ViewName    string
+	GoName      string
+	MountFunc   string
+	CreateFunc  string
+	ModelType   string
+	ModelJSON   string
+	Props       []parser.Param
+	View        *parser.Template
+	App         *goapp.App
+	Listable    bool
+	External    bool
+	ImportAlias string
+	ImportPath  string
+	ModuleURL   string
+}
+
+// ComponentsModuleFileName returns the generated JavaScript file name for app components.
+func ComponentsModuleFileName(base string) string {
+	return base + "_components_gothic.js"
+}
+
+// ComponentsModuleURL returns the URL at which the app component module is served.
+func ComponentsModuleURL(base string) string {
+	return "/_gothic/modules/" + ComponentsModuleFileName(base)
 }
 
 // RootID returns the stable hydration root id for a template.
@@ -97,7 +128,20 @@ func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error
 		}
 		preludeImports = append(preludeImports, importSpec{Name: name, Path: imp.Path.Value})
 	}
-	imports, err := mergeImports(preludeImports, viewImports(usesHTML, usesFmt))
+	viewSpecs := viewImports(usesHTML, usesFmt)
+	seenExternal := map[string]bool{}
+	for _, comp := range opts.Stateful {
+		if !comp.External {
+			continue
+		}
+		key := comp.ImportAlias + " " + comp.ImportPath
+		if seenExternal[key] {
+			continue
+		}
+		seenExternal[key] = true
+		viewSpecs = append(viewSpecs, importSpec{Name: comp.ImportAlias, Path: strconv.Quote(comp.ImportPath)})
+	}
+	imports, err := mergeImports(preludeImports, viewSpecs)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
 	}
@@ -148,7 +192,14 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 	usesHTML := false
 	usesFmt := false
 	for _, t := range f.Templates {
-		g := &templateGen{t: t, rootID: RootID(t.Name), moduleURL: ModuleURL(opts.ModuleBase)}
+		g := &templateGen{
+			t:             t,
+			rootID:        RootID(t.Name),
+			moduleURL:     ModuleURL(opts.ModuleBase),
+			appRoot:       true,
+			allowStateful: true,
+			stateful:      statefulMap(opts.Stateful),
+		}
 		code, err := g.generate()
 		if err != nil {
 			return "", false, false, fmt.Errorf("%s: %w", opts.FileName, err)
@@ -163,12 +214,56 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 		body.WriteString("\n")
 	}
 
+	for _, comp := range opts.Stateful {
+		if comp.External {
+			continue
+		}
+		viewGen := &templateGen{
+			t:             comp.View,
+			funcName:      comp.ViewName,
+			appRoot:       false,
+			allowStateful: false,
+		}
+		code, err := viewGen.generateComponentView()
+		if err != nil {
+			return "", false, false, fmt.Errorf("%s: %w", opts.FileName, err)
+		}
+		if viewGen.usesHTML {
+			usesHTML = true
+		}
+		if viewGen.usesFmt {
+			usesFmt = true
+		}
+		body.WriteString(code)
+		body.WriteString("\n")
+		writeStatefulWrapper(&body, comp)
+	}
+
 	embedName := sanitizeIdent(opts.ModuleBase) + "JS"
 	body.WriteString("//go:embed " + ModuleFileName(opts.ModuleBase) + "\n")
 	body.WriteString("var " + embedName + " []byte\n\n")
 	body.WriteString("func init() {\n")
 	body.WriteString("\tgothic.RegisterModule(" + strconv.Quote(ModuleURL(opts.ModuleBase)) + ", " + embedName + ")\n")
 	body.WriteString("}\n\n")
+
+	localStateful := false
+	for _, comp := range opts.Stateful {
+		if !comp.External {
+			localStateful = true
+			break
+		}
+	}
+	if localStateful {
+		usesHTML = true
+		compFile := ComponentsModuleFileName(opts.ModuleBase)
+		compURL := ComponentsModuleURL(opts.ModuleBase)
+		compEmbed := sanitizeIdent(opts.ModuleBase) + "ComponentsJS"
+		body.WriteString("//go:embed " + compFile + "\n")
+		body.WriteString("var " + compEmbed + " []byte\n\n")
+		body.WriteString("func init() {\n")
+		body.WriteString("\tgothic.RegisterModule(" + strconv.Quote(compURL) + ", " + compEmbed + ")\n")
+		body.WriteString("}\n\n")
+	}
 
 	switch {
 	case opts.App != nil && opts.App.ProceduresType != "":
@@ -215,7 +310,15 @@ func mergeImports(prelude, view []importSpec) ([]importSpec, error) {
 			out = append(out, imp)
 			continue
 		}
-		if existing.Name == imp.Name {
+		existingName := existing.Name
+		if existingName == "" {
+			existingName = defaultImportName(existing.Path)
+		}
+		impName := imp.Name
+		if impName == "" {
+			impName = defaultImportName(imp.Path)
+		}
+		if existingName == impName {
 			continue
 		}
 		if imp.Path == `"embed"` {
@@ -266,17 +369,22 @@ func writeImportBlock(b *strings.Builder, imports []importSpec) {
 }
 
 type templateGen struct {
-	t         *parser.Template
-	rootID    string
-	moduleURL string
-	eachN     int
-	eventN    int
-	textN     int
-	attrN     int
-	classN    int
-	focusN    int
-	usesHTML  bool
-	usesFmt   bool
+	t             *parser.Template
+	funcName      string
+	rootID        string
+	moduleURL     string
+	appRoot       bool
+	allowStateful bool
+	stateful      map[string]*Stateful
+	componentN    int
+	eachN         int
+	eventN        int
+	textN         int
+	attrN         int
+	classN        int
+	focusN        int
+	usesHTML      bool
+	usesFmt       bool
 }
 
 func (g *templateGen) generate() (string, error) {
@@ -291,37 +399,58 @@ func (g *templateGen) generate() (string, error) {
 	modelName, modelType, hasModel := singleModelParam(g.t.Params)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "func %s%s gothic.Component {\n", g.t.Name, paramsOrEmpty(g.t))
-	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
-	b.WriteString("\t\tif err := ctx.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n")
-	b.WriteString("\t\twrite := func(s string) error {\n\t\t\t_, err := io.WriteString(w, s)\n\t\t\treturn err\n\t\t}\n")
+	g.writeFuncPrefix(&b, g.t.Name, paramsOrEmpty(g.t))
 
 	for _, sd := range g.t.State {
 		fmt.Fprintf(&b, "\t\t%s := %s\n", sd.Name, goExpr(sd.Init))
 	}
-	b.WriteString("\t\tstateJSON, err := json.Marshal(")
-	switch {
-	case hasModel:
-		b.WriteString(modelName)
-	case len(g.t.State) > 0:
-		b.WriteString(goStateMap(g.t.State))
-	default:
-		b.WriteString("map[string]any{}")
+
+	if g.appRoot && hasModel {
+		fmt.Fprintf(&b, "\t\tstateJSON, err := json.Marshal(%s)\n", modelName)
+		b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
 	}
-	b.WriteString(")\n")
-	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
 
 	if err := g.writeElement(&b, root, true); err != nil {
 		return "", err
 	}
-	fmt.Fprintf(&b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("\n<script type=\"module\" src=\""+g.moduleURL+"\"></script>\n"))
+	if g.appRoot {
+		fmt.Fprintf(&b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("\n<script type=\"module\" src=\""+g.moduleURL+"\"></script>\n"))
+	}
 	b.WriteString("\t\treturn nil\n\t})\n}\n")
 
-	if hasModel {
+	if g.appRoot && hasModel {
 		fmt.Fprintf(&b, "\n// View implements gothic.Model for %s.\n", modelType)
 		fmt.Fprintf(&b, "func (m %s) View() gothic.Component {\n\treturn %s(m)\n}\n", modelType, g.t.Name)
 	}
 	return b.String(), nil
+}
+
+func (g *templateGen) generateComponentView() (string, error) {
+	if len(g.t.Children) != 1 {
+		return "", fmt.Errorf("component %s must have exactly one root element", g.t.Name)
+	}
+	root, ok := g.t.Children[0].(*parser.Element)
+	if !ok {
+		return "", fmt.Errorf("component %s root must be an element", g.t.Name)
+	}
+	name := g.funcName
+	if name == "" {
+		name = g.t.Name + "View"
+	}
+	var b strings.Builder
+	g.writeFuncPrefix(&b, name, paramsOrEmpty(g.t))
+	if err := g.writeElement(&b, root, true); err != nil {
+		return "", err
+	}
+	b.WriteString("\t\treturn nil\n\t})\n}\n")
+	return b.String(), nil
+}
+
+func (g *templateGen) writeFuncPrefix(b *strings.Builder, name, params string) {
+	fmt.Fprintf(b, "func %s%s gothic.Component {\n", name, params)
+	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
+	b.WriteString("\t\tif err := ctx.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\twrite := func(s string) error {\n\t\t\t_, err := io.WriteString(w, s)\n\t\t\treturn err\n\t\t}\n")
 }
 
 func singleModelParam(params string) (name, typ string, ok bool) {
@@ -350,7 +479,7 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 	}
 
 	static.WriteString("<" + el.Name)
-	if isRoot {
+	if isRoot && g.appRoot {
 		static.WriteString(" data-gothic-root=\"" + g.rootID + "\"")
 	}
 
@@ -438,7 +567,7 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 	static.WriteString(">")
 	flush()
 
-	if isRoot {
+	if isRoot && g.appRoot {
 		fmt.Fprintf(b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<script type=\"application/json\" data-gothic-state=\""+g.rootID+"\">"))
 		b.WriteString("\t\tif _, err := w.Write(stateJSON); err != nil {\n\t\t\treturn err\n\t\t}\n")
 		g.emitWrite(b, "</script>\n")
@@ -485,6 +614,8 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 		return g.writeElement(b, n, false)
 	case *parser.For:
 		return g.writeFor(b, n)
+	case *parser.ComponentCall:
+		return g.writeStatefulCall(b, n)
 	default:
 		return fmt.Errorf("unsupported node type %T", n)
 	}
@@ -515,6 +646,88 @@ func (g *templateGen) writeFor(b *strings.Builder, n *parser.For) error {
 
 func (g *templateGen) emitWrite(b *strings.Builder, s string) {
 	fmt.Fprintf(b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote(s))
+}
+
+func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
+	props := comp.Props
+	propSig := ""
+	propNames := ""
+	if len(props) > 0 {
+		parts := make([]string, len(props))
+		names := make([]string, len(props))
+		for i, p := range props {
+			parts[i] = p.Name + " " + p.Type
+			names[i] = p.Name
+		}
+		propSig = ", " + strings.Join(parts, ", ")
+		propNames = ", " + strings.Join(names, ", ")
+	}
+	fmt.Fprintf(b, "func %s(id string, key string%s) gothic.Component {\n", comp.GoName, propSig)
+	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
+	fmt.Fprintf(b, "\t\tvar model %s\n", comp.ModelType)
+	b.WriteString("\t\tstateJSON, err := json.Marshal(model)\n")
+	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
+	fmt.Fprintf(b, "\t\tif _, err := io.WriteString(w, %s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<div data-gothic-component=\""+comp.Name+"\" data-gothic-component-id=\""))
+	b.WriteString("\t\tif _, err := io.WriteString(w, id); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\tif _, err := io.WriteString(w, \"\\\"\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\tif key != \"\" {\n")
+	b.WriteString("\t\t\tif _, err := io.WriteString(w, \" data-gothic-key=\\\"\"); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n")
+	b.WriteString("\t\t\tif _, err := io.WriteString(w, html.EscapeString(key)); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n")
+	b.WriteString("\t\t\tif _, err := io.WriteString(w, \"\\\"\"); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n")
+	b.WriteString("\t\t}\n")
+	b.WriteString("\t\tif _, err := io.WriteString(w, \">\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\tif _, err := io.WriteString(w, \"<script type=\\\"application/json\\\" data-gothic-component-state>\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\tif _, err := w.Write(stateJSON); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	b.WriteString("\t\tif _, err := io.WriteString(w, \"</script>\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
+	fmt.Fprintf(b, "\t\tif err := %s(model%s).Render(ctx, w); err != nil {\n\t\t\treturn err\n\t\t}\n", comp.ViewName, propNames)
+	b.WriteString("\t\t_, err = io.WriteString(w, \"</div>\")\n\t\treturn err\n\t})\n}\n\n")
+}
+
+func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.ComponentCall) error {
+	if !g.allowStateful {
+		return fmt.Errorf("stateful component %s cannot be nested inside another stateful component yet", call.Name)
+	}
+	comp := g.stateful[call.Name]
+	if comp == nil {
+		return fmt.Errorf("unknown stateful component %s", call.Name)
+	}
+	props := map[string]ast.Expr{}
+	for _, p := range call.Props {
+		if _, ok := props[p.Name]; ok {
+			return fmt.Errorf("component %s: duplicate prop %q", call.Name, p.Name)
+		}
+		props[p.Name] = p.Value
+	}
+	args := make([]string, 0, len(comp.Props)+2)
+	id := fmt.Sprintf("c%d", g.componentN)
+	g.componentN++
+	args = append(args, strconv.Quote(id))
+	if call.Key != nil {
+		g.usesFmt = true
+		args = append(args, "fmt.Sprint("+goExpr(call.Key)+")")
+	} else {
+		args = append(args, `""`)
+	}
+	seen := map[string]bool{}
+	for _, p := range comp.Props {
+		v, ok := props[p.Name]
+		if !ok {
+			return fmt.Errorf("component %s: missing prop %q", call.Name, p.Name)
+		}
+		seen[p.Name] = true
+		args = append(args, goExpr(v))
+	}
+	for name := range props {
+		if !seen[name] {
+			return fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+		}
+	}
+	callee := comp.GoName
+	if comp.External {
+		callee = comp.ImportAlias + "." + comp.GoName
+	}
+	fmt.Fprintf(b, "\t\tif err := %s(%s).Render(ctx, w); err != nil {\n\t\t\treturn err\n\t\t}\n", callee, strings.Join(args, ", "))
+	return nil
 }
 
 func writeRegistrar(b *strings.Builder, f *parser.File) {
@@ -628,4 +841,121 @@ func sanitizeIdent(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func statefulMap(components []*Stateful) map[string]*Stateful {
+	m := make(map[string]*Stateful, len(components))
+	for _, c := range components {
+		m[c.Name] = c
+	}
+	return m
+}
+
+// LibraryOptions controls a precompiled component library output.
+type LibraryOptions struct {
+	FileName   string
+	Package    string
+	ModuleFile string
+	ModuleURL  string
+	Preludes   [][]byte
+	Stateful   []*Stateful
+}
+
+// GenerateLibrary renders a Go package containing precompiled stateful components.
+func GenerateLibrary(opts LibraryOptions) ([]byte, error) {
+	var preludeImports []importSpec
+	var decls strings.Builder
+	pkg := opts.Package
+	for _, prelude := range opts.Preludes {
+		fset := token.NewFileSet()
+		file, err := goparser.ParseFile(fset, opts.FileName, prelude, goparser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("%s: parsing prelude: %w", opts.FileName, err)
+		}
+		if pkg == "" {
+			pkg = file.Name.Name
+		}
+		for _, imp := range file.Imports {
+			name := ""
+			if imp.Name != nil {
+				name = imp.Name.Name
+			}
+			preludeImports = append(preludeImports, importSpec{Name: name, Path: imp.Path.Value})
+		}
+		var start token.Pos
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if ok && gen.Tok == token.IMPORT {
+				start = gen.End()
+			}
+		}
+		if start == token.NoPos {
+			start = file.Name.End()
+		}
+		offset := fset.Position(start).Offset
+		if offset < 0 || offset > len(prelude) {
+			return nil, fmt.Errorf("%s: invalid prelude offset", opts.FileName)
+		}
+		part := prelude[offset:]
+		decls.Write(part)
+		if len(part) == 0 || part[len(part)-1] != '\n' {
+			decls.WriteString("\n")
+		}
+	}
+
+	var body strings.Builder
+	usesHTML := false
+	usesFmt := false
+	for _, comp := range opts.Stateful {
+		viewGen := &templateGen{
+			t:             comp.View,
+			funcName:      comp.ViewName,
+			appRoot:       false,
+			allowStateful: false,
+		}
+		code, err := viewGen.generateComponentView()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		}
+		if viewGen.usesHTML {
+			usesHTML = true
+		}
+		if viewGen.usesFmt {
+			usesFmt = true
+		}
+		body.WriteString(code)
+		body.WriteString("\n")
+		writeStatefulWrapper(&body, comp)
+		usesHTML = true
+	}
+
+	embedName := sanitizeIdent(opts.Package) + "ComponentsJS"
+	if embedName == "ComponentsJS" {
+		embedName = "LibraryComponentsJS"
+	}
+	body.WriteString("//go:embed " + opts.ModuleFile + "\n")
+	body.WriteString("var " + embedName + " []byte\n\n")
+	body.WriteString("func init() {\n")
+	body.WriteString("\tgothic.RegisterModule(" + strconv.Quote(opts.ModuleURL) + ", " + embedName + ")\n")
+	body.WriteString("}\n\n")
+
+	imports, err := mergeImports(preludeImports, viewImports(usesHTML, usesFmt))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+	}
+
+	var b strings.Builder
+	b.WriteString("// Code generated by gothic. DO NOT EDIT.\n\n")
+	b.WriteString("package " + pkg + "\n\n")
+	writeImportBlock(&b, imports)
+	b.WriteString(decls.String())
+	if decls.Len() > 0 && !strings.HasSuffix(decls.String(), "\n") {
+		b.WriteString("\n")
+	}
+	b.WriteString(body.String())
+	formatted, err := format.Source([]byte(b.String()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: formatting generated Go: %w", opts.FileName, err)
+	}
+	return formatted, nil
 }

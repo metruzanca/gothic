@@ -1,0 +1,71 @@
+{
+  "package": "github.com/metruzanca/gothic/ui",
+  "alias": "ui",
+  "module": "/_gothic/modules/ui_gothic.js",
+  "components": [
+    {
+      "name": "Accordion",
+      "go": "Accordion",
+      "mount": "mountAccordion",
+      "create": "createAccordion",
+      "props": [
+        {
+          "name": "items",
+          "type": "[]AccordionItem"
+        }
+      ],
+      "listable": false
+    },
+    {
+      "name": "Button",
+      "go": "Button",
+      "mount": "mountButton",
+      "create": "createButton",
+      "props": [
+        {
+          "name": "label",
+          "type": "string"
+        },
+        {
+          "name": "primary",
+          "type": "bool"
+        },
+        {
+          "name": "onclick",
+          "type": "gothic.Msg"
+        }
+      ],
+      "listable": true
+    },
+    {
+      "name": "Card",
+      "go": "Card",
+      "mount": "mountCard",
+      "create": "createCard",
+      "props": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "body",
+          "type": "string"
+        }
+      ],
+      "listable": true
+    },
+    {
+      "name": "Tabs",
+      "go": "Tabs",
+      "mount": "mountTabs",
+      "create": "createTabs",
+      "props": [
+        {
+          "name": "items",
+          "type": "[]Tab"
+        }
+      ],
+      "listable": false
+    }
+  ]
+}

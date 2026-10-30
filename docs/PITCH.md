@@ -114,6 +114,10 @@ The ping/pong proof of concept runs end to end.
 - The Go server renders the initial model with hydration markers and serialized state.
 - The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
 - Pure components compose views with typed props, in the app file or separate files.
+- Stateful components own their model, Init, Update, and view, and work in static positions and keyed lists.
+- The separately versioned UI kit ships Button, Card, Tabs, and Accordion.
+- Components can emit action messages to the parent app; the app owns server procedures.
+- Gothicbook is a small design system demo for the UI kit, including a server-backed action.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - The SQLite TodoMVC example supports filters, inline editing, mark-all, and clear-completed.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
@@ -125,12 +129,13 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 
 ## What comes next
 
-1. Stateful child components and message mapping between them.
-2. Conditionals in views.
-3. `Batch` and `Sequence` commands.
-4. Typed procedure argument validation and the no-JS form fallback.
-5. `go/packages` type information for stronger compiler checks.
-6. Manifest, content hashing, formatter, LSP, and source maps.
+1. Component commands, component-declared procedures, callback props, and controlled components.
+2. Nested stateful components and stateful components with internal loops in lists.
+3. Conditionals in views.
+4. `Batch` and `Sequence` commands.
+5. Typed procedure argument validation and the no-JS form fallback.
+6. `go/packages` type information for stronger compiler checks.
+7. Manifest, content hashing, formatter, LSP, and source maps.
 
 ## Why this can work
 

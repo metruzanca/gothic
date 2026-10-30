@@ -115,6 +115,13 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	if !ok {
 		return nil, fmt.Errorf("unknown component %s", call.Name)
 	}
+	if component.Stateful {
+		props := make([]Prop, len(call.Props))
+		for i, prop := range call.Props {
+			props[i] = Prop{Name: prop.Name, Value: substExpr(prop.Value, env)}
+		}
+		return &ComponentCall{Name: call.Name, Key: substExpr(call.Key, env), Props: props}, nil
+	}
 	for _, name := range stack {
 		if name == call.Name {
 			return nil, fmt.Errorf("component cycle: %s", componentCycle(stack, call.Name))
@@ -243,4 +250,10 @@ func substExpr(e ast.Expr, env map[string]ast.Expr) ast.Expr {
 	default:
 		return e
 	}
+}
+
+// ExpandTemplate expands pure component calls in one template. Stateful calls
+// are left intact.
+func ExpandTemplate(t *Template, components ComponentSet) (*Template, error) {
+	return expandTemplate(t, nil, nil, components)
 }
