@@ -179,6 +179,7 @@ type gen struct {
 	allowNested      bool
 	appModule        bool
 	updatePropsParam string
+	initParam        string
 	allowProcedures  bool
 	procedureNames   map[string]bool
 	propsTypes       map[string]bool
@@ -880,7 +881,7 @@ async function run(cmd) {
 }
 
 func (g *gen) emitInit(b *strings.Builder) error {
-	b.WriteString("function init() {\n")
+	fmt.Fprintf(b, "function init(%s) {\n", g.initParam)
 	if g.app.Init != nil {
 		ctx := &exprCtx{allowJS: true}
 		for _, st := range g.app.Init.Body.List {
@@ -1632,19 +1633,41 @@ func baseName(path string) string {
 	return path
 }
 
-func (g *gen) componentInit(comp *generator.Stateful) (string, error) {
+func (g *gen) componentInit(comp *generator.Stateful) (string, bool, error) {
 	init := comp.App.Init
 	if init == nil {
-		return "", nil
+		return "", false, nil
 	}
-	if init.Type.Params != nil && len(init.Type.Params.List) > 0 {
-		return "", parser.PosError(g.appPos(init.Pos()), "component Init cannot take props yet; return nil", "component %s: Init cannot take parameters yet", comp.Name)
+	paramName := ""
+	if init.Type.Params != nil {
+		var params []*ast.Field
+		for _, field := range init.Type.Params.List {
+			params = append(params, field)
+		}
+		if len(params) > 1 {
+			return "", false, parser.PosError(g.appPos(init.Pos()), "take zero parameters or one props parameter", "component %s: Init takes too many parameters", comp.Name)
+		}
+		if len(params) == 1 {
+			field := params[0]
+			if len(field.Names) == 0 {
+				return "", false, parser.PosError(g.appPos(init.Pos()), "name the props parameter", "component %s: Init parameter must be named", comp.Name)
+			}
+			if comp.PropsType == "" {
+				return "", false, parser.PosError(g.appPos(init.Pos()), "remove the Init parameter; the component has no props struct", "component %s: Init cannot take props without a props type", comp.Name)
+			}
+			typ := typeText(field.Type)
+			if typ != comp.PropsType {
+				return "", false, parser.PosError(g.appPos(init.Pos()), "match the props type "+comp.PropsType, "component %s: Init parameter has type %s, want %s", comp.Name, typ, comp.PropsType)
+			}
+			paramName = field.Names[0].Name
+		}
 	}
+	g.initParam = paramName
 	var b strings.Builder
 	if err := g.emitInit(&b); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return b.String(), nil
+	return b.String(), paramName != "", nil
 }
 
 // GenerateComponents renders a JavaScript module with stateful component
@@ -1704,7 +1727,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			return nil, wrapFile(comp.Name, err)
 		}
 
-		initFn, err := g.componentInit(comp)
+		initFn, initTakesProps, err := g.componentInit(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
 		}
@@ -1736,7 +1759,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		b.WriteString("  async function run(cmd) {\n    if (!cmd || !alive) return;\n    const msg = await cmd();\n    if (alive && msg) dispatch(msg);\n  }\n")
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
 		if initFn != "" {
-			b.WriteString("  run(init());\n")
+			if initTakesProps {
+				b.WriteString("  run(init(props));\n")
+			} else {
+				b.WriteString("  run(init());\n")
+			}
 		}
 		if comp.PropsType == "" {
 			b.WriteString("  return { updateProps() {\n    if (!alive) return;\n")

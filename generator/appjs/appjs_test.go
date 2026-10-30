@@ -912,7 +912,7 @@ func TestRejectComponentInitProps(t *testing.T) {
 		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
 		MountFunc: "mountCounter", CreateFunc: "createCounter",
 	}}, appjs.Options{FileName: "counter.gth"})
-	if err == nil || !strings.Contains(err.Error(), "Init cannot take parameters yet") {
+	if err == nil || !strings.Contains(err.Error(), "Init cannot take props without a props type") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -1120,5 +1120,83 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 	if strings.Contains(src, `tag: "CardProps"`) {
 		t.Errorf("props struct literal should not be tagged as a message\n\n%s", src)
+	}
+}
+
+func TestGenerateComponentInitProps(t *testing.T) {
+	view, err := parser.Parse("counter.gth", []byte(`package ui
+
+view Counter(model CounterModel, props CounterProps) {
+	<div>{ model.Count }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("counter.go", []byte(`package ui
+
+type CounterProps struct{ Label string }
+type CounterModel struct{ Count int }
+
+func (m CounterModel) Init(props CounterProps) Cmd {
+	js.SetTitle(props.Label)
+	return nil
+}
+
+func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("CounterModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: view.Templates[0], App: component, ModelJSON: `{"Count":0}`,
+		PropsType: "CounterProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`function init(props) {`,
+		`(document.title = String(props.Label));`,
+		`run(init(props));`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectComponentInitWrongPropsType(t *testing.T) {
+	view, err := parser.Parse("counter.gth", []byte(`package ui
+
+view Counter(model CounterModel, props CounterProps) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("counter.go", []byte(`package ui
+
+type CounterProps struct{ Label string }
+type CounterModel struct{}
+
+func (m CounterModel) Init(label string) Cmd { return nil }
+func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("CounterModel")
+	_, err = appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Counter", View: view.Templates[0], App: component, ModelJSON: `{}`,
+		PropsType: "CounterProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+	}}, appjs.Options{FileName: "counter.gth"})
+	if err == nil || !strings.Contains(err.Error(), "Init parameter has type string, want CounterProps") {
+		t.Fatalf("error = %v", err)
 	}
 }
