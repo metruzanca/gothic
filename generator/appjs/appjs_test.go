@@ -400,6 +400,7 @@ func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil 
 		`document.createComment("g:if:0:open")`,
 		`document.createComment("g:each:0:open")`,
 		`data-gothic-component-id`,
+		`wrapper.setAttribute('data-gothic-component', "Disclosure");`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -407,5 +408,49 @@ func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil 
 	}
 	if strings.Contains(src, "cannot be created inside a list") {
 		t.Errorf("CreateFunc should not throw\n\n%s", src)
+	}
+}
+
+func TestGenerateTypeSwitchWithoutAssignment(t *testing.T) {
+	view, err := parser.Parse("switch.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ model.On }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ On bool }
+type Toggle struct{}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg.(type) {
+	case Toggle:
+		m.On = !m.On
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "switch.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`switch (msg.tag) {`,
+		`case "Toggle":`,
+		`m.On = !m.On;`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
 	}
 }

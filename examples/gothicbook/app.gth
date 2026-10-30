@@ -15,12 +15,19 @@ type Model struct {
 	CardCode      string
 	TabsCode      string
 	AccordionCode string
-	ServerCode    string
-	ShowExample   bool
+	ServerCode        string
+	DisclosureCode    string
+	ShowExample       bool
+	Page              int
+	PageLabel         string
+	FeatureDisclosure ui.DisclosureItem
+	PageOne           []ui.DisclosureItem
+	PageTwo           []ui.DisclosureItem
+	Visible           []ui.DisclosureItem
 }
 
 func NewModel(count int) Model {
-	return Model{
+	m := Model{
 		Tabs: []ui.Tab{
 			{Label: "Overview", Panel: "The first panel shows the overview."},
 			{Label: "Details", Panel: "The second panel shows more detail."},
@@ -36,15 +43,54 @@ func NewModel(count int) Model {
 		CardCode:      `<ui.Card title="Card title" body="Card body" />`,
 		TabsCode:      `<ui.Tabs items={ model.Tabs } />`,
 		AccordionCode: `<ui.Accordion items={ model.Accordion } />`,
-		ServerCode:    `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
-		ShowExample:   true,
+		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
+		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
+		ShowExample:    true,
+		FeatureDisclosure: ui.DisclosureItem{
+			ID:    999,
+			Title: "Conditional disclosure",
+			Details: []string{
+				"Expand me, then hide the branch.",
+				"Show the branch again and I start collapsed.",
+			},
+		},
+		PageOne:   sampleDisclosures(1, 10),
+		PageTwo:   sampleDisclosures(11, 10),
+		PageLabel: "Showing 1-10 of 20",
 	}
+	m.Visible = m.PageOne
+	return m
+}
+
+func sampleDisclosures(from, count int) []ui.DisclosureItem {
+	titles := []string{
+		"Design tokens", "Color roles", "Typography", "Spacing", "Radius",
+		"Elevation", "Focus states", "Motion", "Forms", "Validation",
+		"Tables", "Pagination", "Empty states", "Errors", "Notifications",
+		"Dialogs", "Menus", "Tooltips", "Icons", "Accessibility",
+	}
+	items := make([]ui.DisclosureItem, 0, count)
+	for i := 0; i < count; i++ {
+		n := from + i
+		title := titles[n-1]
+		items = append(items, ui.DisclosureItem{
+			ID:    n,
+			Title: title,
+			Details: []string{
+				"First detail for " + title + ".",
+				"Second detail for " + title + ".",
+			},
+		})
+	}
+	return items
 }
 
 type IncrementClicked struct{}
 type CountUpdated struct{ Count int }
 type CountFailed struct{ Message string }
 type ToggleExample struct{}
+type NextPage struct{}
+type PrevPage struct{}
 
 type Procedures interface {
 	gothic.RPCService
@@ -69,6 +115,14 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.Count = msg.Count
 	case ToggleExample:
 		m.ShowExample = !m.ShowExample
+	case NextPage:
+		m.Page = 1
+		m.Visible = m.PageTwo
+		m.PageLabel = "Showing 11-20 of 20"
+	case PrevPage:
+		m.Page = 0
+		m.Visible = m.PageOne
+		m.PageLabel = "Showing 1-10 of 20"
 	}
 	return m, nil
 }
@@ -117,15 +171,31 @@ view App(model Model) {
 
 		<section class="section">
 			<h2>Conditionals</h2>
-			<p>An if branch renders one panel or the other. Toggling removes the unused branch from the DOM, so stateful components start fresh when the branch returns.</p>
+			<p>An if branch renders one panel or the other. Toggling removes the unused branch from the DOM, so stateful components start fresh when the branch returns. Expand the disclosure, hide it, then show it again.</p>
 			<div class="row">
 				<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
 			</div>
 			if model.ShowExample {
-				<ui.Counter label="Increment in a branch" />
+				<ui.Disclosure item={ model.FeatureDisclosure } />
 			} else {
 				<p class="server-count">The else branch is visible instead.</p>
 			}
+		</section>
+
+		<section class="section">
+			<h2>Stateful lists</h2>
+			<p>Ten disclosures per page in a scrollable viewport. Paging removes the old items, so expanded rows start collapsed when they return.</p>
+			<div class="ui-disclosure-list">
+				for _, item := range model.Visible {
+					<ui.Disclosure key={ item.ID } item={ item } />
+				}
+			</div>
+			<div class="row">
+				<ui.Button label="Previous page" primary={ false } onclick={ PrevPage{} } />
+				<ui.Button label="Next page" primary={ true } onclick={ NextPage{} } />
+			</div>
+			<p class="server-count">{ model.PageLabel }</p>
+			<Code title="Usage" code={ model.DisclosureCode } />
 		</section>
 
 		<section class="section">

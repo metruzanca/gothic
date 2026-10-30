@@ -998,13 +998,29 @@ func (g *gen) assign(b *strings.Builder, s *ast.AssignStmt, ctx *exprCtx, pad st
 }
 
 func (g *gen) typeSwitch(b *strings.Builder, s *ast.TypeSwitchStmt, ctx *exprCtx, indent int) error {
-	assign, ok := s.Assign.(*ast.AssignStmt)
-	if !ok || len(assign.Lhs) != 1 {
+	var tag string
+	switch assign := s.Assign.(type) {
+	case *ast.AssignStmt:
+		if len(assign.Lhs) != 1 {
+			return fmt.Errorf("unsupported type switch")
+		}
+		name, ok := identName(assign.Lhs[0])
+		if !ok {
+			return fmt.Errorf("unsupported type switch tag")
+		}
+		tag = name
+	case *ast.ExprStmt:
+		assert, ok := assign.X.(*ast.TypeAssertExpr)
+		if !ok || assert.Type != nil {
+			return fmt.Errorf("unsupported type switch")
+		}
+		name, ok := identName(assert.X)
+		if !ok {
+			return fmt.Errorf("unsupported type switch tag")
+		}
+		tag = name
+	default:
 		return fmt.Errorf("unsupported type switch")
-	}
-	tag, ok := identName(assign.Lhs[0])
-	if !ok {
-		return fmt.Errorf("unsupported type switch tag")
 	}
 	pad := strings.Repeat("  ", indent)
 	fmt.Fprintf(b, "%sswitch (%s.tag) {\n", pad, tag)
@@ -1348,6 +1364,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 
 		fmt.Fprintf(&b, "export function %s(id%s) {\n", comp.CreateFunc, propSig)
 		b.WriteString("  const wrapper = document.createElement('div');\n")
+		fmt.Fprintf(&b, "  wrapper.setAttribute('data-gothic-component', %s);\n", jsString(comp.Name))
 		b.WriteString("  wrapper.setAttribute('data-gothic-component-id', id);\n")
 		fmt.Fprintf(&b, "  const %s = cloneInitial(%s);\n", modelName, initial)
 		b.WriteString(indentJS(dom.String(), "  "))

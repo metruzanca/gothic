@@ -1,0 +1,40 @@
+package ui
+
+import "github.com/metruzanca/gothic"
+
+type DisclosureItem struct {
+	ID      int
+	Title   string
+	Details []string
+}
+
+type DisclosureModel struct {
+	Expanded bool
+}
+
+type DisclosureToggled struct{}
+
+func (m DisclosureModel) Init() gothic.Cmd { return nil }
+
+func (m DisclosureModel) Update(msg gothic.Msg) (DisclosureModel, gothic.Cmd) {
+	switch msg.(type) {
+	case DisclosureToggled:
+		m.Expanded = !m.Expanded
+	}
+	return m, nil
+}
+
+view Disclosure(model DisclosureModel, item DisclosureItem) {
+	<div class="ui-disclosure" class:ui-disclosure-expanded={ model.Expanded }>
+		<button class="ui-disclosure-toggle" onclick={ DisclosureToggled{} }>
+			{ item.Title }
+		</button>
+		if model.Expanded {
+			<ul class="ui-disclosure-details">
+				for _, detail := range item.Details {
+					<li>{ detail }</li>
+				}
+			</ul>
+		}
+	</div>
+}

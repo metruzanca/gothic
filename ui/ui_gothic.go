@@ -54,6 +54,28 @@ func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
 	return m, nil
 }
 
+type DisclosureItem struct {
+	ID      int
+	Title   string
+	Details []string
+}
+
+type DisclosureModel struct {
+	Expanded bool
+}
+
+type DisclosureToggled struct{}
+
+func (m DisclosureModel) Init() gothic.Cmd { return nil }
+
+func (m DisclosureModel) Update(msg gothic.Msg) (DisclosureModel, gothic.Cmd) {
+	switch msg.(type) {
+	case DisclosureToggled:
+		m.Expanded = !m.Expanded
+	}
+	return m, nil
+}
+
 type Tab struct {
 	Label string
 	Panel string
@@ -356,6 +378,163 @@ func Counter(id string, key string, label string) gothic.Component {
 			return err
 		}
 		if err := __gothicCounterView(model, label).Render(ctx, w); err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, "</div>")
+		return err
+	})
+}
+
+func __gothicDisclosureView(model DisclosureModel, item DisclosureItem) gothic.Component {
+	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		write := func(s string) error {
+			_, err := io.WriteString(w, s)
+			return err
+		}
+		if err := write("<div data-gothic-class-0=\"ui-disclosure-expanded\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"ui-disclosure"); err != nil {
+			return err
+		}
+		if model.Expanded {
+			if err := write(" ui-disclosure-expanded"); err != nil {
+				return err
+			}
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("<button data-gothic-on=\"0\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"ui-disclosure-toggle"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:0:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:0:close-->"); err != nil {
+			return err
+		}
+		if err := write("</button>"); err != nil {
+			return err
+		}
+		if err := write("<!--g:if:0:open-->"); err != nil {
+			return err
+		}
+		if model.Expanded {
+			if err := write("<!--g:if:0:then-->"); err != nil {
+				return err
+			}
+			if err := write("<ul"); err != nil {
+				return err
+			}
+			if err := write(" class=\"ui-disclosure-details"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<!--g:each:0:open-->"); err != nil {
+				return err
+			}
+			for _, detail := range item.Details {
+				if err := write("<li>"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(detail))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:close-->"); err != nil {
+					return err
+				}
+				if err := write("</li>"); err != nil {
+					return err
+				}
+			}
+			if err := write("<!--g:each:0:close-->"); err != nil {
+				return err
+			}
+			if err := write("</ul>"); err != nil {
+				return err
+			}
+		} else {
+			if err := write("<!--g:if:0:else-->"); err != nil {
+				return err
+			}
+		}
+		if err := write("<!--g:if:0:close-->"); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func Disclosure(id string, key string, item DisclosureItem) gothic.Component {
+	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		var model DisclosureModel
+		stateJSON, err := json.Marshal(model)
+		if err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "<div data-gothic-component=\"Disclosure\" data-gothic-component-id=\""); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, id); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\""); err != nil {
+			return err
+		}
+		if key != "" {
+			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, "\""); err != nil {
+				return err
+			}
+		}
+		if _, err := io.WriteString(w, ">"); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
+			return err
+		}
+		if _, err := w.Write(stateJSON); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "</script>"); err != nil {
+			return err
+		}
+		if err := __gothicDisclosureView(model, item).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")

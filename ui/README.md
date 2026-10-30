@@ -37,12 +37,14 @@ Use namespaced tags in `.gth` views:
 <ui.Counter label="Increment on client" />
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
+<ui.Disclosure key={ item.ID } item={ item } />
 ```
 
 `Button` emits its `onclick` message to the parent app through `emit`. The app
 owns the message handler and any server procedures it calls.
 
-`Tabs` uses `[]ui.Tab` and `Accordion` uses `[]ui.AccordionItem`.
+`Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`, and
+`Disclosure` uses `ui.DisclosureItem`.
 
 ## Components
 
@@ -56,6 +58,7 @@ Stateful components:
 - `Counter` with `label`, keeping count in component state
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
+- `Disclosure` with `item DisclosureItem`, keeping its expanded state
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app.

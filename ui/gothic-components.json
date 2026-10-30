@@ -30,6 +30,19 @@
       "listable": true
     },
     {
+      "name": "Disclosure",
+      "go": "Disclosure",
+      "mount": "mountDisclosure",
+      "create": "createDisclosure",
+      "props": [
+        {
+          "name": "item",
+          "type": "DisclosureItem"
+        }
+      ],
+      "listable": true
+    },
+    {
       "name": "Tabs",
       "go": "Tabs",
       "mount": "mountTabs",

@@ -82,6 +82,7 @@ export function mountAccordion(root, items, __gothicParentDispatch) {
 
 export function createAccordion(id, items) {
   const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "Accordion");
   wrapper.setAttribute('data-gothic-component-id', id);
   const model = cloneInitial(INITIAL_Accordion);
     const e0 = document.createElement("div");
@@ -131,6 +132,7 @@ export function mountCounter(root, label, __gothicParentDispatch) {
 
 export function createCounter(id, label) {
   const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "Counter");
   wrapper.setAttribute('data-gothic-component-id', id);
   const model = cloneInitial(INITIAL_Counter);
     const e0 = document.createElement("div");
@@ -149,6 +151,87 @@ export function createCounter(id, label) {
     e2.appendChild(document.createTextNode(String(model.Count)));
     e2.appendChild(document.createComment("g:text:1:close"));
     e0.appendChild(e2);
+  wrapper.appendChild(e0);
+  return wrapper;
+}
+
+const INITIAL_Disclosure = {"Expanded":false};
+
+export function mountDisclosure(root, item, __gothicParentDispatch) {
+  let model = readComponentState(root) || cloneInitial(INITIAL_Disclosure);
+  function emit(msg) {
+    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
+  }
+  onLocal(root, "0", "click", (event) => dispatch({tag: "DisclosureToggled"}));
+  function render(model) {
+    classToggleLocal(root, "0", model.Expanded);
+    ifBlockLocal(root, "0",
+      model.Expanded,
+      () => { const frag = document.createDocumentFragment();
+      const e0 = document.createElement("ul");
+      e0.setAttribute("class", "ui-disclosure-details");
+      e0.appendChild(document.createComment("g:each:0:open"));
+      e0.appendChild(document.createComment("g:each:0:close"));
+    frag.appendChild(e0);
+    return frag; },
+      () => { const frag = document.createDocumentFragment();
+    return frag; },
+      (region) => {   const renderList0 = listLocal(region, "0", (detail, __i0) => {
+    const e0 = document.createElement("li");
+    e0.appendChild(document.createComment("g:text:1:open"));
+    e0.appendChild(document.createTextNode(String(detail)));
+    e0.appendChild(document.createComment("g:text:1:close"));
+    textLocal(e0, "1", detail);
+    return e0;
+  }, (node, detail, __i0) => {
+    textLocal(node, "1", detail);
+  });
+  renderList0(item.Details);
+   },
+      (region) => {  });
+    textLocal(root, "0", item.Title);
+  }
+
+  function update(m, msg) {
+    switch (msg.tag) {
+    case "DisclosureToggled":
+    {
+      m.Expanded = !m.Expanded;
+      break;
+    }
+    }
+    return [m, null];
+  }
+
+  function dispatch(msg) {
+    const result = update(model, msg);
+    model = result[0];
+    render(model);
+  }
+  render(model);
+  return { updateProps(nextItem) {
+    item = nextItem;
+    render(model);
+  } };
+}
+
+export function createDisclosure(id, item) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "Disclosure");
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = cloneInitial(INITIAL_Disclosure);
+    const e0 = document.createElement("div");
+    e0.setAttribute("class", "ui-disclosure");
+    e0.setAttribute("data-gothic-class-0", "ui-disclosure-expanded");
+    const e1 = document.createElement("button");
+    e1.setAttribute("class", "ui-disclosure-toggle");
+    e1.setAttribute("data-gothic-on", "0");
+    e1.appendChild(document.createComment("g:text:0:open"));
+    e1.appendChild(document.createTextNode(String(item.Title)));
+    e1.appendChild(document.createComment("g:text:0:close"));
+    e0.appendChild(e1);
+    e0.appendChild(document.createComment("g:if:0:open"));
+    e0.appendChild(document.createComment("g:if:0:close"));
   wrapper.appendChild(e0);
   return wrapper;
 }
@@ -223,6 +306,7 @@ export function mountTabs(root, items, __gothicParentDispatch) {
 
 export function createTabs(id, items) {
   const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "Tabs");
   wrapper.setAttribute('data-gothic-component-id', id);
   const model = cloneInitial(INITIAL_Tabs);
     const e0 = document.createElement("div");

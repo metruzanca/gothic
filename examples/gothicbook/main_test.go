@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,12 @@ func TestGothicbook(t *testing.T) {
 		`class="ui-accordion`,
 		`data-gothic-component="Tabs"`,
 		`data-gothic-component="Counter"`,
+		`data-gothic-component="Disclosure"`,
+		`class="ui-disclosure-list"`,
+		`data-gothic-key="1"`,
+		`Showing 1-10 of 20`,
+		`Design tokens`,
+		`Accessibility`,
 		`Increment on client`,
 		`Server count:`,
 		`/gothic-ui.css`,
@@ -67,6 +74,9 @@ func TestGothicbook(t *testing.T) {
 		`mountTabs`,
 		`mountAccordion`,
 		`mountCounter`,
+		`mountDisclosure`,
+		`createDisclosure`,
+		`model.Visible`,
 		`IncrementClicked`,
 		`dispatch`,
 	} {
@@ -85,6 +95,8 @@ func TestGothicbook(t *testing.T) {
 		`export function mountTabs`,
 		`export function mountAccordion`,
 		`export function mountCounter`,
+		`export function mountDisclosure`,
+		`export function createDisclosure`,
 	} {
 		if !strings.Contains(string(uiJS), want) {
 			t.Errorf("UI JS missing %q", want)
@@ -101,6 +113,35 @@ func TestGothicbook(t *testing.T) {
 	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(string(body), "")
 	if !strings.Contains(stripped, "Server count:1") {
 		t.Fatalf("server count did not update\n\n%s", stripped)
+	}
+}
+
+func TestGothicbookPaginationSSR(t *testing.T) {
+	model := NewModel(0)
+	model.Page = 1
+	model.Visible = model.PageTwo
+	model.PageLabel = "Showing 11-20 of 20"
+
+	var page strings.Builder
+	if err := App(model).Render(context.Background(), &page); err != nil {
+		t.Fatal(err)
+	}
+	html := page.String()
+	markup := regexp.MustCompile(`(?s)<script type="application/json".*?</script>`).ReplaceAllString(html, "")
+
+	for _, want := range []string{
+		`data-gothic-key="11"`,
+		`data-gothic-key="20"`,
+		`Tables`,
+		`Accessibility`,
+		`Showing 11-20 of 20`,
+	} {
+		if !strings.Contains(markup, want) {
+			t.Errorf("page two SSR missing %q\n\n%s", want, markup)
+		}
+	}
+	if strings.Contains(markup, "Design tokens") || strings.Contains(markup, "Validation") {
+		t.Errorf("page two SSR contains page one items\n\n%s", markup)
 	}
 }
 
