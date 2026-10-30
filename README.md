@@ -106,7 +106,8 @@ server rendering, hydration, a Bubble Tea-style update loop, a typed server
 call, composable pure view components, and self-contained stateful components.
 Views support `if` / `else if` / `else`, pure components accept children
 through a default slot, and stateful components work inside branches and keyed
-lists. TodoMVC uses conditionals for empty states and inline editing.
+lists. Components read props in `Update`, react to prop changes, and run `Init`
+on mount. TodoMVC uses conditionals for empty states and inline editing.
 Gothicbook includes slotted form fields and a scrollable, paginated list of
 expandable components. A small `js` package covers browser interop, and the
 router example uses path-based URL state with back and forward support. Parse
@@ -127,4 +128,5 @@ UI kit is included.
 - [Component children and slots](docs/ITERATION_8.md)
 - [Browser interop and URL state](docs/ITERATION_9.md)
 - [Actionable diagnostics](docs/ITERATION_10.md)
+- [Component props and Init](docs/ITERATION_11.md)
 - [Pitch](docs/PITCH.md)

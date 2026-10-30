@@ -212,6 +212,8 @@ Supported now:
 - stateful components in static positions, conditional branches, and keyed lists,
 - stateful components with internal loops and conditionals as list items,
 - stateful components unmount and reset when a branch or list item leaves,
+- component Update can read view props and react to `PropsChanged`,
+- component Init runs once on mount, without props or commands yet,
 - precompiled external components from installable packages,
 - the independently versioned gothic UI kit,
 - `Msg = any` with messages as ordinary Go structs,
@@ -244,7 +246,8 @@ Supported now:
 Not supported yet:
 
 - component commands and component-declared procedures,
-- controlled components, props in component Init/Update, and function-valued props,
+- component Init commands and props in component Init,
+- controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
 - children on stateful components,
@@ -269,8 +272,7 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Component commands, component-declared procedures, and props in component
-   Init/Update.
+1. Component commands and props in component Init.
 2. Nested stateful components.
 3. Children on stateful components, named slots, and fallback content if a
    real use case appears.
@@ -294,7 +296,8 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no commands, no parent events,
-  no nested stateful components, and no props in Init/Update.
+  no nested stateful components, and no props in Init. Prop change detection
+  is reference-based.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM and reset component
   state. State held only in the DOM, such as caret position, is lost. There is

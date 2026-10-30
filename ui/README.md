@@ -66,7 +66,9 @@ Stateful components:
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app. `Field` receives its
-children from the App view, so events and state stay in the App.
+children from the App view, so events and state stay in the App. `Tabs`,
+`Accordion`, and `Disclosure` react to prop changes through their component
+`Update`.
 
 ## Development
 

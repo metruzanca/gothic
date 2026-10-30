@@ -294,10 +294,43 @@ Stateful components in this phase:
 - support static positions, conditional branches, and keyed lists,
 - must be the loop body root when used in a list,
 - may contain their own loops and conditionals,
+- can read their view props in `Update`,
+- run `Init` once on mount,
 - cannot use commands or procedures,
 - can emit messages to the parent from event attributes,
 - cannot contain other stateful components,
 - reset their state when unmounted by a branch swap or keyed list removal.
+
+#### Props in Update
+
+A component can take its view props as trailing `Update` parameters:
+
+```go
+func (m TabsModel) Update(msg gothic.Msg, items []Tab) (TabsModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case TabClicked:
+		m.Active = msg.Index
+	case gothic.PropsChanged:
+	}
+	if m.Active >= len(items) {
+		m.Active = len(items) - 1
+	}
+	return m, nil
+}
+```
+
+`Update(msg)` remains valid when a component does not need props. To use props,
+declare all of them, in view order. The compiler checks the count and types.
+
+When a prop reference changes, the component dispatches `gothic.PropsChanged`.
+Handle it in `Update` to react to new values. Comparison is by reference, so
+assign new slices or structs instead of mutating in place.
+
+#### Component Init
+
+`Init` runs once after the first render. It can perform synchronous `js`
+effects, but it cannot take props or return a command yet. Both cases fail
+generation with a hint.
 
 Emit a parent message with `emit` in a component event:
 
@@ -639,6 +672,8 @@ The proof of concept supports:
 - stateful components inside conditional branches, with unmount and state reset,
 - stateful components as keyed list items, including components with internal
   loops,
+- component Update props and `gothic.PropsChanged`,
+- component Init running once on mount,
 - `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
 - message structs with zero or simple fields,
@@ -663,7 +698,8 @@ The proof of concept supports:
 Not supported yet:
 
 - component commands and component-declared procedures,
-- controlled components, props in component Init/Update, and function-valued props,
+- component Init commands and props in component Init,
+- controlled components and function-valued props,
 - stateful components nested inside other stateful components,
 - multiple app models,
 - children on stateful components,
