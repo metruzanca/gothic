@@ -124,6 +124,7 @@ The ping/pong proof of concept runs end to end.
 - A curated `js` package covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
 - `LocationChanged` and `route` links provide path-based URL state with pushState, back, and forward.
 - The router example renders deep links on the server and navigates on the client without a reload.
+- Parse and compiler errors show the file, line, source excerpt, caret, and a hint.
 - Views support `if`, `else if`, and `else`; the server renders one branch and the client swaps it in place.
 - The SQLite TodoMVC example supports filters, conditional empty and error states, inline editing, mark-all, and clear-completed.
 - Clicking Ping produces `ready`, `ping`, `pong` with no reload.
@@ -135,14 +136,13 @@ gothic grows its own bootstrap compiler and selectively vendors templ code. It d
 
 ## What comes next
 
-1. Actionable diagnostics with source excerpts and hints.
-2. Component commands, props in component Init/Update, and nested stateful components.
-3. Path parameters, nested routers, and route matching helpers.
-4. `Batch` and `Sequence` commands.
-5. Typed procedure argument validation and the no-JS form fallback.
-6. `go/packages` type information for stronger compiler checks.
-7. Manifest, content hashing, formatter, LSP, and source maps.
-8. A virtualized list example app.
+1. Component commands, props in component Init/Update, and nested stateful components.
+2. Path parameters, nested routers, and route matching helpers.
+3. `Batch` and `Sequence` commands.
+4. Typed procedure argument validation and the no-JS form fallback.
+5. `go/packages` type information for stronger compiler checks.
+6. Manifest, content hashing, formatter, LSP, and source maps.
+7. A virtualized list example app.
 
 ## Why this can work
 

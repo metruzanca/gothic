@@ -238,7 +238,8 @@ Supported now:
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
 - procedure contracts through an interface embedding `gothic.RPCService`,
-- a generated client-only Go stub for each procedure.
+- a generated client-only Go stub for each procedure,
+- source-context parse and compiler errors with hints.
 
 Not supported yet:
 
@@ -268,22 +269,21 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Actionable diagnostics with source excerpts and hints.
-2. Component commands, component-declared procedures, and props in component
+1. Component commands, component-declared procedures, and props in component
    Init/Update.
-3. Nested stateful components.
-4. Children on stateful components, named slots, and fallback content if a
+2. Nested stateful components.
+3. Children on stateful components, named slots, and fallback content if a
    real use case appears.
-5. Path parameters, nested routers, and route matching helpers.
-6. More Go statements and expressions in `Update` and commands, including
+4. Path parameters, nested routers, and route matching helpers.
+5. More Go statements and expressions in `Update` and commands, including
    indexing and slicing.
-7. `Batch` and `Sequence` commands.
-8. Typed procedure argument validation and the no-JS fallback.
-9. `go/packages` for type information and stronger validation.
-10. Manifest, content hashing, and production serving.
-11. Formatter, LSP, and source maps.
-12. Selective vendoring of templ's HTML and whitespace handling with tests.
-13. A virtualized list example app.
+6. `Batch` and `Sequence` commands.
+7. Typed procedure argument validation and the no-JS fallback.
+8. `go/packages` for type information and stronger validation.
+9. Manifest, content hashing, and production serving.
+10. Formatter, LSP, and source maps.
+11. Selective vendoring of templ's HTML and whitespace handling with tests.
+12. A virtualized list example app.
 
 ## Risks
 
@@ -305,6 +305,8 @@ These will be planned in detail after the proof of concept is evaluated:
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
 - The client runtime and generated JavaScript are not yet minimized or hashed.
+- Errors stop at the first failure. Hints are hand-written and need coverage as
+  new checks are added.
 
 ## Prior art
 

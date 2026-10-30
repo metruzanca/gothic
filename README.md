@@ -109,8 +109,9 @@ through a default slot, and stateful components work inside branches and keyed
 lists. TodoMVC uses conditionals for empty states and inline editing.
 Gothicbook includes slotted form fields and a scrollable, paginated list of
 expandable components. A small `js` package covers browser interop, and the
-router example uses path-based URL state with back and forward support. An
-installable UI kit is included.
+router example uses path-based URL state with back and forward support. Parse
+and compiler errors include source excerpts, carets, and hints. An installable
+UI kit is included.
 
 ## Learn more
 
@@ -125,4 +126,5 @@ installable UI kit is included.
 - [Stateful branches and lists](docs/ITERATION_7.md)
 - [Component children and slots](docs/ITERATION_8.md)
 - [Browser interop and URL state](docs/ITERATION_9.md)
+- [Actionable diagnostics](docs/ITERATION_10.md)
 - [Pitch](docs/PITCH.md)
