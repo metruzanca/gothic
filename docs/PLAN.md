@@ -35,9 +35,9 @@ path.
 - The compiler needs full control of the Go and JavaScript walkers, hydration,
   and the client runtime.
 
-gothic keeps a bootstrap compiler and selectively vendors specific templ code
-under MIT where it saves real work, especially HTML escaping, whitespace, and
-raw-text element handling. Revisit the fork only if templ source compatibility
+gothic keeps a bootstrap compiler and may vendor small, attributed pieces of
+templ code under MIT where they save real work, especially HTML escaping,
+whitespace, and raw-text element handling. Revisit the fork only if templ source compatibility
 or a full LSP is required sooner than gothic can build it.
 
 ## Application model

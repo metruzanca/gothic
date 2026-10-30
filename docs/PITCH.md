@@ -135,7 +135,7 @@ The ping/pong proof of concept runs end to end.
 - No hand-written JavaScript. No wasm. No npm.
 - Unit, integration, and live browser tests pass.
 
-gothic grows its own bootstrap compiler and selectively vendors templ code. It does not hard fork templ.
+gothic grows its own bootstrap compiler and may vendor small, attributed pieces of templ code when they save real work. It does not hard fork templ.
 
 ## What comes next
 
@@ -159,6 +159,6 @@ gothic is the missing combination: Bubble Tea's state model, templ-style views, 
 
 ## Status
 
-Early, honest, and working. The pipeline is real, the demo runs, and the design decisions are documented. gothic grows its own compiler and selectively vendors templ code. It does not hard fork templ.
+Early, honest, and working. The pipeline is real, the demo runs, and the design decisions are documented. gothic grows its own compiler and may vendor small, attributed pieces of templ code when they save real work. It does not hard fork templ.
 
 If you want a fullstack Go framework where the client is not a second codebase, this is that bet.
