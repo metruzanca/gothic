@@ -40,10 +40,11 @@ func ExpandApp(f *File, components ComponentSet) (*File, error) {
 
 func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, components ComponentSet) (*Template, error) {
 	out := &Template{
-		Name:      t.Name,
-		Params:    t.Params,
-		ParamList: append([]Param(nil), t.ParamList...),
-		State:     append([]StateDecl(nil), t.State...),
+		NodePosition: t.NodePosition,
+		Name:         t.Name,
+		Params:       t.Params,
+		ParamList:    append([]Param(nil), t.ParamList...),
+		State:        append([]StateDecl(nil), t.State...),
 	}
 	for _, child := range t.Children {
 		n, err := expandNode(child, env, stack, components)

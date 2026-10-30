@@ -3,6 +3,7 @@ package generator
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -16,6 +17,14 @@ import (
 	"github.com/metruzanca/gothic/goapp"
 	"github.com/metruzanca/gothic/parser"
 )
+
+func wrapFile(file string, err error) error {
+	var pe *parser.Error
+	if errors.As(err, &pe) {
+		return err
+	}
+	return fmt.Errorf("%s: %w", file, err)
+}
 
 // Options controls a single generated .gth file.
 type Options struct {
@@ -84,7 +93,7 @@ func Generate(f *parser.File, opts Options) ([]byte, error) {
 	b.WriteString("package " + f.Package + "\n\n")
 	imports, err := mergeImports(nil, viewImports(usesHTML, usesFmt))
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 	writeImportBlock(&b, imports)
 	b.WriteString(body)
@@ -143,7 +152,7 @@ func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error
 	}
 	imports, err := mergeImports(preludeImports, viewSpecs)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 
 	var start token.Pos
@@ -182,7 +191,7 @@ func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error
 
 func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 	if err := parser.Validate(f); err != nil {
-		return "", false, false, fmt.Errorf("%s: %w", opts.FileName, err)
+		return "", false, false, wrapFile(opts.FileName, err)
 	}
 	if len(f.Templates) == 0 {
 		return "", false, false, fmt.Errorf("%s: no template to generate", opts.FileName)
@@ -202,7 +211,7 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 		}
 		code, err := g.generate()
 		if err != nil {
-			return "", false, false, fmt.Errorf("%s: %w", opts.FileName, err)
+			return "", false, false, wrapFile(opts.FileName, err)
 		}
 		if g.usesHTML {
 			usesHTML = true
@@ -226,7 +235,7 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {
-			return "", false, false, fmt.Errorf("%s: %w", opts.FileName, err)
+			return "", false, false, wrapFile(opts.FileName, err)
 		}
 		if viewGen.usesHTML {
 			usesHTML = true
@@ -390,11 +399,11 @@ type templateGen struct {
 
 func (g *templateGen) generate() (string, error) {
 	if len(g.t.Children) != 1 {
-		return "", fmt.Errorf("template %s must have exactly one root element", g.t.Name)
+		return "", parser.PosError(g.t.NodePosition, "wrap the view in one root element", "template %s must have exactly one root element", g.t.Name)
 	}
 	root, ok := g.t.Children[0].(*parser.Element)
 	if !ok {
-		return "", fmt.Errorf("template %s root must be an element", g.t.Name)
+		return "", parser.PosError(g.t.NodePosition, "use an element as the view root", "template %s root must be an element", g.t.Name)
 	}
 
 	modelName, modelType, hasModel := singleModelParam(g.t.Params)
@@ -428,11 +437,11 @@ func (g *templateGen) generate() (string, error) {
 
 func (g *templateGen) generateComponentView() (string, error) {
 	if len(g.t.Children) != 1 {
-		return "", fmt.Errorf("component %s must have exactly one root element", g.t.Name)
+		return "", parser.PosError(g.t.NodePosition, "wrap the component in one root element", "component %s must have exactly one root element", g.t.Name)
 	}
 	root, ok := g.t.Children[0].(*parser.Element)
 	if !ok {
-		return "", fmt.Errorf("component %s root must be an element", g.t.Name)
+		return "", parser.PosError(g.t.NodePosition, "use an element as the component root", "component %s root must be an element", g.t.Name)
 	}
 	name := g.funcName
 	if name == "" {
@@ -542,7 +551,7 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 			classToggles = append(classToggles, classToggle{Name: a.Name, Expr: a.Expr, Marker: idx})
 		case *parser.RouteAttr:
 			if el.Name != "a" {
-				return fmt.Errorf("route is only supported on <a>")
+				return parser.NodeError(el, "use <a href=\"/path\" route> for client-side navigation", "route is only supported on <a>")
 			}
 			eventMarkers = append(eventMarkers, fmt.Sprintf("%d", g.eventN))
 			g.eventN++
@@ -624,11 +633,11 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 	case *parser.If:
 		return g.writeIf(b, n)
 	case *parser.Slot:
-		return fmt.Errorf("slot is only supported in pure components")
+		return parser.NodeError(n, "slots are only supported in pure components; pass a prop instead", "slot is only supported in pure components")
 	case *parser.ComponentCall:
 		return g.writeStatefulCall(b, n)
 	default:
-		return fmt.Errorf("unsupported node type %T", n)
+		return parser.NodeError(n, "this node is not supported in a view", "unsupported node type %T", n)
 	}
 	return nil
 }
@@ -719,16 +728,16 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 
 func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.ComponentCall) error {
 	if !g.allowStateful {
-		return fmt.Errorf("stateful component %s cannot be nested inside another stateful component yet", call.Name)
+		return parser.NodeError(call, "move the component to the App view", "stateful component %s cannot be nested inside another stateful component yet", call.Name)
 	}
 	comp := g.stateful[call.Name]
 	if comp == nil {
-		return fmt.Errorf("unknown stateful component %s", call.Name)
+		return parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
 	props := map[string]ast.Expr{}
 	for _, p := range call.Props {
 		if _, ok := props[p.Name]; ok {
-			return fmt.Errorf("component %s: duplicate prop %q", call.Name, p.Name)
+			return parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, p.Name)
 		}
 		props[p.Name] = p.Value
 	}
@@ -746,14 +755,14 @@ func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.Compone
 	for _, p := range comp.Props {
 		v, ok := props[p.Name]
 		if !ok {
-			return fmt.Errorf("component %s: missing prop %q", call.Name, p.Name)
+			return parser.NodeError(call, "check the component signature", "component %s: missing prop %q", call.Name, p.Name)
 		}
 		seen[p.Name] = true
 		args = append(args, goExpr(v))
 	}
 	for name := range props {
 		if !seen[name] {
-			return fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+			return parser.NodeError(call, "check the component signature", "component %s: unknown prop %q", call.Name, name)
 		}
 	}
 	callee := comp.GoName
@@ -949,7 +958,7 @@ func GenerateLibrary(opts LibraryOptions) ([]byte, error) {
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+			return nil, wrapFile(opts.FileName, err)
 		}
 		if viewGen.usesHTML {
 			usesHTML = true
@@ -975,7 +984,7 @@ func GenerateLibrary(opts LibraryOptions) ([]byte, error) {
 
 	imports, err := mergeImports(preludeImports, viewImports(usesHTML, usesFmt))
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 
 	var b strings.Builder

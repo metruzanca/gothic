@@ -1,6 +1,7 @@
 package generator_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -525,5 +526,45 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "route.gth", ModuleBase: "route", App: app}); err == nil || !strings.Contains(err.Error(), "route is only supported on <a>") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRouteErrorHasSourceContext(t *testing.T) {
+	f, err := parser.Parse("route.gth", []byte(`package app
+
+view App(model Model) {
+	<div route>No</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = generator.GenerateSingle(f, app, generator.Options{FileName: "route.gth", ModuleBase: "route", App: app})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	var pe *parser.Error
+	if !errors.As(err, &pe) {
+		t.Fatalf("error type = %T: %v", err, err)
+	}
+	if pe.File != "route.gth" || pe.Line != 4 {
+		t.Fatalf("position = %s:%d:%d", pe.File, pe.Line, pe.Col)
+	}
+	if !strings.Contains(pe.Hint, "client-side navigation") {
+		t.Fatalf("hint = %q", pe.Hint)
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "route.gth:4:") || !strings.Contains(msg, "  4 | ") || !strings.Contains(msg, "^") {
+		t.Fatalf("error lacks source context:\n%s", msg)
 	}
 }

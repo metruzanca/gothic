@@ -39,6 +39,23 @@ func (e *Error) Error() string {
 	return b.String()
 }
 
+// PosError returns an error with the source context of pos.
+func PosError(pos NodePosition, hint, format string, args ...any) error {
+	return &Error{
+		File:    pos.File,
+		Line:    pos.Line,
+		Col:     pos.Col,
+		Message: fmt.Sprintf(format, args...),
+		Source:  pos.Source,
+		Hint:    hint,
+	}
+}
+
+// NodeError returns an error with the source context of a view node.
+func NodeError(n Node, hint, format string, args ...any) error {
+	return PosError(n.SourcePos(), hint, format, args...)
+}
+
 func expandSourceLine(line string, col int) (string, int) {
 	var b strings.Builder
 	expandedCol := 1

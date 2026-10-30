@@ -1,6 +1,7 @@
 package appjs_test
 
 import (
+	"errors"
 	"go/ast"
 	"os"
 	"path/filepath"
@@ -658,5 +659,43 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 	_, err = appjs.Generate(view, app, appjs.Options{FileName: "routes.gth"})
 	if err == nil || !strings.Contains(err.Error(), "js.Navigate requires a LocationChanged message") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestJSErrorHasSourceContext(t *testing.T) {
+	view, err := parser.Parse("js.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		<p>{ js.GetItem("name") }</p>
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	var pe *parser.Error
+	if !errors.As(err, &pe) {
+		t.Fatalf("error type = %T: %v", err, err)
+	}
+	if pe.File != "js.gth" || pe.Line != 5 {
+		t.Fatalf("position = %s:%d:%d", pe.File, pe.Line, pe.Col)
+	}
+	if !strings.Contains(pe.Hint, "Update") {
+		t.Fatalf("hint = %q", pe.Hint)
 	}
 }

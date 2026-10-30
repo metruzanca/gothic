@@ -27,6 +27,9 @@ type App struct {
 	Components map[string]*Component
 	// Source is the Go prelude, used to generate the app Go file.
 	Source []byte
+	// Fset and Name locate declarations in Source for error messages.
+	Fset *token.FileSet
+	Name string
 }
 
 // Component is a stateful component model and its update loop.
@@ -89,6 +92,8 @@ func parseSource(name string, src []byte, requireApp bool) (*App, error) {
 		ReferencedCommands: map[string]bool{},
 		Components:         map[string]*Component{},
 		Source:             src,
+		Fset:               fset,
+		Name:               name,
 	}
 	for _, decl := range f.Decls {
 		switch d := decl.(type) {
@@ -157,10 +162,13 @@ func parseSource(name string, src []byte, requireApp bool) (*App, error) {
 	}
 	if requireApp {
 		if app.ModelType == "" {
-			return nil, fmt.Errorf("%s: Model type not found", name)
+			return nil, fmt.Errorf("%s: Model type not found; declare type Model struct{...}", name)
+		}
+		if app.Init == nil {
+			return nil, fmt.Errorf("%s: Model.Init not found; add func (m Model) Init() gothic.Cmd", name)
 		}
 		if app.Update == nil {
-			return nil, fmt.Errorf("%s: Model.Update not found", name)
+			return nil, fmt.Errorf("%s: Model.Update not found; add func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd)", name)
 		}
 	}
 	app.collectCommands()
@@ -188,6 +196,8 @@ func (a *App) ComponentApp(modelType string) *App {
 		Commands:           a.Commands,
 		ReferencedCommands: comp.ReferencedCommands,
 		Source:             a.Source,
+		Fset:               a.Fset,
+		Name:               a.Name,
 	}
 }
 

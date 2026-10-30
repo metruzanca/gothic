@@ -14,14 +14,26 @@ import (
 
 // Parse parses a .gth file from src. The name is used in error messages.
 func Parse(name string, src []byte) (*File, error) {
-	p := &parser{name: name, src: src}
+	return parse(name, src, nil, 0)
+}
+
+// parseWithOffset parses src while reporting positions against display and
+// adding lineOffset to the synthetic line numbers.
+func parseWithOffset(name string, src, display []byte, lineOffset int) (*File, error) {
+	return parse(name, src, display, lineOffset)
+}
+
+func parse(name string, src, display []byte, lineOffset int) (*File, error) {
+	p := &parser{name: name, src: src, display: display, lineOffset: lineOffset}
 	return p.parseFile()
 }
 
 type parser struct {
-	name string
-	src  []byte
-	pos  int
+	name       string
+	src        []byte
+	display    []byte
+	lineOffset int
+	pos        int
 }
 
 func (p *parser) parseFile() (*File, error) {
@@ -65,7 +77,8 @@ func (p *parser) parseFile() (*File, error) {
 
 func (p *parser) parseTemplate() (*Template, error) {
 	p.skipSpace()
-	t := &Template{Name: p.readIdent()}
+	pos := p.position()
+	t := &Template{NodePosition: pos, Name: p.readIdent()}
 	if t.Name == "" {
 		return nil, p.errf("expected template name")
 	}
@@ -982,7 +995,7 @@ func (p *parser) withHint(err error, hint string) error {
 
 func (p *parser) position() NodePosition {
 	line, col := p.lineCol()
-	return NodePosition{File: p.name, Line: line, Col: col}
+	return NodePosition{File: p.name, Line: line, Col: col, Source: p.lineText(line)}
 }
 
 func (p *parser) lineCol() (int, int) {
@@ -995,11 +1008,15 @@ func (p *parser) lineCol() (int, int) {
 			col++
 		}
 	}
-	return line, col
+	return line + p.lineOffset, col
 }
 
 func (p *parser) lineText(line int) string {
-	lines := strings.Split(string(p.src), "\n")
+	src := p.src
+	if p.display != nil {
+		src = p.display
+	}
+	lines := strings.Split(string(src), "\n")
 	if line < 1 || line > len(lines) {
 		return ""
 	}

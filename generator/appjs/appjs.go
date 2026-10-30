@@ -3,8 +3,10 @@ package appjs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"strconv"
 	"strings"
@@ -53,7 +55,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 
 	var bindings strings.Builder
 	if err := g.emitViewBindings(&bindings); err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 
 	var b strings.Builder
@@ -91,10 +93,10 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 	b.WriteString("function emit(msg) { dispatch(msg); }\n\n")
 
 	if err := g.emitInit(&b); err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 	if err := g.emitUpdate(&b); err != nil {
-		return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+		return nil, wrapFile(opts.FileName, err)
 	}
 	for name := range app.ReferencedCommands {
 		fn := app.Commands[name]
@@ -102,7 +104,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 			continue
 		}
 		if err := g.emitCommand(&b, fn); err != nil {
-			return nil, fmt.Errorf("%s: %w", opts.FileName, err)
+			return nil, wrapFile(opts.FileName, err)
 		}
 	}
 
@@ -197,11 +199,11 @@ type itemBinding struct {
 
 func (g *gen) emitViewBindings(b *strings.Builder) error {
 	if len(g.t.Children) != 1 {
-		return fmt.Errorf("view must have one root element")
+		return parser.PosError(g.t.NodePosition, "wrap the view in one root element", "view must have one root element")
 	}
 	root, ok := g.t.Children[0].(*parser.Element)
 	if !ok {
-		return fmt.Errorf("view root must be an element")
+		return parser.PosError(g.t.NodePosition, "use an element as the view root", "view root must be an element")
 	}
 	return g.emitElementBindings(b, root)
 }
@@ -212,14 +214,14 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 		case *parser.EventAttr:
 			idx := g.eventN
 			g.eventN++
-			msg, err := g.expr(a.Expr, exprCtx{})
+			msg, err := g.expr(a.Expr, exprCtx{pos: el.NodePosition})
 			if err != nil {
 				return err
 			}
 			domEvent, handler := eventHandler(strings.TrimPrefix(a.Name, "on"), msg, isEmitCall(a.Expr))
 			fmt.Fprintf(b, "%s(root, %s, %s, %s);\n", g.helper("on"), jsString(fmt.Sprintf("%d", idx)), jsString(domEvent), handler)
 		case *parser.ExprAttr:
-			expr, err := g.expr(a.Expr, exprCtx{})
+			expr, err := g.expr(a.Expr, exprCtx{pos: el.NodePosition})
 			if err != nil {
 				return err
 			}
@@ -235,7 +237,7 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 		case *parser.ClassToggleAttr:
 			idx := g.classN
 			g.classN++
-			expr, err := g.expr(a.Expr, exprCtx{})
+			expr, err := g.expr(a.Expr, exprCtx{pos: el.NodePosition})
 			if err != nil {
 				return err
 			}
@@ -258,7 +260,7 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 		case *parser.Interpolation:
 			idx := g.textN
 			g.textN++
-			expr, err := g.expr(c.Expr, exprCtx{})
+			expr, err := g.expr(c.Expr, exprCtx{pos: c.NodePosition})
 			if err != nil {
 				return err
 			}
@@ -270,13 +272,15 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 		case *parser.If:
 			idx := g.ifN
 			g.ifN++
-			args, err := g.ifArgs(idx, c, exprCtx{})
+			args, err := g.ifArgs(idx, c, exprCtx{pos: c.NodePosition})
 			if err != nil {
 				return err
 			}
 			g.ifCalls = append(g.ifCalls, fmt.Sprintf("%s(root, %s);", g.helper("ifBlock"), args))
+		case *parser.Slot:
+			return parser.NodeError(c, "slots are only supported in pure components; pass a prop instead", "slot is only supported in pure components")
 		case *parser.ComponentCall:
-			if err := g.emitStaticComponent(b, c, exprCtx{}); err != nil {
+			if err := g.emitStaticComponent(b, c, exprCtx{pos: c.NodePosition}); err != nil {
 				return err
 			}
 		}
@@ -287,9 +291,9 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall, ctx exprCtx) error {
 	comp := g.stateful[call.Name]
 	if comp == nil {
-		return fmt.Errorf("unknown stateful component %s", call.Name)
+		return parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
-	args, err := g.componentArgs(comp, call, ctx)
+	args, err := g.componentArgs(comp, call, exprCtx{locals: ctx.locals, pos: call.NodePosition})
 	if err != nil {
 		return err
 	}
@@ -311,7 +315,7 @@ func (g *gen) componentArgs(comp *generator.Stateful, call *parser.ComponentCall
 	props := map[string]ast.Expr{}
 	for _, p := range call.Props {
 		if _, exists := props[p.Name]; exists {
-			return "", fmt.Errorf("component %s: duplicate prop %q", call.Name, p.Name)
+			return "", parser.NodeError(call, "remove the duplicate prop", "component %s: duplicate prop %q", call.Name, p.Name)
 		}
 		props[p.Name] = p.Value
 	}
@@ -319,7 +323,7 @@ func (g *gen) componentArgs(comp *generator.Stateful, call *parser.ComponentCall
 	for _, p := range comp.Props {
 		v, ok := props[p.Name]
 		if !ok {
-			return "", fmt.Errorf("component %s: missing prop %q", call.Name, p.Name)
+			return "", parser.NodeError(call, "check the component signature", "component %s: missing prop %q", call.Name, p.Name)
 		}
 		expr, err := g.expr(v, ctx)
 		if err != nil {
@@ -329,7 +333,7 @@ func (g *gen) componentArgs(comp *generator.Stateful, call *parser.ComponentCall
 		delete(props, p.Name)
 	}
 	for name := range props {
-		return "", fmt.Errorf("component %s: unknown prop %q", call.Name, name)
+		return "", parser.NodeError(call, "check the component signature", "component %s: unknown prop %q", call.Name, name)
 	}
 	return strings.Join(args, ", "), nil
 }
@@ -347,7 +351,7 @@ func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
 
 func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 	if f.Value == "" {
-		return "", fmt.Errorf("for loops must use _, value := range expr")
+		return "", parser.PosError(f.NodePosition, "use for index, value := range items", "for loops must use _, value := range expr")
 	}
 	if len(f.Children) == 1 {
 		if call, ok := f.Children[0].(*parser.ComponentCall); ok {
@@ -381,7 +385,7 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 		}
 	}
 	if rootVar == "" {
-		return "", fmt.Errorf("for body must contain one element")
+		return "", parser.PosError(f.NodePosition, "wrap the loop body in one element", "for body must contain one element")
 	}
 
 	var b strings.Builder
@@ -395,7 +399,7 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 		b.WriteString("}")
 	}
 	if keyExpr != nil {
-		key, err := g.expr(keyExpr, exprCtx{locals: locals})
+		key, err := g.expr(keyExpr, exprCtx{locals: locals, pos: f.NodePosition})
 		if err != nil {
 			return "", err
 		}
@@ -403,7 +407,7 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 	}
 	b.WriteString(");\n")
 
-	itemsExpr, err := g.expr(f.X, exprCtx{})
+	itemsExpr, err := g.expr(f.X, exprCtx{pos: f.NodePosition})
 	if err != nil {
 		return "", err
 	}
@@ -414,7 +418,7 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.ComponentCall, idx int) (string, error) {
 	comp := g.stateful[call.Name]
 	if comp == nil {
-		return "", fmt.Errorf("unknown stateful component %s", call.Name)
+		return "", parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
 	renderName := fmt.Sprintf("renderList%d", idx)
 	compID := fmt.Sprintf("c%d", g.componentN)
@@ -424,13 +428,13 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 		indexName = fmt.Sprintf("__i%d", idx)
 	}
 	locals := map[string]bool{f.Value: true, indexName: true}
-	args, err := g.componentArgs(comp, call, exprCtx{locals: locals})
+	args, err := g.componentArgs(comp, call, exprCtx{locals: locals, pos: call.NodePosition})
 	if err != nil {
 		return "", err
 	}
 	keyExpr := ""
 	if call.Key != nil {
-		keyExpr, err = g.expr(call.Key, exprCtx{locals: locals})
+		keyExpr, err = g.expr(call.Key, exprCtx{locals: locals, pos: call.NodePosition})
 		if err != nil {
 			return "", err
 		}
@@ -453,7 +457,7 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 	}
 	b.WriteString(");\n")
 
-	itemsExpr, err := g.expr(f.X, exprCtx{})
+	itemsExpr, err := g.expr(f.X, exprCtx{pos: f.NodePosition})
 	if err != nil {
 		return "", err
 	}
@@ -515,6 +519,7 @@ func eventHandler(event, msg string, parent bool) (string, string) {
 // root and marker arguments. The marker index is passed in so callers can emit
 // open and close comments with the same index.
 func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
+	ctx.pos = n.NodePosition
 	cond, err := g.expr(n.Cond, ctx)
 	if err != nil {
 		return "", err
@@ -540,12 +545,13 @@ func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
 // inside a branch or a nested element. The bind code uses __ROOT__ as a
 // placeholder for the scope that contains the component wrapper.
 func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string, string, string, error) {
+	ctx.pos = call.NodePosition
 	if !g.allowNested {
-		return "", "", "", fmt.Errorf("stateful component %s cannot be nested inside another stateful component yet", call.Name)
+		return "", "", "", parser.NodeError(call, "move the component to the App view", "stateful component %s cannot be nested inside another stateful component yet", call.Name)
 	}
 	comp := g.stateful[call.Name]
 	if comp == nil {
-		return "", "", "", fmt.Errorf("unknown stateful component %s", call.Name)
+		return "", "", "", parser.NodeError(call, "add a //gothic:components directive for the component package", "unknown stateful component %s", call.Name)
 	}
 	args, err := g.componentArgs(comp, call, ctx)
 	if err != nil {
@@ -599,7 +605,7 @@ func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error)
 		case *parser.Interpolation:
 			idx := g.textN
 			g.textN++
-			e, err := g.expr(c.Expr, ctx)
+			e, err := g.expr(c.Expr, exprCtx{locals: ctx.locals, pos: c.NodePosition})
 			if err != nil {
 				return "", "", err
 			}
@@ -637,6 +643,8 @@ func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error)
 				return "", "", err
 			}
 			bindings = append(bindings, itemBinding{kind: "code", expr: call})
+		case *parser.Slot:
+			return "", "", parser.NodeError(c, "slots are only supported in pure components; pass a prop instead", "slot is only supported in pure components")
 		case *parser.ComponentCall:
 			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, ctx)
 			if err != nil {
@@ -686,7 +694,7 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 		case *parser.EventAttr:
 			idx := g.eventN
 			g.eventN++
-			msg, err := g.expr(a.Expr, exprCtx{locals: locals})
+			msg, err := g.expr(a.Expr, exprCtx{locals: locals, pos: el.NodePosition})
 			if err != nil {
 				return "", err
 			}
@@ -699,7 +707,7 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 				parent: isEmitCall(a.Expr),
 			})
 		case *parser.ExprAttr:
-			expr, err := g.expr(a.Expr, exprCtx{locals: locals})
+			expr, err := g.expr(a.Expr, exprCtx{locals: locals, pos: el.NodePosition})
 			if err != nil {
 				return "", err
 			}
@@ -717,7 +725,7 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 		case *parser.ClassToggleAttr:
 			idx := g.classN
 			g.classN++
-			expr, err := g.expr(a.Expr, exprCtx{locals: locals})
+			expr, err := g.expr(a.Expr, exprCtx{locals: locals, pos: el.NodePosition})
 			if err != nil {
 				return "", err
 			}
@@ -743,7 +751,7 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 		case *parser.Interpolation:
 			idx := g.textN
 			g.textN++
-			e, err := g.expr(c.Expr, exprCtx{locals: locals})
+			e, err := g.expr(c.Expr, exprCtx{locals: locals, pos: c.NodePosition})
 			if err != nil {
 				return "", err
 			}
@@ -772,13 +780,15 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 			g.ifN++
 			fmt.Fprintf(sb, "  %s.appendChild(document.createComment(%s));\n", v, jsString(fmt.Sprintf("g:if:%d:open", idx)))
 			fmt.Fprintf(sb, "  %s.appendChild(document.createComment(%s));\n", v, jsString(fmt.Sprintf("g:if:%d:close", idx)))
-			args, err := g.ifArgs(idx, c, exprCtx{locals: locals})
+			args, err := g.ifArgs(idx, c, exprCtx{locals: locals, pos: c.NodePosition})
 			if err != nil {
 				return "", err
 			}
 			*bindings = append(*bindings, itemBinding{kind: "code", expr: fmt.Sprintf("%s(__ROOT__, %s);", g.helper("ifBlock"), args)})
+		case *parser.Slot:
+			return "", parser.NodeError(c, "slots are only supported in pure components; pass a prop instead", "slot is only supported in pure components")
 		case *parser.ComponentCall:
-			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, exprCtx{locals: locals})
+			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, exprCtx{locals: locals, pos: c.NodePosition})
 			if err != nil {
 				return "", err
 			}
@@ -859,7 +869,7 @@ func (g *gen) emitUpdate(b *strings.Builder) error {
 
 func (g *gen) emitCommand(b *strings.Builder, fn *ast.FuncDecl) error {
 	if fn.Type.Params != nil && len(fn.Type.Params.List) != 0 {
-		return fmt.Errorf("commands with parameters are not supported yet")
+		return parser.PosError(g.appPos(fn.Pos()), "commands cannot take parameters; close over a value instead", "commands with parameters are not supported yet")
 	}
 	fmt.Fprintf(b, "async function %s() {\n", fn.Name.Name)
 	ctx := &exprCtx{async: true, allowJS: true}
@@ -877,9 +887,55 @@ type exprCtx struct {
 	async    bool
 	inUpdate bool
 	allowJS  bool
+	pos      parser.NodePosition
+}
+
+func (g *gen) appPos(pos token.Pos) parser.NodePosition {
+	if g.app == nil || g.app.Fset == nil {
+		return parser.NodePosition{}
+	}
+	p := g.app.Fset.Position(pos)
+	return parser.NodePosition{File: p.Filename, Line: p.Line, Col: p.Column, Source: sourceLine(g.app.Source, p.Line)}
+}
+
+func sourceLine(src []byte, line int) string {
+	lines := strings.Split(string(src), "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	return strings.TrimRight(lines[line-1], "\r")
+}
+
+func goExprText(e ast.Expr) string {
+	var b strings.Builder
+	if err := format.Node(&b, token.NewFileSet(), e); err != nil {
+		return fmt.Sprintf("%T", e)
+	}
+	return b.String()
+}
+
+func goStmtText(s ast.Stmt) string {
+	var b strings.Builder
+	if err := format.Node(&b, token.NewFileSet(), s); err != nil {
+		return fmt.Sprintf("%T", s)
+	}
+	return b.String()
+}
+
+func (g *gen) exprErr(ctx exprCtx, hint, format string, args ...any) error {
+	return parser.PosError(ctx.pos, hint, format, args...)
+}
+
+func wrapFile(file string, err error) error {
+	var pe *parser.Error
+	if errors.As(err, &pe) {
+		return err
+	}
+	return fmt.Errorf("%s: %w", file, err)
 }
 
 func (g *gen) stmt(b *strings.Builder, s ast.Stmt, ctx *exprCtx, indent int) error {
+	ctx.pos = g.appPos(s.Pos())
 	pad := strings.Repeat("  ", indent)
 	switch s := s.(type) {
 	case *ast.AssignStmt:
@@ -955,7 +1011,7 @@ func (g *gen) stmt(b *strings.Builder, s ast.Stmt, ctx *exprCtx, indent int) err
 	case *ast.EmptyStmt:
 		return nil
 	default:
-		return fmt.Errorf("unsupported statement %T", s)
+		return parser.PosError(ctx.pos, "this statement is not supported in the client subset", "unsupported statement %s", goStmtText(s))
 	}
 }
 
@@ -1128,7 +1184,7 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 			}
 			return jsString(v), nil
 		default:
-			return "", fmt.Errorf("unsupported literal %s", e.Value)
+			return "", g.exprErr(ctx, "use a string, number, or rune literal", "unsupported literal %s", e.Value)
 		}
 	case *ast.SelectorExpr:
 		if e.Sel.Name == "Error" {
@@ -1145,7 +1201,7 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		return x + "." + e.Sel.Name, nil
 	case *ast.CallExpr:
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "append" {
-			return "", fmt.Errorf("append is only supported in assignment")
+			return "", g.exprErr(ctx, "assign the append result to a field", "append is only supported in assignment")
 		}
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "len" && len(e.Args) == 1 {
 			x, err := g.expr(e.Args[0], ctx)
@@ -1210,26 +1266,26 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 	case *ast.FuncLit:
 		return g.funcLit(e)
 	default:
-		return "", fmt.Errorf("unsupported expression %T", e)
+		return "", g.exprErr(ctx, "use a supported Go expression or move the work into Update", "unsupported expression %s", goExprText(e))
 	}
 }
 
 func (g *gen) checkRoute(el *parser.Element) error {
 	if !g.appModule {
-		return fmt.Errorf("route links are only supported in the App view")
+		return parser.NodeError(el, "move the route link to the App view", "route links are only supported in the App view")
 	}
 	if el.Name != "a" {
-		return fmt.Errorf("route is only supported on <a>")
+		return parser.NodeError(el, "use <a href=\"/path\" route> for client-side navigation", "route is only supported on <a>")
 	}
 	if _, ok := g.app.Messages["LocationChanged"]; !ok {
-		return fmt.Errorf("route links require a LocationChanged message")
+		return parser.NodeError(el, "add a LocationChanged message to the app", "route links require a LocationChanged message")
 	}
 	return nil
 }
 
 func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) {
 	if !ctx.allowJS {
-		return "", fmt.Errorf("js.%s can only be used in Init, Update, or commands", name)
+		return "", g.exprErr(ctx, "move js calls into Init, Update, or a command", "js.%s can only be used in Init, Update, or commands", name)
 	}
 	parts := make([]string, len(args))
 	for i, arg := range args {
@@ -1286,7 +1342,7 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 			return "", fmt.Errorf("js.Navigate expects one argument")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", fmt.Errorf("js.Navigate requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Navigate requires a LocationChanged message")
 		}
 		return fmt.Sprintf("navigate(%s)", parts[0]), nil
 	case "Replace":
@@ -1294,7 +1350,7 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 			return "", fmt.Errorf("js.Replace expects one argument")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", fmt.Errorf("js.Replace requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Replace requires a LocationChanged message")
 		}
 		return fmt.Sprintf("replaceLocation(%s)", parts[0]), nil
 	case "Back":
@@ -1302,7 +1358,7 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 			return "", fmt.Errorf("js.Back takes no arguments")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", fmt.Errorf("js.Back requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Back requires a LocationChanged message")
 		}
 		return "history.back()", nil
 	case "Reload":
@@ -1317,7 +1373,7 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 
 func (g *gen) funcLit(e *ast.FuncLit) (string, error) {
 	if e.Type.Params != nil && len(e.Type.Params.List) > 0 {
-		return "", fmt.Errorf("command functions cannot take parameters")
+		return "", g.exprErr(exprCtx{pos: g.appPos(e.Pos())}, "remove the parameters from the command", "command functions cannot take parameters")
 	}
 	var b strings.Builder
 	b.WriteString("async () => {\n")
@@ -1335,17 +1391,17 @@ func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
 	switch t := e.Type.(type) {
 	case *ast.Ident:
 		if _, ok := g.app.Messages[t.Name]; !ok {
-			return "", fmt.Errorf("unknown message type %s", t.Name)
+			return "", g.exprErr(ctx, "declare the message struct in the prelude", "unknown message type %s", t.Name)
 		}
 		parts := []string{fmt.Sprintf("tag: %s", jsString(t.Name))}
 		for _, elt := range e.Elts {
 			kv, ok := elt.(*ast.KeyValueExpr)
 			if !ok {
-				return "", fmt.Errorf("message literals must use keyed fields")
+				return "", g.exprErr(ctx, "write message fields as Name: value", "message literals must use keyed fields")
 			}
 			key, ok := identName(kv.Key)
 			if !ok {
-				return "", fmt.Errorf("message fields must be identifiers")
+				return "", g.exprErr(ctx, "message field names must be identifiers", "message fields must be identifiers")
 			}
 			val, err := g.expr(kv.Value, ctx)
 			if err != nil {
@@ -1365,7 +1421,7 @@ func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
 		}
 		return "[" + strings.Join(parts, ", ") + "]", nil
 	default:
-		return "", fmt.Errorf("unsupported composite literal %T", e.Type)
+		return "", g.exprErr(ctx, "use a message literal or an array literal", "unsupported composite literal %s", goExprText(e))
 	}
 }
 
@@ -1454,10 +1510,10 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			return nil, fmt.Errorf("component %s is missing its app or view", comp.Name)
 		}
 		if len(comp.App.ReferencedCommands) > 0 {
-			return nil, fmt.Errorf("component %s uses commands, which are not supported yet", comp.Name)
+			return nil, parser.PosError(comp.View.NodePosition, "component commands are not supported yet; use an app action", "component %s uses commands, which are not supported yet", comp.Name)
 		}
 		if len(comp.View.ParamList) == 0 {
-			return nil, fmt.Errorf("component %s must have a model parameter", comp.Name)
+			return nil, parser.PosError(comp.View.NodePosition, "declare the model as the first parameter", "component %s must have a model parameter", comp.Name)
 		}
 		modelName := comp.View.ParamList[0].Name
 		initial := "INITIAL_" + jsIdent(comp.Name)
@@ -1481,7 +1537,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true}
 		var bindings strings.Builder
 		if err := g.emitViewBindings(&bindings); err != nil {
-			return nil, fmt.Errorf("%s: %w", comp.Name, err)
+			return nil, wrapFile(comp.Name, err)
 		}
 
 		var renderCall strings.Builder
@@ -1489,7 +1545,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 
 		var updateFn strings.Builder
 		if err := g.emitUpdate(&updateFn); err != nil {
-			return nil, fmt.Errorf("%s: %w", comp.Name, err)
+			return nil, wrapFile(comp.Name, err)
 		}
 
 		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch) {\n", comp.MountFunc, propSig)
@@ -1515,7 +1571,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		var ignored []itemBinding
 		rootVar, err := cg.emitDOM(&dom, comp.View.Children[0].(*parser.Element), locals, &ignored)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", comp.Name, err)
+			return nil, wrapFile(comp.Name, err)
 		}
 
 		fmt.Fprintf(&b, "export function %s(id%s) {\n", comp.CreateFunc, propSig)

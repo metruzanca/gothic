@@ -24,6 +24,7 @@ type Param struct {
 
 // Template is a view declared with view.
 type Template struct {
+	NodePosition
 	Name      string
 	Params    string
 	ParamList []Param
@@ -41,9 +42,10 @@ type StateDecl struct {
 
 // NodePosition is the source location of a view node.
 type NodePosition struct {
-	File string
-	Line int
-	Col  int
+	File   string
+	Line   int
+	Col    int
+	Source string
 }
 
 // Position returns the source location of the node.
@@ -51,10 +53,16 @@ func (p NodePosition) Position() (string, int, int) {
 	return p.File, p.Line, p.Col
 }
 
+// SourcePos returns the full source position, including the source line.
+func (p NodePosition) SourcePos() NodePosition {
+	return p
+}
+
 // Node is a template body node.
 type Node interface {
 	node()
 	Position() (string, int, int)
+	SourcePos() NodePosition
 }
 
 // Element is an HTML element.

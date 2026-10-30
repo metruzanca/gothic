@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -137,20 +138,36 @@ func loadSource(path string) (*source, error) {
 		base: strings.TrimSuffix(filepath.Base(path), ".gth"),
 		src:  src,
 	}
-	if appFile, err := viewparser.ParseApp(path, src); err == nil {
+	appFile, appErr := viewparser.ParseApp(path, src)
+	if appErr == nil {
 		s.appFile = appFile
 		s.view = appFile.View
 		if app, err := goapp.ParseSource(path, appFile.GoSource); err == nil {
 			s.app = app
+		} else if hasAppView(s.view) {
+			return nil, err
 		}
 		return s, nil
 	}
-	f, err := viewparser.Parse(path, src)
-	if err != nil {
-		return nil, err
+	f, legacyErr := viewparser.Parse(path, src)
+	if legacyErr != nil {
+		var pe *viewparser.Error
+		if errors.As(appErr, &pe) {
+			return nil, appErr
+		}
+		return nil, legacyErr
 	}
 	s.view = f
 	return s, nil
+}
+
+func hasAppView(f *viewparser.File) bool {
+	for _, t := range f.Templates {
+		if t.Name == "App" {
+			return true
+		}
+	}
+	return false
 }
 
 func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
@@ -191,7 +208,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	registry := viewparser.ComponentSet{}
 	statefulViews, err := addAppComponents(registry, appSource)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+		return 0, 0, wrapFile(appSource.path, err)
 	}
 
 	written := 0
@@ -217,13 +234,13 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 			return 0, 0, fmt.Errorf("%s: component files may only contain a package clause and views: %w", s.path, err)
 		}
 		if err := addComponents(registry, s.view); err != nil {
-			return 0, 0, fmt.Errorf("%s: %w", s.path, err)
+			return 0, 0, wrapFile(s.path, err)
 		}
 	}
 
 	external, externalPure, err := loadExternalComponents(appSource)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+		return 0, 0, wrapFile(appSource.path, err)
 	}
 	for _, ext := range external {
 		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, ParamList: ext.Props}
@@ -239,14 +256,14 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 	}
 	expanded, err := viewparser.ExpandApp(appSource.view, registry)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+		return 0, 0, wrapFile(appSource.path, err)
 	}
 	if err := validateApp(expanded); err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+		return 0, 0, wrapFile(appSource.path, err)
 	}
 	stateful, err := buildStateful(appSource, statefulViews, registry)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s: %w", appSource.path, err)
+		return 0, 0, wrapFile(appSource.path, err)
 	}
 	stateful = append(stateful, external...)
 	n, err := generateApp(appSource, expanded, stateful, out)
@@ -328,18 +345,26 @@ func addComponent(registry viewparser.ComponentSet, t *viewparser.Template) erro
 	return nil
 }
 
+func wrapFile(file string, err error) error {
+	var pe *viewparser.Error
+	if errors.As(err, &pe) {
+		return err
+	}
+	return fmt.Errorf("%s: %w", file, err)
+}
+
 func validateRegistry(registry viewparser.ComponentSet) error {
 	for name, t := range registry {
 		if t.Stateful && len(t.Children) == 0 {
 			continue
 		}
 		if len(t.Children) != 1 {
-			return fmt.Errorf("component %s must have exactly one root element", name)
+			return viewparser.PosError(t.NodePosition, "wrap the component in one root element", "component %s must have exactly one root element", name)
 		}
 		switch t.Children[0].(type) {
 		case *viewparser.Element, *viewparser.ComponentCall:
 		default:
-			return fmt.Errorf("component %s root must be an element", name)
+			return viewparser.PosError(t.NodePosition, "use an element as the component root", "component %s root must be an element", name)
 		}
 	}
 	return nil
@@ -351,16 +376,16 @@ func validateApp(f *viewparser.File) error {
 	}
 	app := f.Templates[0]
 	if len(app.ParamList) != 1 {
-		return fmt.Errorf("App must have exactly one model parameter")
+		return viewparser.PosError(app.NodePosition, "declare exactly one model parameter: view App(model Model)", "App must have exactly one model parameter")
 	}
 	if len(app.State) > 0 {
-		return fmt.Errorf("App cannot declare state")
+		return viewparser.PosError(app.NodePosition, "move state into the model", "App cannot declare state")
 	}
 	if len(app.Children) != 1 {
-		return fmt.Errorf("App must have exactly one root element")
+		return viewparser.PosError(app.NodePosition, "wrap the App view in one root element", "App must have exactly one root element")
 	}
 	if _, ok := app.Children[0].(*viewparser.Element); !ok {
-		return fmt.Errorf("App root must be an element")
+		return viewparser.PosError(app.NodePosition, "use an element as the App root", "App root must be an element")
 	}
 	return nil
 }
@@ -369,22 +394,22 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 	components := make([]*generator.Stateful, 0, len(views))
 	for _, t := range views {
 		if len(t.ParamList) == 0 {
-			return nil, fmt.Errorf("stateful component %s must have a model parameter", t.Name)
+			return nil, viewparser.PosError(t.NodePosition, "declare the model as the first parameter", "stateful component %s must have a model parameter", t.Name)
 		}
 		modelType := t.ParamList[0].Type
 		app := s.app.ComponentApp(modelType)
 		if app == nil {
-			return nil, fmt.Errorf("stateful component %s: model %s has no Init/Update", t.Name, modelType)
+			return nil, viewparser.PosError(t.NodePosition, "add Init and Update methods to the model", "stateful component %s: model %s has no Init/Update", t.Name, modelType)
 		}
 		expanded, err := viewparser.ExpandTemplate(t, registry)
 		if err != nil {
 			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
 		}
 		if len(expanded.Children) != 1 {
-			return nil, fmt.Errorf("stateful component %s must have one root element", t.Name)
+			return nil, viewparser.PosError(t.NodePosition, "wrap the component in one root element", "stateful component %s must have one root element", t.Name)
 		}
 		if _, ok := expanded.Children[0].(*viewparser.Element); !ok {
-			return nil, fmt.Errorf("stateful component %s root must be an element", t.Name)
+			return nil, viewparser.PosError(t.NodePosition, "use an element as the component root", "stateful component %s root must be an element", t.Name)
 		}
 		modelJSON, err := zeroModelJSON(s.app.Messages[modelType])
 		if err != nil {

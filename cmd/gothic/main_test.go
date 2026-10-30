@@ -280,3 +280,56 @@ view App(model Model) {
 		}
 	}
 }
+
+func TestGenerateReportsParseContext(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "app.gth", `package main
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+
+view App(model Model) {
+	<div>
+		if model.Show {
+			<p>hi</p>
+	</div>
+}
+`)
+	err := generate(dir, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		"app.gth:12:",
+		"| ",
+		"^",
+		"hint: the if block opened on line 10 is missing a closing }",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error missing %q\n\n%s", want, msg)
+		}
+	}
+}
+
+func TestGenerateReportsMissingModel(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "app.gth", `package main
+
+view App() {
+	<div></div>
+}
+`)
+	err := generate(dir, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "Model type not found") {
+		t.Fatalf("error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "declare type Model") {
+		t.Fatalf("error lacks a hint: %v", err)
+	}
+}
