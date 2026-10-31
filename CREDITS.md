@@ -7,9 +7,6 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - Website: https://mackenziechild.me
 - X: https://x.com/mackenziechild
 
-The current files are temporary versions. A refined logo and wordmark will
-replace them.
-
 ## Prior art
 
 gothic is inspired by [templ](https://github.com/a-h/templ), created by
