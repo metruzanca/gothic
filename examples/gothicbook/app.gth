@@ -22,6 +22,7 @@ type VirtualRowData struct {
 type Model struct {
 	Path              string
 	Page              string
+	Wordmark          string
 	Tabs              []ui.Tab
 	ManyTabs          []ui.Tab
 	FewTabs           []ui.Tab
@@ -51,8 +52,9 @@ type Model struct {
 
 func NewModel(count int) Model {
 	m := Model{
-		Path: "/",
-		Page: "overview",
+		Path:     "/",
+		Page:     "overview",
+		Wordmark: wordmarkHref,
 		Tabs: []ui.Tab{
 			{Label: "Overview", Panel: "The first panel shows the overview."},
 			{Label: "Details", Panel: "The second panel shows more detail."},
@@ -278,7 +280,7 @@ view App(model Model) {
 	<div class="shell">
 		<aside class="sidebar">
 			<a class="brand" href="/" route>
-				<img src="/gothic-wordmark.svg" alt="Gothic" />
+				<img src={ model.Wordmark } alt="Gothic" />
 				<span class="brand-book">book</span>
 			</a>
 			<nav class="nav" aria-label="Sections">

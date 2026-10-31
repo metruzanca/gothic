@@ -26,6 +26,7 @@ type VirtualRowData struct {
 type Model struct {
 	Path              string
 	Page              string
+	Wordmark          string
 	Tabs              []ui.Tab
 	ManyTabs          []ui.Tab
 	FewTabs           []ui.Tab
@@ -55,8 +56,9 @@ type Model struct {
 
 func NewModel(count int) Model {
 	m := Model{
-		Path: "/",
-		Page: "overview",
+		Path:     "/",
+		Page:     "overview",
+		Wordmark: wordmarkHref,
 		Tabs: []ui.Tab{
 			{Label: "Overview", Panel: "The first panel shows the overview."},
 			{Label: "Details", Panel: "The second panel shows more detail."},
@@ -321,7 +323,19 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<img src=\"/gothic-wordmark.svg\" alt=\"Gothic\">"); err != nil {
+		if err := write("<img data-gothic-attr-0=\"src\""); err != nil {
+			return err
+		}
+		if err := write(" src=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.Wordmark))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" alt=\"Gothic\">"); err != nil {
 			return err
 		}
 		if err := write("<span"); err != nil {
@@ -1807,7 +1821,7 @@ func App(model Model) gothic.Component {
 			if err := write("</span>"); err != nil {
 				return err
 			}
-			if err := write("<input data-gothic-attr-0=\"value\""); err != nil {
+			if err := write("<input data-gothic-attr-1=\"value\""); err != nil {
 				return err
 			}
 			if err := write(" value=\""); err != nil {
@@ -2789,7 +2803,7 @@ func App(model Model) gothic.Component {
 			if err := write("</span>"); err != nil {
 				return err
 			}
-			if err := write("<input data-gothic-attr-1=\"value\""); err != nil {
+			if err := write("<input data-gothic-attr-2=\"value\""); err != nil {
 				return err
 			}
 			if err := write(" value=\""); err != nil {

@@ -92,6 +92,10 @@ This means the demo runs the in-repo core rather than the released modules, so
 a push that changes the core, the UI, or this example redeploys it. Published
 module versions still matter for real consumers.
 
+The stylesheet, UI stylesheet, wordmark, and social card URLs carry a content
+hash (`?v=...`). The Railway edge caches static assets for hours, so the hash
+ensures a deploy is never served the previous file.
+
 Locally, the replaces in `go.mod` point at this checkout, so `go test ./...`
 here uses the working tree.
 

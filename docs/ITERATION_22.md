@@ -92,3 +92,15 @@ and the existing interactive demos on their new pages.
 - The client theme script is inline, not a separate asset.
 - The route switch is duplicated between the server and client paths.
 - Nested paths (`/components/button`) are not used, so all routes are flat.
+
+## Asset caching
+
+The Railway edge caches static assets such as CSS and images for several hours.
+The app gives its stylesheets, wordmark, and social card content-hashed URLs
+(`?v=<hash>`) computed from the embedded bytes, so a deploy always references a
+new cache key. The server routes ignore the query string.
+
+The framework assets under `/_gothic/` still use a fixed one hour cache. They
+rarely change, but a future change to the default icon or framework card needs
+a cache purge or a versioned path.
+

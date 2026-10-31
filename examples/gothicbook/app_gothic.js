@@ -25,6 +25,7 @@ on(root, "12", "click", routeClick);
 on(root, "13", "click", routeClick);
 
 function render(model) {
+  attr(root, "0", model.Wordmark);
   classToggle(root, "0", model.Page == "overview");
   classToggle(root, "1", model.Page == "button");
   classToggle(root, "2", model.Page == "card");
@@ -356,7 +357,7 @@ function render(model) {
     e70.appendChild(e71);
     const e72 = document.createElement("input");
     e72.setAttribute("class", "slot-input");
-    e72.setAttribute("data-gothic-attr-0", "value");
+    e72.setAttribute("data-gothic-attr-1", "value");
     e72.setAttribute("data-gothic-on", "28");
     e70.appendChild(e72);
     e69.appendChild(e70);
@@ -391,7 +392,7 @@ function render(model) {
     () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   text(region, "8", ({Label: "Your name"}).Label);
-  attr(region, "0", model.SlotText);
+  attr(region, "1", model.SlotText);
   on(region, "28", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
   text(region, "9", " ");
   text(region, "10", model.SlotText);
@@ -707,7 +708,7 @@ if (!gc5Inst) {
     e136.appendChild(e137);
     const e138 = document.createElement("input");
     e138.setAttribute("class", "slot-input");
-    e138.setAttribute("data-gothic-attr-1", "value");
+    e138.setAttribute("data-gothic-attr-2", "value");
     e138.setAttribute("data-gothic-on", "31");
     e136.appendChild(e138);
     e135.appendChild(e136);
@@ -753,7 +754,7 @@ if (!gc5Inst) {
     () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   text(region, "25", ({Label: "Your name"}).Label);
-  attr(region, "1", model.SlotText);
+  attr(region, "2", model.SlotText);
   on(region, "31", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
   text(region, "26", " ");
   text(region, "27", model.SlotText);

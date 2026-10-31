@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"os"
@@ -25,6 +27,20 @@ var pageWordmark []byte
 
 //go:embed assets/og.png
 var pageOG []byte
+
+// Asset URLs carry a content hash so a deploy is never served a stale
+// stylesheet or social card from the Railway edge cache.
+var (
+	styleHref    = assetHref("/style.css", pageCSS)
+	uiStyleHref  = assetHref("/gothic-ui.css", ui.Styles)
+	ogImageHref  = assetHref("/og.png", pageOG)
+	wordmarkHref = assetHref("/gothic-wordmark.svg", pageWordmark)
+)
+
+func assetHref(path string, data []byte) string {
+	sum := sha256.Sum256(data)
+	return path + "?v=" + hex.EncodeToString(sum[:6])
+}
 
 // themeScript flips the color theme for the current page load. The choice is
 // deliberately not stored, so a reload returns to the system setting.
@@ -81,8 +97,8 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 		gothic.WithTitle("Gothicbook"),
 		gothic.WithSiteName("Gothic"),
 		gothic.WithDescription("A tiny design system demo for the installable gothic UI kit."),
-		gothic.WithImage("/og.png"),
-		gothic.WithStyles("/gothic-ui.css", "/style.css"),
+		gothic.WithImage(ogImageHref),
+		gothic.WithStyles(uiStyleHref, styleHref),
 		gothic.WithExtraHead(themeScript),
 	)
 }
