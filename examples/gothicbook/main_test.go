@@ -194,7 +194,8 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 	for _, want := range []string{
 		`export function mountuiVirtualList`,
 		`export function createuiVirtualList`,
-		`virtualWindow(`,
+		`virtualRowsWindow(`,
+		`"resize"`,
 	} {
 		if !strings.Contains(compJS, want) {
 			t.Errorf("component JS missing %q", want)

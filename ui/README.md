@@ -74,9 +74,15 @@ view Row(row RowData) {
 ```
 
 The row view must be a pure component with one parameter. The component owns
-its scroll offset and keeps only the visible rows in the DOM. A zero height or
-row height falls back to 432px and 36px. Each list call can use a different row
-view; calls that share a row view share a generated variant.
+its scroll offset and keeps only the visible rows in the DOM.
+
+- `height > 0` sets a fixed inline height. `height={ 0 }` lets CSS size the
+  element and measures it with a `ResizeObserver`.
+- `rowheight > 0` uses fixed rows. `rowheight={ 0 }` uses variable rows and an
+  optional `estimate` pointer prop, defaulting to 40px.
+
+Each list call can use a different row view; calls that share a row view share a
+generated variant.
 
 ## Components
 
@@ -92,7 +98,7 @@ Stateful components:
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
 - `Disclosure` with `item DisclosureItem`, keeping its expanded state
-- `VirtualList` with `items`, `height`, `rowheight`, and a one-parameter row view
+- `VirtualList` with `items`, `height`, optional `rowheight` or `estimate`, and a one-parameter row view
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app. `Field` receives its

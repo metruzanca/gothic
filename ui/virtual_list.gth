@@ -10,6 +10,7 @@ type VirtualListProps struct {
 	Items     []any
 	Height    int
 	RowHeight int
+	Estimate  *int
 }
 
 type VirtualListModel struct {
@@ -17,8 +18,11 @@ type VirtualListModel struct {
 	Count          int
 	Top            int
 	Bottom         int
+	ScrollTop      int
 	Height         int
 	RowHeight      int
+	Estimate       int
+	Heights        map[int]int
 	HeightStyle    string
 	TopStyle       string
 	BottomStyle    string
@@ -26,24 +30,38 @@ type VirtualListModel struct {
 }
 
 type VirtualScrolled struct{ Top int }
+type VirtualResized struct{ Height int }
+type VirtualRowMeasured struct {
+	Index  int
+	Height int
+}
 
 func NewVirtualListModel(props VirtualListProps) VirtualListModel {
-	m := VirtualListModel{Height: 432, RowHeight: 36}
+	m := VirtualListModel{
+		Height:    432,
+		RowHeight: props.RowHeight,
+		Estimate:  40,
+		Heights:   map[int]int{},
+	}
 	if props.Height > 0 {
 		m.Height = props.Height
+		m.HeightStyle = "height:" + dom.Px(m.Height)
 	}
-	if props.RowHeight > 0 {
-		m.RowHeight = props.RowHeight
+	if m.RowHeight > 0 {
+		m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	}
-	win := virtual.WindowFor(0, m.RowHeight, m.Height, len(props.Items))
+	if props.Estimate != nil {
+		if *props.Estimate > 0 {
+			m.Estimate = *props.Estimate
+		}
+	}
+	win := virtual.WindowForRows(m.Heights, m.RowHeight, m.Estimate, 0, m.Height, len(props.Items))
 	m.Start = win.Start
 	m.Count = win.Count
 	m.Top = win.Top
 	m.Bottom = win.Bottom
-	m.HeightStyle = "height:" + dom.Px(m.Height)
 	m.TopStyle = "height:" + dom.Px(m.Top)
 	m.BottomStyle = "height:" + dom.Px(m.Bottom)
-	m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	return m
 }
 
@@ -54,42 +72,83 @@ func (m VirtualListModel) Init() gothic.Cmd {
 func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (VirtualListModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case VirtualScrolled:
-		win := virtual.WindowFor(msg.Top, m.RowHeight, m.Height, len(props.Items))
+		m.ScrollTop = msg.Top
+		win := virtual.WindowForRows(m.Heights, m.RowHeight, m.Estimate, m.ScrollTop, m.Height, len(props.Items))
 		m.Start = win.Start
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
 		m.TopStyle = "height:" + dom.Px(m.Top)
 		m.BottomStyle = "height:" + dom.Px(m.Bottom)
+	case VirtualResized:
+		if msg.Height > 0 {
+			m.Height = msg.Height
+		}
+		win := virtual.WindowForRows(m.Heights, m.RowHeight, m.Estimate, m.ScrollTop, m.Height, len(props.Items))
+		m.Start = win.Start
+		m.Count = win.Count
+		m.Top = win.Top
+		m.Bottom = win.Bottom
+		m.TopStyle = "height:" + dom.Px(m.Top)
+		m.BottomStyle = "height:" + dom.Px(m.Bottom)
+	case VirtualRowMeasured:
+		if m.RowHeight == 0 && msg.Index >= 0 && msg.Index < len(props.Items) && msg.Height > 0 {
+			if m.Heights[msg.Index] != msg.Height {
+				m.Heights[msg.Index] = msg.Height
+				win := virtual.WindowForRows(m.Heights, m.RowHeight, m.Estimate, m.ScrollTop, m.Height, len(props.Items))
+				m.Start = win.Start
+				m.Count = win.Count
+				m.Top = win.Top
+				m.Bottom = win.Bottom
+				m.TopStyle = "height:" + dom.Px(m.Top)
+				m.BottomStyle = "height:" + dom.Px(m.Bottom)
+			}
+		}
 	case gothic.PropsChanged:
 		m.Height = 432
-		m.RowHeight = 36
+		m.HeightStyle = ""
+		m.RowHeight = props.RowHeight
+		m.RowHeightStyle = ""
+		m.Estimate = 40
+		m.Heights = map[int]int{}
 		if props.Height > 0 {
 			m.Height = props.Height
+			m.HeightStyle = "height:" + dom.Px(m.Height)
 		}
-		if props.RowHeight > 0 {
-			m.RowHeight = props.RowHeight
+		if m.RowHeight > 0 {
+			m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 		}
-		win := virtual.WindowFor(m.Top, m.RowHeight, m.Height, len(props.Items))
+		if props.Estimate != nil {
+			if *props.Estimate > 0 {
+				m.Estimate = *props.Estimate
+			}
+		}
+		win := virtual.WindowForRows(m.Heights, m.RowHeight, m.Estimate, m.ScrollTop, m.Height, len(props.Items))
 		m.Start = win.Start
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
-		m.HeightStyle = "height:" + dom.Px(m.Height)
 		m.TopStyle = "height:" + dom.Px(m.Top)
 		m.BottomStyle = "height:" + dom.Px(m.Bottom)
-		m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	}
 	return m, nil
 }
 
 view VirtualList(model VirtualListModel, props VirtualListProps) {
-	<div class="ui-virtual-list" style={ model.HeightStyle } onscroll={ VirtualScrolled{Top: event.target.scrollTop} }>
+	<div class="ui-virtual-list" style={ model.HeightStyle } onscroll={ VirtualScrolled{Top: event.target.scrollTop} } onresize={ VirtualResized{Height: event.target.clientHeight} }>
 		<div class="ui-virtual-spacer" style={ model.TopStyle }></div>
-		for i, item := range props.Items[model.Start : model.Start+model.Count] {
-			<div class="ui-virtual-row" key={ model.Start + i } style={ model.RowHeightStyle }>
-				<RowSlot item={ item } />
-			</div>
+		if model.RowHeight == 0 {
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				<div class="ui-virtual-row ui-virtual-row-variable" key={ model.Start + i } onresize={ VirtualRowMeasured{Index: model.Start + i, Height: event.target.clientHeight} }>
+					<RowSlot item={ item } />
+				</div>
+			}
+		} else {
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				<div class="ui-virtual-row" key={ model.Start + i } style={ model.RowHeightStyle }>
+					<RowSlot item={ item } />
+				</div>
+			}
 		}
 		<div class="ui-virtual-spacer" style={ model.BottomStyle }></div>
 	</div>

@@ -81,6 +81,10 @@
         {
           "name": "RowHeight",
           "type": "int"
+        },
+        {
+          "name": "Estimate",
+          "type": "*int"
         }
       ],
       "listable": true,

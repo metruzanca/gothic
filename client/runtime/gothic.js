@@ -87,8 +87,21 @@ function findEl(root, selector, skipComponents) {
   return null;
 }
 
+function disconnectResizeObservers(node) {
+  if (!node || node.nodeType !== 1) return;
+  const nodes = [node];
+  if (node.querySelectorAll) nodes.push(...node.querySelectorAll("*"));
+  for (const n of nodes) {
+    const observers = n.__gothicResizeObservers;
+    if (!observers) continue;
+    for (const observer of observers) observer.disconnect();
+    n.__gothicResizeObservers = null;
+  }
+}
+
 function destroyComponentTree(node) {
   if (!node || node.nodeType !== 1) return;
+  disconnectResizeObservers(node);
   const nodes = [];
   if (node.matches && node.matches("[data-gothic-component]")) nodes.push(node);
   if (node.querySelectorAll) nodes.push(...node.querySelectorAll("[data-gothic-component]"));
@@ -228,6 +241,12 @@ export function on(root, marker, event, handler, skipComponents = true) {
   } else {
     el.removeAttribute("data-gothic-on");
   }
+  if (event === "resize") {
+    const observer = new ResizeObserver(() => handler({ target: el }));
+    observer.observe(el);
+    (el.__gothicResizeObservers ||= []).push(observer);
+    return;
+  }
   el.addEventListener(event, handler);
 }
 
@@ -318,6 +337,53 @@ export function virtualWindow(scrollTop, rowHeight, viewportHeight, total) {
     Top: start * rowHeight,
     Bottom: (total - start - count) * rowHeight,
   };
+}
+
+export function virtualVariableWindow(heights, estimate, scrollTop, viewportHeight, total) {
+  if (!(total > 0)) return { Start: 0, Count: 0, Top: 0, Bottom: 0 };
+  if (!(estimate > 0)) estimate = 40;
+  if (!(viewportHeight > 0)) viewportHeight = 1;
+  if (scrollTop < 0) scrollTop = 0;
+  const heightAt = (i) => {
+    const h = heights ? heights[i] : 0;
+    return h > 0 ? h : estimate;
+  };
+  let top = 0;
+  let start = 0;
+  for (let i = 0; i < total; i++) {
+    const h = heightAt(i);
+    if (top + h > scrollTop) {
+      start = i;
+      break;
+    }
+    top += h;
+    start = i + 1;
+  }
+  if (start >= total) {
+    start = total - 1;
+    top = 0;
+    for (let i = 0; i < start; i++) top += heightAt(i);
+  }
+  let count = 0;
+  let used = 0;
+  for (let i = start; i < total; i++) {
+    const h = heightAt(i);
+    if (used > 0 && used + h > viewportHeight) break;
+    used += h;
+    count++;
+    if (used >= viewportHeight) break;
+  }
+  if (count < 1) count = 1;
+  let bottom = 0;
+  for (let i = start + count; i < total; i++) bottom += heightAt(i);
+  return { Start: start, Count: count, Top: top, Bottom: bottom };
+}
+
+export function virtualRowsWindow(heights, rowHeight, estimate, scrollTop, viewportHeight, total) {
+  if (rowHeight > 0) {
+    return virtualWindow(scrollTop, rowHeight, viewportHeight, total);
+  }
+  return virtualVariableWindow(heights, estimate, scrollTop, viewportHeight, total);
 }
 
 export function px(value) {

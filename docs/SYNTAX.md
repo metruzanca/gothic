@@ -559,8 +559,7 @@ their events.
 
 ### Virtualized lists
 
-The UI kit has a ready-made fixed-height virtual list that takes an app-defined
-row view:
+The UI kit has a ready-made virtual list that takes an app-defined row view:
 
 ```go
 type RowData struct {
@@ -584,7 +583,18 @@ view Row(row RowData) {
 
 The row view must be a pure component with one parameter. The component owns its
 scroll offset, seeds its initial window from props, and keeps only the visible
-rows in the DOM. Zero `height` or `rowheight` falls back to 432px and 36px.
+rows in the DOM.
+
+Height and row height have two modes:
+
+- `height > 0` sets a fixed inline height. `height={ 0 }` leaves height to CSS
+  and measures the element with a `ResizeObserver`.
+- `rowheight > 0` uses fixed rows. `rowheight={ 0 }` uses variable rows and an
+  optional `estimate` for rows that have not been measured yet. The default
+  estimate is 40px.
+
+The component listens for element resizes, so a CSS-driven height reflows the
+visible window. Measured row heights are stored per index for variable lists.
 
 `VirtualList` ships as an inline library component, so the app generator bakes
 the row view into the component and compiles it with the app. The items slice is
@@ -607,6 +617,10 @@ m.Bottom = win.Bottom
 `virtual.WindowFor` snaps the scroll offset to a row boundary and clamps it to
 the end of the list. The same rules run on the server and in the browser
 through a `virtualWindow` runtime helper.
+
+For variable rows, use `virtual.WindowForRows` or `virtual.VariableWindow` with
+a `map[int]int` of measured heights and an estimate. `WindowForRows` selects
+fixed or variable mode from the row height.
 
 Render the window with a scroll event and two spacers:
 
@@ -880,6 +894,7 @@ theme := js.GetItem("theme")
 js.RemoveItem("theme")
 js.Copy("text to copy")
 js.Focus("#search")
+height := js.ClientHeight("#rows")
 js.Reload()
 ```
 
@@ -944,6 +959,7 @@ Tagless switches and switch init statements are supported.
 Keep these differences from server Go in mind:
 
 - `dom.Px(n)` formats pixel lengths for style attributes,
+- `js.ClientHeight(selector)` reads an element height for measurement commands,
 - a missing map key reads as `undefined`, not the zero value,
 - map iteration uses JavaScript insertion order, and map keys arrive as strings,
 - `/=` is floating division,

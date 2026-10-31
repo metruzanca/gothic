@@ -379,6 +379,8 @@ func exprString(e ast.Expr) string {
 		return "*" + exprString(t.X)
 	case *ast.ArrayType:
 		return "[]" + exprString(t.Elt)
+	case *ast.MapType:
+		return "map[" + exprString(t.Key) + "]" + exprString(t.Value)
 	case *ast.SelectorExpr:
 		return exprString(t.X) + "." + t.Sel.Name
 	}

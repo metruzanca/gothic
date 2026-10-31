@@ -43,6 +43,12 @@ func Copy(text string) {
 	panic(clientOnly)
 }
 
+// ClientHeight returns the client height of the first element matching the
+// selector, or 0 when it is missing.
+func ClientHeight(selector string) int {
+	panic(clientOnly)
+}
+
 // Focus focuses the first element matching the CSS selector.
 func Focus(selector string) {
 	panic(clientOnly)

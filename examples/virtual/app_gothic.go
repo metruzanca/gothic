@@ -42,9 +42,13 @@ func NewModel() Model {
 	other := make([]OtherRowData, 200)
 	for i := range other {
 		n := i + 1
+		detail := fmt.Sprintf("Second list row %d", n)
+		if n%3 == 0 {
+			detail = detail + " with a longer description that wraps onto another line."
+		}
 		other[i] = OtherRowData{
 			Name: fmt.Sprintf("Item %d", n),
-			Meta: fmt.Sprintf("Second list row %d", n),
+			Meta: detail,
 		}
 	}
 	return Model{Rows: rows, OtherRows: other}
@@ -149,7 +153,22 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListOtherRowComponent("c1", "", ui.VirtualListProps{Items: gothic.AnySlice(model.OtherRows), Height: 216, RowHeight: 36}).Render(ctx, w); err != nil {
+		if err := write("<div"); err != nil {
+			return err
+		}
+		if err := write(" class=\"variable-list"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := __gothicuiVirtualListOtherRowComponent("c1", "", ui.VirtualListProps{Items: gothic.AnySlice(model.OtherRows), Height: 0, RowHeight: 0}).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
 			return err
 		}
 		if err := write("</main>"); err != nil {
@@ -188,7 +207,7 @@ func __gothicuiVirtualListRowView(model ui.VirtualListModel, props ui.VirtualLis
 		if err := write("\""); err != nil {
 			return err
 		}
-		if err := write(" data-gothic-on=\"0\""); err != nil {
+		if err := write(" data-gothic-on=\"0 1\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"ui-virtual-list"); err != nil {
@@ -224,108 +243,218 @@ func __gothicuiVirtualListRowView(model ui.VirtualListModel, props ui.VirtualLis
 		if err := write("</div>"); err != nil {
 			return err
 		}
-		if err := write("<!--g:each:0:open-->"); err != nil {
+		if err := write("<!--g:if:0:open-->"); err != nil {
 			return err
 		}
-		for i, item := range props.Items[model.Start : model.Start+model.Count] {
-			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
+		if model.RowHeight == 0 {
+			if err := write("<!--g:if:0:then-->"); err != nil {
 				return err
 			}
-			if err := write(" style=\""); err != nil {
+			if err := write("<!--g:each:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(model.RowHeightStyle))); err != nil {
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				if err := write("<div data-gothic-on=\"2\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"ui-virtual-row ui-virtual-row-variable"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" data-gothic-key=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<div"); err != nil {
+					return err
+				}
+				if err := write(" class=\"row-content"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<strong"); err != nil {
+					return err
+				}
+				if err := write(" class=\"title"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:0:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Title))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:0:close-->"); err != nil {
+					return err
+				}
+				if err := write("</strong>"); err != nil {
+					return err
+				}
+				if err := write("<span"); err != nil {
+					return err
+				}
+				if err := write(" class=\"detail"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Detail))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:close-->"); err != nil {
+					return err
+				}
+				if err := write("</span>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+			}
+			if err := write("<!--g:each:0:close-->"); err != nil {
 				return err
 			}
-			if err := write("\""); err != nil {
+		} else {
+			if err := write("<!--g:if:0:else-->"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-virtual-row"); err != nil {
+			if err := write("<!--g:each:1:open-->"); err != nil {
 				return err
 			}
-			if err := write("\""); err != nil {
-				return err
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
+					return err
+				}
+				if err := write(" style=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.RowHeightStyle))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"ui-virtual-row"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" data-gothic-key=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<div"); err != nil {
+					return err
+				}
+				if err := write(" class=\"row-content"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<strong"); err != nil {
+					return err
+				}
+				if err := write(" class=\"title"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Title))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:close-->"); err != nil {
+					return err
+				}
+				if err := write("</strong>"); err != nil {
+					return err
+				}
+				if err := write("<span"); err != nil {
+					return err
+				}
+				if err := write(" class=\"detail"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:3:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Detail))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:3:close-->"); err != nil {
+					return err
+				}
+				if err := write("</span>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
 			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"row-content"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<strong"); err != nil {
-				return err
-			}
-			if err := write(" class=\"title"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Title))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:close-->"); err != nil {
-				return err
-			}
-			if err := write("</strong>"); err != nil {
-				return err
-			}
-			if err := write("<span"); err != nil {
-				return err
-			}
-			if err := write(" class=\"detail"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Detail))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
+			if err := write("<!--g:each:1:close-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:each:0:close-->"); err != nil {
+		if err := write("<!--g:if:0:close-->"); err != nil {
 			return err
 		}
 		if err := write("<div data-gothic-attr-3=\"style\""); err != nil {
@@ -427,7 +556,7 @@ func __gothicuiVirtualListOtherRowView(model ui.VirtualListModel, props ui.Virtu
 		if err := write("\""); err != nil {
 			return err
 		}
-		if err := write(" data-gothic-on=\"0\""); err != nil {
+		if err := write(" data-gothic-on=\"0 1\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"ui-virtual-list"); err != nil {
@@ -463,90 +592,182 @@ func __gothicuiVirtualListOtherRowView(model ui.VirtualListModel, props ui.Virtu
 		if err := write("</div>"); err != nil {
 			return err
 		}
-		if err := write("<!--g:each:0:open-->"); err != nil {
+		if err := write("<!--g:if:0:open-->"); err != nil {
 			return err
 		}
-		for i, item := range props.Items[model.Start : model.Start+model.Count] {
-			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
+		if model.RowHeight == 0 {
+			if err := write("<!--g:if:0:then-->"); err != nil {
 				return err
 			}
-			if err := write(" style=\""); err != nil {
+			if err := write("<!--g:each:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(model.RowHeightStyle))); err != nil {
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				if err := write("<div data-gothic-on=\"2\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"ui-virtual-row ui-virtual-row-variable"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" data-gothic-key=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<div"); err != nil {
+					return err
+				}
+				if err := write(" class=\"other-row"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<strong>"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:0:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Name))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:0:close-->"); err != nil {
+					return err
+				}
+				if err := write("</strong>"); err != nil {
+					return err
+				}
+				if err := write("<span>"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Meta))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:1:close-->"); err != nil {
+					return err
+				}
+				if err := write("</span>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+			}
+			if err := write("<!--g:each:0:close-->"); err != nil {
 				return err
 			}
-			if err := write("\""); err != nil {
+		} else {
+			if err := write("<!--g:if:0:else-->"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-virtual-row"); err != nil {
+			if err := write("<!--g:each:1:open-->"); err != nil {
 				return err
 			}
-			if err := write("\""); err != nil {
-				return err
+			for i, item := range props.Items[model.Start : model.Start+model.Count] {
+				if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
+					return err
+				}
+				if err := write(" style=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.RowHeightStyle))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" class=\"ui-virtual-row"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" data-gothic-key=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<div"); err != nil {
+					return err
+				}
+				if err := write(" class=\"other-row"); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(">"); err != nil {
+					return err
+				}
+				if err := write("<strong>"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Name))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:close-->"); err != nil {
+					return err
+				}
+				if err := write("</strong>"); err != nil {
+					return err
+				}
+				if err := write("<span>"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:3:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Meta))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:3:close-->"); err != nil {
+					return err
+				}
+				if err := write("</span>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
+				if err := write("</div>"); err != nil {
+					return err
+				}
 			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"other-row"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<strong>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Name))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:close-->"); err != nil {
-				return err
-			}
-			if err := write("</strong>"); err != nil {
-				return err
-			}
-			if err := write("<span>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Meta))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
+			if err := write("<!--g:each:1:close-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:each:0:close-->"); err != nil {
+		if err := write("<!--g:if:0:close-->"); err != nil {
 			return err
 		}
 		if err := write("<div data-gothic-attr-3=\"style\""); err != nil {

@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1946,7 +1946,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -2200,5 +2200,128 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated component JS missing %q\n\n%s", want, src)
 		}
+	}
+}
+
+func TestGenerateVariableWindow(t *testing.T) {
+	view, err := parser.Parse("virtual.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Top     int
+	Heights map[int]int
+}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	win := virtual.VariableWindow(m.Heights, 40, m.Top, 432, 5000)
+	m.Top = win.Top
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "virtual.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const win = virtualVariableWindow(m.Heights, 40, m.Top, 432, 5000);`,
+		`virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js"`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateVirtualRowsWindow(t *testing.T) {
+	view, err := parser.Parse("virtual.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Top     int
+	Heights map[int]int
+}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	win := virtual.WindowForRows(m.Heights, 0, 40, m.Top, 432, 5000)
+	m.Top = win.Top
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "virtual.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const win = virtualRowsWindow(m.Heights, 0, 40, m.Top, 432, 5000);`,
+		`virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js"`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateClientHeight(t *testing.T) {
+	view, err := parser.Parse("height.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Height int }
+
+func (m Model) Init() Cmd {
+	m.Height = js.ClientHeight("#rows")
+	return nil
+}
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "height.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	if !strings.Contains(src, `m.Height = (document.querySelector("#rows")?.clientHeight ?? 0);`) {
+		t.Errorf("generated JS missing ClientHeight lowering\n\n%s", src)
 	}
 }

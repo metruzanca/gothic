@@ -241,7 +241,9 @@ Supported now:
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
-- fixed-height virtualized lists with scroll events and `dom.Px` spacers,
+- virtualized lists with scroll events and `dom.Px` spacers,
+- responsive viewport measurement through `ResizeObserver`,
+- variable-height rows with measured heights and an estimate,
 - the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
 - app-defined row views for `ui.VirtualList`, with one variant per distinct row
   view,
@@ -301,7 +303,6 @@ These will be planned in detail after the proof of concept is evaluated:
 6. Manifest, content hashing, and production serving.
 7. Formatter, LSP, and source maps.
 8. Selective vendoring of templ's HTML and whitespace handling with tests.
-9. Responsive and variable-height virtualized lists.
 
 ## Risks
 
@@ -326,10 +327,10 @@ These will be planned in detail after the proof of concept is evaluated:
 - The model is serialized whole. Large models may need selective state later.
   The virtualized list demonstrates this: the DOM stays small, but the full
   list still travels in the state script.
-- Virtualized lists currently assume a fixed row height and viewport height.
-  `ui.VirtualList` accepts app-defined row views and generates one variant per
-  distinct row view. Inline stateful components are compiled into each
-  consuming app.
+- Virtualized lists support fixed or variable row heights and fixed or
+  CSS-driven viewport heights. `ui.VirtualList` accepts app-defined row views
+  and generates one variant per distinct row view. Inline stateful components
+  are compiled into each consuming app.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
 - The client runtime and generated JavaScript are not yet minimized or hashed.

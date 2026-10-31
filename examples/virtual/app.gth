@@ -37,9 +37,13 @@ func NewModel() Model {
 	other := make([]OtherRowData, 200)
 	for i := range other {
 		n := i + 1
+		detail := fmt.Sprintf("Second list row %d", n)
+		if n%3 == 0 {
+			detail = detail + " with a longer description that wraps onto another line."
+		}
 		other[i] = OtherRowData{
 			Name: fmt.Sprintf("Item %d", n),
-			Meta: fmt.Sprintf("Second list row %d", n),
+			Meta: detail,
 		}
 	}
 	return Model{Rows: rows, OtherRows: other}
@@ -75,6 +79,8 @@ view App(model Model) {
 
 		<h2>Second list, different row view</h2>
 		<p class="hint">Two lists in one app can use different row types and views.</p>
-		<ui.VirtualList items={ model.OtherRows } height={ 216 } rowheight={ 36 } row={ OtherRow } />
+		<div class="variable-list">
+			<ui.VirtualList items={ model.OtherRows } height={ 0 } rowheight={ 0 } row={ OtherRow } />
+		</div>
 	</main>
 }

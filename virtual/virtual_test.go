@@ -25,3 +25,43 @@ func TestWindowFor(t *testing.T) {
 		}
 	}
 }
+
+func TestVariableWindow(t *testing.T) {
+	heights := map[int]int{0: 50, 1: 30}
+	cases := []struct {
+		name                          string
+		scrollTop, estimate, viewport int
+		total                         int
+		want                          Window
+	}{
+		{"top", 0, 40, 100, 4, Window{Start: 0, Count: 2, Top: 0, Bottom: 80}},
+		{"middle", 60, 40, 100, 4, Window{Start: 1, Count: 2, Top: 50, Bottom: 40}},
+		{"end", 999, 40, 100, 4, Window{Start: 3, Count: 1, Top: 120, Bottom: 0}},
+		{"empty", 0, 40, 100, 0, Window{}},
+		{"default estimate", 0, 0, 100, 3, Window{Start: 0, Count: 2, Top: 0, Bottom: 40}},
+	}
+	for _, tc := range cases {
+		if got := VariableWindow(heights, tc.estimate, tc.scrollTop, tc.viewport, tc.total); got != tc.want {
+			t.Errorf("%s: VariableWindow(%v, %d, %d, %d, %d) = %+v, want %+v", tc.name, heights, tc.estimate, tc.scrollTop, tc.viewport, tc.total, got, tc.want)
+		}
+	}
+}
+
+func TestVariableWindowMeasuredRows(t *testing.T) {
+	heights := map[int]int{2: 120}
+	got := VariableWindow(heights, 40, 80, 100, 5)
+	if got.Start != 2 || got.Count != 1 || got.Top != 80 || got.Bottom != 80 {
+		t.Fatalf("window = %+v", got)
+	}
+}
+
+func TestWindowForRows(t *testing.T) {
+	fixed := WindowForRows(nil, 36, 40, 3600, 432, 5000)
+	if fixed != (Window{Start: 100, Count: 12, Top: 3600, Bottom: 175968}) {
+		t.Fatalf("fixed window = %+v", fixed)
+	}
+	variable := WindowForRows(map[int]int{0: 50}, 0, 40, 0, 100, 4)
+	if variable != (Window{Start: 0, Count: 2, Top: 0, Bottom: 80}) {
+		t.Fatalf("variable window = %+v", variable)
+	}
+}

@@ -31,3 +31,45 @@ func TestVirtualListUpdate(t *testing.T) {
 		t.Fatalf("props changed model = %+v", m)
 	}
 }
+
+func TestVirtualListResponsive(t *testing.T) {
+	props := VirtualListProps{Items: virtualItems(200), Height: 216, RowHeight: 36}
+	m := NewVirtualListModel(props)
+	m, _ = m.Update(VirtualResized{Height: 300}, props)
+	if m.Height != 300 || m.Count != 8 {
+		t.Fatalf("resized model = %+v", m)
+	}
+	if m.HeightStyle != "height:216px" {
+		t.Fatalf("fixed height style changed: %q", m.HeightStyle)
+	}
+
+	auto := VirtualListProps{Items: virtualItems(200), Height: 0, RowHeight: 36}
+	a := NewVirtualListModel(auto)
+	if a.HeightStyle != "" {
+		t.Fatalf("auto height style = %q", a.HeightStyle)
+	}
+	a, _ = a.Update(VirtualResized{Height: 180}, auto)
+	if a.Height != 180 || a.Count != 5 {
+		t.Fatalf("auto resized model = %+v", a)
+	}
+}
+
+func TestVirtualListVariableRows(t *testing.T) {
+	estimate := 50
+	props := VirtualListProps{Items: virtualItems(200), Height: 216, RowHeight: 0, Estimate: &estimate}
+	m := NewVirtualListModel(props)
+	if m.RowHeight != 0 || m.RowHeightStyle != "" || m.Estimate != 50 {
+		t.Fatalf("variable model = %+v", m)
+	}
+	if m.Count != 4 {
+		t.Fatalf("count = %d, want 4", m.Count)
+	}
+	m, _ = m.Update(VirtualRowMeasured{Index: 0, Height: 80}, props)
+	if m.Heights[0] != 80 {
+		t.Fatalf("heights = %+v", m.Heights)
+	}
+	m, _ = m.Update(VirtualResized{Height: 320}, props)
+	if m.Height != 320 || m.Count < 5 {
+		t.Fatalf("resized variable model = %+v", m)
+	}
+}

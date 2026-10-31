@@ -43,8 +43,12 @@ func TestVirtualListSSR(t *testing.T) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
 	}
-	if got := strings.Count(html, `class="ui-virtual-row"`); got != 18 {
-		t.Errorf("SSR rendered %d rows, want 18", got)
+	variable := strings.Count(html, `ui-virtual-row-variable`)
+	if variable == 0 {
+		t.Errorf("SSR rendered no variable rows")
+	}
+	if got := strings.Count(html, `class="ui-virtual-row"`); got != 12 {
+		t.Errorf("SSR rendered %d fixed rows, want 12", got)
 	}
 	if got := strings.Count(html, `data-gothic-component="VirtualList"`); got != 2 {
 		t.Errorf("SSR rendered %d virtual lists, want 2", got)
@@ -86,7 +90,7 @@ func TestVirtualListModules(t *testing.T) {
 		`export function createuiVirtualListRow`,
 		`export function mountuiVirtualListOtherRow`,
 		`export function createuiVirtualListOtherRow`,
-		`virtualWindow(`,
+		`virtualRowsWindow(`,
 	} {
 		if !strings.Contains(compJS, want) {
 			t.Errorf("component JS missing %q\n\n%s", want, compJS)

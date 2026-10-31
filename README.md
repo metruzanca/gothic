@@ -181,6 +181,7 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - [App-defined row views](docs/ITERATION_20.md)
 - [One row view per virtual list call](docs/ITERATION_23.md)
 - [Batch and Sequence commands](docs/ITERATION_24.md)
+- [Responsive and variable-height virtual lists](docs/ITERATION_25.md)
 - [Documents and social previews](docs/ITERATION_21.md)
 - [Gothicbook navigation and theme](docs/ITERATION_22.md)
 - [Pitch](docs/PITCH.md)

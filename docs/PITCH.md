@@ -124,7 +124,7 @@ The ping/pong proof of concept runs end to end.
 - `gothic.Batch` and `gothic.Sequence` compose commands.
 - Path patterns and parameters work through the `route` package on the server and in the browser.
 - The virtualized list example keeps 12 rows in the DOM for a 5,000 row model using the headless `virtual` package and `dom.Px` spacers.
-- The UI kit ships `VirtualList`, a fixed-height virtual component that takes an app-defined one-parameter row view, with one variant per distinct row view.
+- The UI kit ships `VirtualList`, a virtual component that takes an app-defined one-parameter row view, supports responsive viewport measurement, and handles variable row heights.
 - Components run their own commands and are destroyed on unmount.
 - Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
@@ -151,7 +151,6 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 3. Typed procedure argument validation and the no-JS form fallback.
 4. `go/packages` type information for stronger compiler checks.
 5. Manifest, content hashing, formatter, LSP, and source maps.
-6. Responsive and variable-height virtualized lists.
 
 ## Why this can work
 
