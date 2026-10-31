@@ -46,6 +46,7 @@ type DashboardProps struct {
 type DashboardModel struct {
 	ShowBranch bool
 	Items      []string
+	LastPick   string
 }
 
 type DashboardToggled struct{}
@@ -60,11 +61,20 @@ func (m DashboardModel) Init() gothic.Cmd {
 }
 
 func (m DashboardModel) Update(msg gothic.Msg, props DashboardProps) (DashboardModel, gothic.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case DashboardToggled:
 		m.ShowBranch = !m.ShowBranch
 	case AddItem:
 		m.Items = append(m.Items, "item")
+	case gothic.ChildMessage:
+		inner := msg.Inner
+		switch child := inner.(type) {
+		case PickedChild:
+			m.LastPick = child.Label
+			return m, func() gothic.Msg {
+				return gothic.Bubble{Msg: child}
+			}
+		}
 	}
 	return m, nil
 }
@@ -439,6 +449,42 @@ func __gothicDashboardView(model DashboardModel, props DashboardProps) gothic.Co
 			return err
 		}
 		if err := write("</button>"); err != nil {
+			return err
+		}
+		if err := write("<p"); err != nil {
+			return err
+		}
+		if err := write(" class=\"local-pick"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("Dashboard pick:"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:1:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:1:close-->"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:2:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.LastPick))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:2:close-->"); err != nil {
+			return err
+		}
+		if err := write("</p>"); err != nil {
 			return err
 		}
 		if err := __gothicCounterComponent("c0", "", CounterProps{Label: "static", OnPick: PickedChild{Label: "static"}}).Render(ctx, w); err != nil {

@@ -273,6 +273,7 @@ type itemBinding struct {
 	event  string
 	expr   string
 	parent bool
+	local  bool
 }
 
 func (g *gen) emitViewBindings(b *strings.Builder) error {
@@ -290,13 +291,16 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 	for _, attr := range el.Attributes {
 		switch a := attr.(type) {
 		case *parser.EventAttr:
+			if g.appModule && isEmitLocalCall(a.Expr) {
+				return parser.NodeError(el, "use emit in the App view", "emitLocal is only available in component views")
+			}
 			idx := g.eventN
 			g.eventN++
 			msg, err := g.expr(a.Expr, exprCtx{pos: el.NodePosition})
 			if err != nil {
 				return err
 			}
-			domEvent, handler := eventHandler(strings.TrimPrefix(a.Name, "on"), msg, isEmitCall(a.Expr))
+			domEvent, handler := eventHandler(strings.TrimPrefix(a.Name, "on"), msg, isEmitCall(a.Expr), isEmitLocalCall(a.Expr))
 			fmt.Fprintf(b, "%s(root, %s, %s, %s);\n", g.helper("on"), jsString(fmt.Sprintf("%d", idx)), jsString(domEvent), handler)
 		case *parser.ExprAttr:
 			expr, err := g.expr(a.Expr, exprCtx{pos: el.NodePosition})
@@ -381,7 +385,11 @@ func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall
 	inst := id
 	if g.componentModule {
 		fmt.Fprintf(b, "const %sNode = root.querySelector('[data-gothic-component-id=\"%s\"]');\n", inst, id)
-		fmt.Fprintf(b, "const %s = %s(%sNode%s, %s);\n", inst, comp.MountFunc, inst, commaArgs(props), g.parentDispatch)
+		localDispatch := ""
+		if g.componentModule {
+			localDispatch = fmt.Sprintf(", (msg) => dispatch({tag: \"ChildMessage\", Source: %s, Inner: msg})", jsString(id))
+		}
+		fmt.Fprintf(b, "const %s = %s(%sNode%s, %s%s);\n", inst, comp.MountFunc, inst, commaArgs(props), g.parentDispatch, localDispatch)
 		fmt.Fprintf(b, "if (%sNode) %sNode.__gothicInstances = { %s: %s };\n", inst, inst, jsString(id), inst)
 	} else {
 		mountCall := comp.MountFunc + "(root.querySelector('[data-gothic-component-id=\"" + id + "\"]')"
@@ -558,11 +566,15 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 	if keyExpr != "" {
 		fmt.Fprintf(&b, "  node.setAttribute(\"data-gothic-key\", String(%s));\n", keyExpr)
 	}
-	fmt.Fprintf(&b, "  const inst = %s(node%s, %s);\n", comp.MountFunc, commaArgs(props), g.parentDispatch)
+	local := ""
+	if g.componentModule {
+		local = fmt.Sprintf(", (msg) => dispatch({tag: \"ChildMessage\", Source: %s, Inner: msg})", jsString(compID))
+	}
+	fmt.Fprintf(&b, "  const inst = %s(node%s, %s%s);\n", comp.MountFunc, commaArgs(props), g.parentDispatch, local)
 	fmt.Fprintf(&b, "  node.__gothicInstances = { %s: inst };\n", jsString(compID))
 	b.WriteString("  return node;\n}, (node, " + f.Value + ", " + indexName + ") => {\n")
 	fmt.Fprintf(&b, "  let inst = node.__gothicInstances && node.__gothicInstances[%s];\n", jsString(compID))
-	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, %s);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(props), g.parentDispatch, jsString(compID), props)
+	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, %s%s);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(props), g.parentDispatch, local, jsString(compID), props)
 	b.WriteString("}")
 	if keyExpr != "" {
 		fmt.Fprintf(&b, ", (%s, %s) => String(%s)", f.Value, indexName, keyExpr)
@@ -590,7 +602,7 @@ func emitItemBindings(b *strings.Builder, root string, bindings []itemBinding, g
 		case "text":
 			fmt.Fprintf(b, "  %s(%s, %s, %s);\n", g.helper("text"), root, jsString(fmt.Sprintf("%d", binding.marker)), binding.expr)
 		case "event":
-			domEvent, handler := eventHandler(binding.event, binding.expr, binding.parent)
+			domEvent, handler := eventHandler(binding.event, binding.expr, binding.parent, binding.local)
 			fmt.Fprintf(b, "  %s(%s, %s, %s, %s);\n", g.helper("on"), root, jsString(fmt.Sprintf("%d", binding.marker)), jsString(domEvent), handler)
 		case "attr":
 			fmt.Fprintf(b, "  %s(%s, %s, %s);\n", g.helper("attr"), root, jsString(fmt.Sprintf("%d", binding.marker)), binding.expr)
@@ -606,8 +618,8 @@ func emitItemBindings(b *strings.Builder, root string, bindings []itemBinding, g
 	}
 }
 
-func eventHandler(event, msg string, parent bool) (string, string) {
-	if parent {
+func eventHandler(event, msg string, parent, local bool) (string, string) {
+	if parent || local {
 		switch event {
 		case "enter":
 			return "keydown", fmt.Sprintf("(event) => { if (event.key === \"Enter\") %s; }", msg)
@@ -690,7 +702,7 @@ func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string
 	bind := fmt.Sprintf(`const %s = __ROOT__.querySelector('[data-gothic-component-id="%s"]');
 let %s = %s && %s.__gothicInstances && %s.__gothicInstances[%s];
 if (!%s) {
-  %s = %s(%s%s, __GOTHIC_DISPATCH__);
+  %s = %s(%s%s, __GOTHIC_DISPATCH____GOTHIC_LOCAL__);
   %s.__gothicInstances = { %s: %s };
 } else {
   %s.updateProps(%s);
@@ -702,7 +714,13 @@ if (!%s) {
 		nodeName, jsString(id), instName,
 		instName, props)
 
-	return varName, build.String(), strings.ReplaceAll(bind, "__GOTHIC_DISPATCH__", g.parentDispatch), nil
+	local := ""
+	if g.componentModule {
+		local = fmt.Sprintf(", (msg) => dispatch({tag: \"ChildMessage\", Source: %s, Inner: msg})", jsString(id))
+	}
+	bind = strings.ReplaceAll(bind, "__GOTHIC_DISPATCH__", g.parentDispatch)
+	bind = strings.ReplaceAll(bind, "__GOTHIC_LOCAL__", local)
+	return varName, build.String(), bind, nil
 }
 
 func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error) {
@@ -785,6 +803,15 @@ func isEmitCall(e ast.Expr) bool {
 	return ok && id.Name == "emit"
 }
 
+func isEmitLocalCall(e ast.Expr) bool {
+	call, ok := e.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	id, ok := call.Fun.(*ast.Ident)
+	return ok && id.Name == "emitLocal"
+}
+
 func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string]bool, bindings *[]itemBinding) (string, error) {
 	v := fmt.Sprintf("e%d", g.varN)
 	g.varN++
@@ -817,6 +844,7 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 				event:  strings.TrimPrefix(a.Name, "on"),
 				expr:   msg,
 				parent: isEmitCall(a.Expr),
+				local:  isEmitLocalCall(a.Expr),
 			})
 		case *parser.ExprAttr:
 			expr, err := g.expr(a.Expr, exprCtx{locals: locals, pos: el.NodePosition})
@@ -957,7 +985,9 @@ async function run(cmd) {
     return;
   }
   const msg = await cmd();
-  if (msg) dispatch(msg);
+  if (msg) {
+    if (msg.tag === "Bubble") dispatch(msg.Msg); else dispatch(msg);
+  }
 }
 
 `)
@@ -1413,15 +1443,27 @@ func (g *gen) switchStmt(b *strings.Builder, s *ast.SwitchStmt, ctx *exprCtx, in
 }
 
 func (g *gen) typeSwitch(b *strings.Builder, s *ast.TypeSwitchStmt, ctx *exprCtx, indent int) error {
+	pad := strings.Repeat("  ", indent)
 	var tag string
 	switch assign := s.Assign.(type) {
 	case *ast.AssignStmt:
-		if len(assign.Lhs) != 1 {
+		if len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 			return fmt.Errorf("unsupported type switch")
 		}
 		name, ok := identName(assign.Lhs[0])
 		if !ok {
 			return fmt.Errorf("unsupported type switch tag")
+		}
+		assert, ok := assign.Rhs[0].(*ast.TypeAssertExpr)
+		if !ok {
+			return fmt.Errorf("unsupported type switch")
+		}
+		source, err := g.expr(assert.X, *ctx)
+		if err != nil {
+			return err
+		}
+		if id, ok := assert.X.(*ast.Ident); !ok || id.Name != name {
+			fmt.Fprintf(b, "%sconst %s = %s;\n", pad, name, source)
 		}
 		tag = name
 	case *ast.ExprStmt:
@@ -1437,7 +1479,6 @@ func (g *gen) typeSwitch(b *strings.Builder, s *ast.TypeSwitchStmt, ctx *exprCtx
 	default:
 		return fmt.Errorf("unsupported type switch")
 	}
-	pad := strings.Repeat("  ", indent)
 	fmt.Fprintf(b, "%sswitch (%s.tag) {\n", pad, tag)
 	for _, stmt := range s.Body.List {
 		cc, ok := stmt.(*ast.CaseClause)
@@ -1914,6 +1955,13 @@ func (g *gen) composite(e *ast.CompositeLit, ctx exprCtx) (string, error) {
 		}
 		return "{" + strings.Join(parts, ", ") + "}", nil
 	case *ast.SelectorExpr:
+		if id, ok := t.X.(*ast.Ident); ok && id.Name == "gothic" && t.Sel.Name == "Bubble" {
+			obj, err := g.objectLiteral(e, ctx)
+			if err != nil {
+				return "", err
+			}
+			return "{tag: \"Bubble\", " + strings.TrimPrefix(obj, "{"), nil
+		}
 		return g.objectLiteral(e, ctx)
 	case *ast.ArrayType:
 		parts := make([]string, 0, len(e.Elts))
@@ -2196,7 +2244,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			return nil, wrapFile(comp.Name, err)
 		}
 
-		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch) {\n", comp.MountFunc, propSig)
+		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch, __gothicLocalDispatch) {\n", comp.MountFunc, propSig)
 		if ctorCall != "" {
 			fmt.Fprintf(&b, "  let %s = readComponentState(root) || %s;\n", modelName, ctorCall)
 		} else {
@@ -2204,6 +2252,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		b.WriteString("  let alive = true;\n")
 		b.WriteString("  function emit(msg) {\n    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);\n  }\n")
+		b.WriteString("  function emitLocal(msg) {\n    if (msg == null) return;\n    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }\n    if (__gothicParentDispatch) __gothicParentDispatch(msg);\n  }\n")
 		b.WriteString(indentJS(bindings.String(), "  "))
 		b.WriteString(indentJS(renderCall.String(), "  "))
 		b.WriteString(indentJS(updateFn.String(), "  "))
@@ -2238,7 +2287,13 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
       return;
     }
     const msg = await cmd();
-    if (alive && msg) dispatch(msg);
+    if (alive && msg) {
+      if (msg.tag === "Bubble") {
+        emit(msg.Msg);
+      } else {
+        dispatch(msg);
+      }
+    }
   }
 `)
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)

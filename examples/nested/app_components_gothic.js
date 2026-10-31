@@ -14,14 +14,19 @@ function readComponentState(root) {
 
 const INITIAL_Counter = {"Count":0};
 
-export function mountCounter(root, props, __gothicParentDispatch) {
+export function mountCounter(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Counter);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
+  function emitLocal(msg) {
+    if (msg == null) return;
+    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
+    if (__gothicParentDispatch) __gothicParentDispatch(msg);
+  }
   onLocal(root, "0", "click", (event) => dispatch({tag: "CounterClicked"}));
-  onLocal(root, "1", "click", (event) => emit(props.OnPick));
+  onLocal(root, "1", "click", (event) => emitLocal(props.OnPick));
   function render(model) {
     textLocal(root, "0", props.Label);
     textLocal(root, "1", " ");
@@ -65,7 +70,13 @@ export function mountCounter(root, props, __gothicParentDispatch) {
       return;
     }
     const msg = await cmd();
-    if (alive && msg) dispatch(msg);
+    if (alive && msg) {
+      if (msg.tag === "Bubble") {
+        emit(msg.Msg);
+      } else {
+        dispatch(msg);
+      }
+    }
   }
   render(model);
   run(init());
@@ -111,22 +122,27 @@ export function createCounter(id, props) {
   return wrapper;
 }
 
-const INITIAL_Dashboard = {"ShowBranch":false,"Items":[]};
+const INITIAL_Dashboard = {"ShowBranch":false,"Items":[],"LastPick":""};
 
 function newDashboard(props) {
   return {tag: "DashboardModel", Items: props.Items};
 }
 
-export function mountDashboard(root, props, __gothicParentDispatch) {
+export function mountDashboard(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
   let model = readComponentState(root) || newDashboard(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
+  function emitLocal(msg) {
+    if (msg == null) return;
+    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
+    if (__gothicParentDispatch) __gothicParentDispatch(msg);
+  }
   onLocal(root, "0", "click", (event) => dispatch({tag: "DashboardToggled"}));
   onLocal(root, "1", "click", (event) => dispatch({tag: "AddItem"}));
   const c0Node = root.querySelector('[data-gothic-component-id="c0"]');
-  const c0 = mountCounter(c0Node, {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}}, emit);
+  const c0 = mountCounter(c0Node, {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c0", Inner: msg}));
   if (c0Node) c0Node.__gothicInstances = { "c0": c0 };
   function render(model) {
     ifBlockLocal(root, "0",
@@ -140,7 +156,7 @@ export function mountDashboard(root, props, __gothicParentDispatch) {
       (region) => {   const gc2Node = region.querySelector('[data-gothic-component-id="c1"]');
   let gc2Inst = gc2Node && gc2Node.__gothicInstances && gc2Node.__gothicInstances["c1"];
   if (!gc2Inst) {
-    gc2Inst = mountCounter(gc2Node, {Label: "branch", OnPick: {tag: "PickedChild", Label: "branch"}}, emit);
+    gc2Inst = mountCounter(gc2Node, {Label: "branch", OnPick: {tag: "PickedChild", Label: "branch"}}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c1", Inner: msg}));
     gc2Node.__gothicInstances = { "c1": gc2Inst };
   } else {
     gc2Inst.updateProps({Label: "branch", OnPick: {tag: "PickedChild", Label: "branch"}});
@@ -149,16 +165,18 @@ export function mountDashboard(root, props, __gothicParentDispatch) {
       (region) => {  });
     c0.updateProps({Label: "static", OnPick: {tag: "PickedChild", Label: "static"}});
     textLocal(root, "0", props.Title);
+    textLocal(root, "1", " ");
+    textLocal(root, "2", model.LastPick);
     const renderList0 = listLocal(root, "0", (item, i) => {
     const node = createCounter("c2", {Label: item, OnPick: {tag: "PickedChild", Label: item}});
     node.setAttribute("data-gothic-key", String(i));
-    const inst = mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit);
+    const inst = mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c2", Inner: msg}));
     node.__gothicInstances = { "c2": inst };
     return node;
   }, (node, item, i) => {
     let inst = node.__gothicInstances && node.__gothicInstances["c2"];
     if (!inst) {
-      inst = mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit);
+      inst = mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c2", Inner: msg}));
       node.__gothicInstances = { "c2": inst };
     } else {
       inst.updateProps({Label: item, OnPick: {tag: "PickedChild", Label: item}});
@@ -177,6 +195,22 @@ export function mountDashboard(root, props, __gothicParentDispatch) {
     case "AddItem":
     {
       (m.Items = m.Items || []).push("item");
+      break;
+    }
+    case "ChildMessage":
+    {
+      const inner = msg.Inner;
+      const child = inner;
+      switch (child.tag) {
+      case "PickedChild":
+      {
+        m.LastPick = child.Label;
+        return [m, async () => {
+    return {tag: "Bubble", Msg: child};
+  }];
+        break;
+      }
+      }
       break;
     }
     }
@@ -208,7 +242,13 @@ export function mountDashboard(root, props, __gothicParentDispatch) {
       return;
     }
     const msg = await cmd();
-    if (alive && msg) dispatch(msg);
+    if (alive && msg) {
+      if (msg.tag === "Bubble") {
+        emit(msg.Msg);
+      } else {
+        dispatch(msg);
+      }
+    }
   }
   render(model);
   run(init());
@@ -243,8 +283,18 @@ export function createDashboard(id, props) {
     e3.setAttribute("data-gothic-on", "1");
     e3.appendChild(document.createTextNode("Add list child"));
     e0.appendChild(e3);
-    const e4 = createCounter("c0", {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}});
+    const e4 = document.createElement("p");
+    e4.setAttribute("class", "local-pick");
+    e4.appendChild(document.createTextNode("Dashboard pick:"));
+    e4.appendChild(document.createComment("g:text:1:open"));
+    e4.appendChild(document.createTextNode(String(" ")));
+    e4.appendChild(document.createComment("g:text:1:close"));
+    e4.appendChild(document.createComment("g:text:2:open"));
+    e4.appendChild(document.createTextNode(String(model.LastPick)));
+    e4.appendChild(document.createComment("g:text:2:close"));
     e0.appendChild(e4);
+    const e5 = createCounter("c0", {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}});
+    e0.appendChild(e5);
     e0.appendChild(document.createComment("g:if:0:open"));
     e0.appendChild(document.createComment("g:if:0:close"));
     e0.appendChild(document.createComment("g:each:0:open"));

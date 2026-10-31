@@ -261,6 +261,8 @@ Supported now:
 - request-scoped app models and catch-all mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,
+- parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
+  `gothic.Bubble`,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
@@ -297,13 +299,12 @@ These will be planned in detail after the proof of concept is evaluated:
 
 1. Children on stateful components, named slots, and fallback content if a
    real use case appears.
-2. Parent-local child message handling.
-3. Wildcard or optional route segments and reverse URL building.
-4. Typed procedure argument validation and the no-JS fallback.
-5. `go/packages` for type information and stronger validation.
-6. Manifest, content hashing, and production serving.
-7. Formatter, LSP, and source maps.
-8. Selective vendoring of templ's HTML and whitespace handling with tests.
+2. Wildcard or optional route segments and reverse URL building.
+3. Typed procedure argument validation and the no-JS fallback.
+4. `go/packages` for type information and stronger validation.
+5. Manifest, content hashing, and production serving.
+6. Formatter, LSP, and source maps.
+7. Selective vendoring of templ's HTML and whitespace handling with tests.
 
 ## Risks
 
@@ -314,10 +315,10 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful component support is still narrow: no declared procedures and no
-  parent-local child message handling. Prop change detection is
-  reference-based. Constructors must be deterministic and client-compilable.
-  Commands are guarded after unmount, but there is no general cancellation.
+- Stateful component support is still narrow: no declared procedures.
+  Prop change detection is reference-based. Constructors must be deterministic
+  and client-compilable. Commands are guarded after unmount, but there is no
+  general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

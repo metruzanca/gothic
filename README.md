@@ -183,6 +183,7 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - [Batch and Sequence commands](docs/ITERATION_24.md)
 - [Responsive and variable-height virtual lists](docs/ITERATION_25.md)
 - [Route tables](docs/ITERATION_26.md)
+- [Parent-local child messages](docs/ITERATION_27.md)
 - [Documents and social previews](docs/ITERATION_21.md)
 - [Gothicbook navigation and theme](docs/ITERATION_22.md)
 - [Pitch](docs/PITCH.md)

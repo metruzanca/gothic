@@ -77,6 +77,17 @@ func Sequence(cmds ...Cmd) Cmd {
 	return func() Msg { panic(commandOnly) }
 }
 
+// ChildMessage wraps an action sent from a nested component to its parent.
+type ChildMessage struct {
+	Source string
+	Inner  Msg
+}
+
+// Bubble forwards a message to the parent component or App.
+type Bubble struct {
+	Msg Msg
+}
+
 // PropsChanged is dispatched to a stateful component when its props change.
 // Components can handle it in Update to react to new prop values.
 type PropsChanged struct{}

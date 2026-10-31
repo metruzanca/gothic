@@ -38,11 +38,16 @@ function newui_VirtualList_VirtualRow(props) {
   return m;
 }
 
-export function mountuiVirtualListVirtualRow(root, props, __gothicParentDispatch) {
+export function mountuiVirtualListVirtualRow(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
   let model = readComponentState(root) || newui_VirtualList_VirtualRow(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
+  }
+  function emitLocal(msg) {
+    if (msg == null) return;
+    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
+    if (__gothicParentDispatch) __gothicParentDispatch(msg);
   }
   onLocal(root, "0", "scroll", (event) => dispatch({tag: "VirtualScrolled", Top: event.target.scrollTop}));
   onLocal(root, "1", "resize", (event) => dispatch({tag: "VirtualResized", Height: event.target.clientHeight}));
@@ -226,7 +231,13 @@ export function mountuiVirtualListVirtualRow(root, props, __gothicParentDispatch
       return;
     }
     const msg = await cmd();
-    if (alive && msg) dispatch(msg);
+    if (alive && msg) {
+      if (msg.tag === "Bubble") {
+        emit(msg.Msg);
+      } else {
+        dispatch(msg);
+      }
+    }
   }
   render(model);
   run(init());

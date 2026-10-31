@@ -36,6 +36,7 @@ type DashboardProps struct {
 type DashboardModel struct {
 	ShowBranch bool
 	Items      []string
+	LastPick   string
 }
 
 type DashboardToggled struct{}
@@ -50,11 +51,20 @@ func (m DashboardModel) Init() gothic.Cmd {
 }
 
 func (m DashboardModel) Update(msg gothic.Msg, props DashboardProps) (DashboardModel, gothic.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case DashboardToggled:
 		m.ShowBranch = !m.ShowBranch
 	case AddItem:
 		m.Items = append(m.Items, "item")
+	case gothic.ChildMessage:
+		inner := msg.Inner
+		switch child := inner.(type) {
+		case PickedChild:
+			m.LastPick = child.Label
+			return m, func() gothic.Msg {
+				return gothic.Bubble{Msg: child}
+			}
+		}
 	}
 	return m, nil
 }
@@ -96,7 +106,7 @@ view App(model Model) {
 view Counter(model CounterModel, props CounterProps) {
 	<div class="counter">
 		<button class="increment" onclick={ CounterClicked{} }>{ props.Label }:{ " " }{ model.Count }</button>
-		<button class="pick" onclick={ emit(props.OnPick) }>Pick { props.Label }</button>
+		<button class="pick" onclick={ emitLocal(props.OnPick) }>Pick { props.Label }</button>
 	</div>
 }
 
@@ -105,6 +115,7 @@ view Dashboard(model DashboardModel, props DashboardProps) {
 		<h2>{ props.Title }</h2>
 		<button class="toggle-branch" onclick={ DashboardToggled{} }>Toggle branch child</button>
 		<button class="add-item" onclick={ AddItem{} }>Add list child</button>
+		<p class="local-pick">Dashboard pick:{ " " }{ model.LastPick }</p>
 		<Counter label="static" onpick={ PickedChild{Label: "static"} } />
 		if model.ShowBranch {
 			<Counter label="branch" onpick={ PickedChild{Label: "branch"} } />
