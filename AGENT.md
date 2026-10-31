@@ -5,6 +5,16 @@
 - Use `templ` as the language identifier in Markdown code fences for gothic
   code. Do not use `gothic` or `gth` for now.
 
+## No legacy paths
+
+- There is one supported way to do each thing. Do not keep old syntax, APIs, or
+  configuration for compatibility.
+- When a feature changes, migrate every call site, example, test, and doc in the
+  same change, then delete the old code path. Do not add shims, deprecation
+  notes, or "older X still works" wording.
+- Example: components take a props struct. Individual-prop components are not
+  supported and must not be reintroduced.
+
 ## Verification
 
 Before committing, run:
