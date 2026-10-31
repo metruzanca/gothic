@@ -1,3 +1,6 @@
+> Historical note: prop-seeded component state landed in
+> [Iteration 14](ITERATION_14.md).
+
 # Iteration 13: props structs for components
 
 Status: complete. Components declare a props struct, named tag props map to

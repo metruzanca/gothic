@@ -112,9 +112,9 @@ server rendering, hydration, a Bubble Tea-style update loop, a typed server
 call, composable pure view components, and self-contained stateful components.
 Views support `if` / `else if` / `else`, pure components accept children
 through a default slot, and stateful components work inside branches and keyed
-lists. Components use props structs with optional pointer fields, read props in `Init`
-and `Update`, react to prop changes, and run their own commands with unmount
-guards. TodoMVC uses conditionals for empty states and inline editing.
+lists. Components use props structs with optional pointer fields, seed initial state
+from props with `New<Model>(props)`, read props in `Init` and `Update`, react to
+prop changes, and run their own commands with unmount guards. TodoMVC uses conditionals for empty states and inline editing.
 Gothicbook includes slotted form fields and a scrollable, paginated list of
 expandable components. A small `js` package covers browser interop, and the
 router example uses path-based URL state with back and forward support. Parse
@@ -143,6 +143,7 @@ The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
 - [Component props and Init](docs/ITERATION_11.md)
 - [Component commands and destroy](docs/ITERATION_12.md)
 - [Component props structs](docs/ITERATION_13.md)
+- [Prop-seeded component state](docs/ITERATION_14.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current

@@ -47,7 +47,8 @@ Use namespaced tags in `.gth` views:
 owns the message handler and any server procedures it calls.
 
 `Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`, and
-`Disclosure` uses `ui.DisclosureItem`.
+`Disclosure` uses `ui.DisclosureItem`. `Tabs` accepts an optional `active`
+pointer prop and seeds its active tab from it.
 
 ## Components
 

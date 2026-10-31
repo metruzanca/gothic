@@ -118,6 +118,7 @@ The ping/pong proof of concept runs end to end.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
 - Components unmount when their branch or list item leaves, so state resets on remount.
 - Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
+- Components can seed their initial state from props with an optional `New<Model>(props)` constructor.
 - Components run their own commands and are destroyed on unmount.
 - Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
@@ -139,13 +140,14 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 
 ## What comes next
 
-1. Prop-seeded component initial state and nested stateful components.
-2. Path parameters, nested routers, and route matching helpers.
-3. `Batch` and `Sequence` commands.
-4. Typed procedure argument validation and the no-JS form fallback.
-5. `go/packages` type information for stronger compiler checks.
-6. Manifest, content hashing, formatter, LSP, and source maps.
-7. A virtualized list example app.
+1. Nested stateful components.
+2. More Go statements and expressions, including indexing and slicing.
+3. Path parameters, nested routers, and route matching helpers.
+4. `Batch` and `Sequence` commands.
+5. Typed procedure argument validation and the no-JS form fallback.
+6. `go/packages` type information for stronger compiler checks.
+7. Manifest, content hashing, formatter, LSP, and source maps.
+8. A virtualized list example app.
 
 ## Why this can work
 

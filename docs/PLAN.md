@@ -218,6 +218,7 @@ Supported now:
 - stateful components unmount and reset when a branch or list item leaves,
 - component Update and Init receive the props struct,
 - component Init runs once on mount,
+- optional `New<Model>(props)` constructors seed initial state from props,
 - component Init and Update commands with an unmount guard,
 - components are destroyed before their branch or list item leaves the DOM,
 - precompiled external components from installable packages,
@@ -252,7 +253,6 @@ Supported now:
 Not supported yet:
 
 - component-declared procedures; procedures are App-only,
-- prop-seeded component initial state; component models still start at the zero value,
 - address-of expressions in views,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
@@ -279,20 +279,19 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Prop-seeded component initial state.
-2. Nested stateful components.
-3. Children on stateful components, named slots, and fallback content if a
+1. Nested stateful components.
+2. Children on stateful components, named slots, and fallback content if a
    real use case appears.
-4. Path parameters, nested routers, and route matching helpers.
-5. More Go statements and expressions in `Update` and commands, including
+3. More Go statements and expressions in `Update` and commands, including
    indexing and slicing.
-6. `Batch` and `Sequence` commands.
-7. Typed procedure argument validation and the no-JS fallback.
-8. `go/packages` for type information and stronger validation.
-9. Manifest, content hashing, and production serving.
-10. Formatter, LSP, and source maps.
-11. Selective vendoring of templ's HTML and whitespace handling with tests.
-12. A virtualized list example app.
+4. Path parameters, nested routers, and route matching helpers.
+5. `Batch` and `Sequence` commands.
+6. Typed procedure argument validation and the no-JS fallback.
+7. `go/packages` for type information and stronger validation.
+8. Manifest, content hashing, and production serving.
+9. Formatter, LSP, and source maps.
+10. Selective vendoring of templ's HTML and whitespace handling with tests.
+11. A virtualized list example app.
 
 ## Risks
 
@@ -302,10 +301,10 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful component support is still narrow: no declared procedures, no
-  nested stateful components, and no prop-seeded initial state. Prop change
-  detection is reference-based. Commands are guarded after unmount, but there
-  is no general cancellation.
+- Stateful component support is still narrow: no declared procedures and no
+  nested stateful components. Prop change detection is reference-based.
+  Constructors must be deterministic and client-compilable. Commands are
+  guarded after unmount, but there is no general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

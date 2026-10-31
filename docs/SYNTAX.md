@@ -401,9 +401,30 @@ case gothic.PropsChanged:
 Comparison is by reference, so assign new slices or structs instead of
 mutating in place.
 
-`Init` cannot seed the initial model with props yet. Component state still
-starts at the zero value. Use props directly in the view or `Update` until a
-prop-aware model constructor exists.
+#### Initial state from props
+
+A stateful component can build its initial state from props with an optional
+constructor named `New` plus the model type:
+
+```go
+func NewTabsModel(props TabsProps) TabsModel {
+	m := TabsModel{}
+	if props.Active != nil {
+		m.Active = *props.Active
+	}
+	return m
+}
+```
+
+- The constructor may take zero parameters or one props parameter.
+- It must return the component model type.
+- The server uses it before serializing state, so SSR matches the props.
+- Client-created instances use the generated JavaScript constructor.
+- Hydration reads the server-serialized state first.
+- Without a constructor, state starts at the zero value.
+
+Constructors must be deterministic and use the client Go subset. They must not
+depend on server-only data, time, randomness, or `js` interop.
 
 #### Component commands
 
@@ -782,6 +803,7 @@ The proof of concept supports:
   loops,
 - `gothic.PropsChanged` on prop changes,
 - component Init running once on mount,
+- prop-seeded initial component state through `New<Model>(props)`,
 - component commands with unmount guards,
 - `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
@@ -807,7 +829,6 @@ The proof of concept supports:
 Not supported yet:
 
 - component-declared procedures; procedures are App-only,
-- prop-seeded component initial state; component models still start at the zero value,
 - address-of expressions in views,
 - controlled components and function-valued props,
 - stateful components nested inside other stateful components,
