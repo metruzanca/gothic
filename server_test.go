@@ -44,6 +44,9 @@ func TestServerServesRuntimeModuleAndRPC(t *testing.T) {
 	if res.StatusCode != http.StatusOK || !strings.Contains(string(body), "export function signal") {
 		t.Fatalf("runtime.js = %d %q", res.StatusCode, body)
 	}
+	if got := res.Header.Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("runtime.js cache-control = %q, want no-store", got)
+	}
 
 	res, err = http.Get(ts.URL + "/_gothic/modules/test.js")
 	if err != nil {
@@ -53,6 +56,9 @@ func TestServerServesRuntimeModuleAndRPC(t *testing.T) {
 	res.Body.Close()
 	if res.StatusCode != http.StatusOK || string(body) != "export const x = 1;\n" {
 		t.Fatalf("module = %d %q", res.StatusCode, body)
+	}
+	if got := res.Header.Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("module cache-control = %q, want no-store", got)
 	}
 
 	res, err = http.Post(ts.URL+"/_gothic/rpc/Ping", "application/json", strings.NewReader(`{"args":[]}`))

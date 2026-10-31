@@ -187,6 +187,7 @@ func writeRPCError(w http.ResponseWriter, status int, message string) {
 
 func serveJS(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(data)
 }
 

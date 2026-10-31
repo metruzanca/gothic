@@ -620,3 +620,35 @@ func (m ParentModel) Update(msg Msg) (ParentModel, Cmd) { return m, nil }
 		t.Errorf("generated Go missing nested component call\n\n%s", src)
 	}
 }
+
+func TestGenerateBooleanAttributes(t *testing.T) {
+	src := `package views
+
+view App(model Model) {
+	<button disabled={ model.Done }>Save</button>
+}
+`
+	f, err := parser.Parse("app.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.Generate(f, generator.Options{
+		FileName:   "app.gth",
+		ModuleBase: "app",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated := string(out)
+	for _, want := range []string{
+		`if model.Done {`,
+		` disabled`,
+	} {
+		if !strings.Contains(generated, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, generated)
+		}
+	}
+	if strings.Contains(generated, `disabled=\"`) {
+		t.Errorf("generated Go should not render disabled with a value\n\n%s", generated)
+	}
+}

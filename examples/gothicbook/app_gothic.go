@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/js"
 	"github.com/metruzanca/gothic/ui"
 	"html"
 	"io"
@@ -37,10 +38,10 @@ type Model struct {
 	FieldCode         string
 	TabsCode          string
 	AccordionCode     string
-	CounterCode       string
+	ConditionalsCode  string
+	StatefulListsCode string
 	ServerCode        string
 	DisclosureCode    string
-	SlotCode          string
 	SlotText          string
 	ShowExample       bool
 	ListPage          int
@@ -73,18 +74,161 @@ func NewModel(count int) Model {
 			{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
 			{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
 		},
-		Count:          count,
-		ButtonCode:     `<ui.Button label="Save changes" primary={ true } onclick={ nil } />`,
-		CardCode:       `<ui.Card title="Card title" body="Card body" />`,
-		FieldCode:      `<ui.Field label="Your name">\n\t<input value={ model.Name } ... />\n</ui.Field>`,
-		TabsCode:       `<ui.Tabs items={ model.Tabs } active={ model.TabStart } />`,
-		AccordionCode:  `<ui.Accordion items={ model.Accordion } />`,
-		CounterCode:    `<ui.Counter label="Increment on client" />`,
-		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
-		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
-		SlotCode:       `<ui.Field label="Your name">\n\t<input value={ model.Name } ... />\n</ui.Field>`,
-		SlotText:       "friend",
-		ShowExample:    true,
+		Count: count,
+		ButtonCode: `// Page
+<ui.Button label="Say hello" primary={ true } onclick={ ButtonClicked{} } />
+<ui.Button label="Cancel" primary={ false } onclick={ nil } />
+
+// Message and update
+type ButtonClicked struct{}
+
+case ButtonClicked:
+	return m, func() gothic.Msg {
+		js.Alert("Hello from Gothicbook")
+		return nil
+	}`,
+		CardCode: `// Page
+<ui.Card title="A simple card" body="Cards group related content with a small surface." />
+
+// ui/card.gth
+type CardProps struct {
+	Title string
+	Body  string
+}
+
+	view Card(props CardProps) {
+		<section class="ui-card">
+			<h2>{ props.Title }</h2>
+			<p>{ props.Body }</p>
+		</section>
+	}`,
+		FieldCode: `// Page
+<ui.Field label="Your name">
+	<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
+</ui.Field>
+<p class="server-count">Hello, { model.SlotText }!</p>
+
+// Message and update
+type SlotTextChanged struct{ Text string }
+
+case SlotTextChanged:
+	m.SlotText = msg.Text`,
+		TabsCode: `// Page
+<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
+<div class="row">
+	<button
+		class="ui-button"
+		disabled={ len(model.Tabs) <= len(model.FewTabs) }
+		onclick={ FewerTabs{} }
+	>Fewer tabs</button>
+	<button
+		class="ui-button"
+		class:ui-button-primary={ len(model.Tabs) < len(model.ManyTabs) }
+		disabled={ len(model.Tabs) >= len(model.ManyTabs) }
+		onclick={ MoreTabs{} }
+	>More tabs</button>
+</div>
+
+// Messages and update
+type FewerTabs struct{}
+type MoreTabs struct{}
+
+case FewerTabs:
+	m.Tabs = m.FewTabs
+case MoreTabs:
+	m.Tabs = m.ManyTabs`,
+		AccordionCode: `// Page
+<ui.Accordion items={ model.Accordion } />
+
+// Model
+Accordion: []ui.AccordionItem{
+	{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
+	{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
+	{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
+},`,
+		DisclosureCode: `// Page
+<ui.Disclosure item={ model.FeatureDisclosure } />
+
+// Model
+FeatureDisclosure: ui.DisclosureItem{
+	ID:    999,
+	Title: "Conditional disclosure",
+	Details: []string{
+		"Expand me, then hide the branch.",
+		"Show the branch again and I start collapsed.",
+	},
+},`,
+		ConditionalsCode: `// Page
+<div class="row">
+	<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
+</div>
+if model.ShowExample {
+	<ui.Disclosure item={ model.FeatureDisclosure } />
+} else {
+	<p class="server-count">The else branch is visible instead.</p>
+}
+
+// Message and update
+type ToggleExample struct{}
+
+case ToggleExample:
+	m.ShowExample = !m.ShowExample`,
+		StatefulListsCode: `// Page
+<div class="ui-disclosure-list">
+	for _, item := range model.Visible {
+		<ui.Disclosure key={ item.ID } item={ item } />
+	}
+</div>
+<div class="row">
+	<ui.Button label="Previous page" primary={ false } onclick={ PrevPage{} } />
+	<ui.Button label="Next page" primary={ true } onclick={ NextPage{} } />
+</div>
+<p class="server-count">{ model.PageLabel }</p>
+
+// Messages and update
+type NextPage struct{}
+type PrevPage struct{}
+
+case NextPage:
+	m.ListPage = 1
+	m.Visible = m.PageTwo
+	m.PageLabel = "Showing 11-20 of 20"
+case PrevPage:
+	m.ListPage = 0
+	m.Visible = m.PageOne
+	m.PageLabel = "Showing 1-10 of 20"`,
+		ServerCode: `// Page
+<div class="row">
+	<ui.Counter label="Increment on client" />
+	<div class="ui-counter">
+		<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
+		<strong class="ui-counter-value">{ model.Count }</strong>
+	</div>
+</div>
+
+// app.gth prelude
+type IncrementClicked struct{}
+
+type Procedures interface {
+	gothic.RPCService
+	Increment(ctx context.Context) (int, error)
+}
+
+case IncrementClicked:
+	return m, func() gothic.Msg {
+		count, err := Increment()
+		if err != nil {
+			return CountFailed{Message: err.Error()}
+		}
+		return CountUpdated{Count: count}
+	}
+
+// main.go
+func (p procedures) Increment(ctx context.Context) (int, error) {
+	return p.counter.increment(), nil
+}`,
+		SlotText:    "friend",
+		ShowExample: true,
 		FeatureDisclosure: ui.DisclosureItem{
 			ID:    999,
 			Title: "Conditional disclosure",
@@ -97,7 +241,21 @@ func NewModel(count int) Model {
 		PageTwo:     sampleDisclosures(11, 10),
 		PageLabel:   "Showing 1-10 of 20",
 		VirtualRows: sampleVirtualRows(1000),
-		VirtualCode: `<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />`,
+		VirtualCode: `// Page
+<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />
+
+// Row view
+	view VirtualRow(row VirtualRowData) {
+		<div class="virtual-row-content">
+			<strong class="ui-virtual-title">{ row.Title }</strong>
+			<span class="ui-virtual-detail">{ row.Detail }</span>
+		</div>
+	}
+
+type VirtualRowData struct {
+	Title  string
+	Detail string
+}`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
@@ -124,12 +282,8 @@ func NewModelAt(path string, count int) Model {
 		m.Page = "accordion"
 	case "/disclosure":
 		m.Page = "disclosure"
-	case "/counter":
-		m.Page = "counter"
 	case "/virtual-list":
 		m.Page = "virtual-list"
-	case "/slots":
-		m.Page = "slots"
 	case "/conditionals":
 		m.Page = "conditionals"
 	case "/stateful-lists":
@@ -178,6 +332,7 @@ func sampleDisclosures(from, count int) []ui.DisclosureItem {
 }
 
 type IncrementClicked struct{}
+type ButtonClicked struct{}
 type CountUpdated struct{ Count int }
 type CountFailed struct{ Message string }
 type ToggleExample struct{}
@@ -220,12 +375,8 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Page = "accordion"
 		case "/disclosure":
 			m.Page = "disclosure"
-		case "/counter":
-			m.Page = "counter"
 		case "/virtual-list":
 			m.Page = "virtual-list"
-		case "/slots":
-			m.Page = "slots"
 		case "/conditionals":
 			m.Page = "conditionals"
 		case "/stateful-lists":
@@ -234,6 +385,11 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Page = "server-state"
 		default:
 			m.Page = "notfound"
+		}
+	case ButtonClicked:
+		return m, func() gothic.Msg {
+			js.Alert("Hello from Gothicbook")
+			return nil
 		}
 	case IncrementClicked:
 		return m, func() gothic.Msg {
@@ -568,30 +724,7 @@ func App(model Model) gothic.Component {
 		if err := write("</a>"); err != nil {
 			return err
 		}
-		if err := write("<a href=\"/counter\" data-gothic-class-7=\"active\" data-gothic-on=\"8\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"nav-link"); err != nil {
-			return err
-		}
-		if model.Page == "counter" {
-			if err := write(" active"); err != nil {
-				return err
-			}
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("Counter"); err != nil {
-			return err
-		}
-		if err := write("</a>"); err != nil {
-			return err
-		}
-		if err := write("<a href=\"/virtual-list\" data-gothic-class-8=\"active\" data-gothic-on=\"9\""); err != nil {
+		if err := write("<a href=\"/virtual-list\" data-gothic-class-7=\"active\" data-gothic-on=\"8\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"nav-link"); err != nil {
@@ -632,30 +765,7 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := write("<a href=\"/slots\" data-gothic-class-9=\"active\" data-gothic-on=\"10\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"nav-link"); err != nil {
-			return err
-		}
-		if model.Page == "slots" {
-			if err := write(" active"); err != nil {
-				return err
-			}
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("Slots"); err != nil {
-			return err
-		}
-		if err := write("</a>"); err != nil {
-			return err
-		}
-		if err := write("<a href=\"/conditionals\" data-gothic-class-10=\"active\" data-gothic-on=\"11\""); err != nil {
+		if err := write("<a href=\"/conditionals\" data-gothic-class-8=\"active\" data-gothic-on=\"9\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"nav-link"); err != nil {
@@ -678,7 +788,7 @@ func App(model Model) gothic.Component {
 		if err := write("</a>"); err != nil {
 			return err
 		}
-		if err := write("<a href=\"/stateful-lists\" data-gothic-class-11=\"active\" data-gothic-on=\"12\""); err != nil {
+		if err := write("<a href=\"/stateful-lists\" data-gothic-class-9=\"active\" data-gothic-on=\"10\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"nav-link"); err != nil {
@@ -701,7 +811,7 @@ func App(model Model) gothic.Component {
 		if err := write("</a>"); err != nil {
 			return err
 		}
-		if err := write("<a href=\"/server-state\" data-gothic-class-12=\"active\" data-gothic-on=\"13\""); err != nil {
+		if err := write("<a href=\"/server-state\" data-gothic-class-10=\"active\" data-gothic-on=\"11\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"nav-link"); err != nil {
@@ -926,7 +1036,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/button\" data-gothic-on=\"14\""); err != nil {
+			if err := write("<a href=\"/button\" data-gothic-on=\"12\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -959,7 +1069,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/card\" data-gothic-on=\"15\""); err != nil {
+			if err := write("<a href=\"/card\" data-gothic-on=\"13\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -992,7 +1102,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/field\" data-gothic-on=\"16\""); err != nil {
+			if err := write("<a href=\"/field\" data-gothic-on=\"14\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1025,7 +1135,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/tabs\" data-gothic-on=\"17\""); err != nil {
+			if err := write("<a href=\"/tabs\" data-gothic-on=\"15\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1058,7 +1168,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/accordion\" data-gothic-on=\"18\""); err != nil {
+			if err := write("<a href=\"/accordion\" data-gothic-on=\"16\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1091,7 +1201,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/disclosure\" data-gothic-on=\"19\""); err != nil {
+			if err := write("<a href=\"/disclosure\" data-gothic-on=\"17\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1124,40 +1234,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/counter\" data-gothic-on=\"20\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"tile"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<strong>"); err != nil {
-				return err
-			}
-			if err := write("Counter"); err != nil {
-				return err
-			}
-			if err := write("</strong>"); err != nil {
-				return err
-			}
-			if err := write("<span>"); err != nil {
-				return err
-			}
-			if err := write("Client-side state inside a component."); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("</a>"); err != nil {
-				return err
-			}
-			if err := write("<a href=\"/virtual-list\" data-gothic-on=\"21\""); err != nil {
+			if err := write("<a href=\"/virtual-list\" data-gothic-on=\"18\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1190,40 +1267,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/slots\" data-gothic-on=\"22\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"tile"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<strong>"); err != nil {
-				return err
-			}
-			if err := write("Slots"); err != nil {
-				return err
-			}
-			if err := write("</strong>"); err != nil {
-				return err
-			}
-			if err := write("<span>"); err != nil {
-				return err
-			}
-			if err := write("Pass app-owned content into a component."); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("</a>"); err != nil {
-				return err
-			}
-			if err := write("<a href=\"/conditionals\" data-gothic-on=\"23\""); err != nil {
+			if err := write("<a href=\"/conditionals\" data-gothic-on=\"19\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1256,7 +1300,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/stateful-lists\" data-gothic-on=\"24\""); err != nil {
+			if err := write("<a href=\"/stateful-lists\" data-gothic-on=\"20\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1289,7 +1333,7 @@ func App(model Model) gothic.Component {
 			if err := write("</a>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/server-state\" data-gothic-on=\"25\""); err != nil {
+			if err := write("<a href=\"/server-state\" data-gothic-on=\"21\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"tile"); err != nil {
@@ -1382,7 +1426,7 @@ func App(model Model) gothic.Component {
 			if err := write("<p>"); err != nil {
 				return err
 			}
-			if err := write("Primary and secondary actions. The primary button carries the accent color."); err != nil {
+			if err := write("Primary and secondary actions. The primary button calls js.Alert."); err != nil {
 				return err
 			}
 			if err := write("</p>"); err != nil {
@@ -1415,13 +1459,13 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-13=\"ui-button-primary\" data-gothic-on=\"26\""); err != nil {
+			if err := write("<button data-gothic-class-11=\"ui-button-primary\" data-gothic-on=\"22\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
 				return err
 			}
-			if (ui.ButtonProps{Label: "Save changes", Primary: true, Onclick: nil}).Primary {
+			if (ui.ButtonProps{Label: "Say hello", Primary: true, Onclick: ButtonClicked{}}).Primary {
 				if err := write(" ui-button-primary"); err != nil {
 					return err
 				}
@@ -1435,7 +1479,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Save changes", Primary: true, Onclick: nil}).Label))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Say hello", Primary: true, Onclick: ButtonClicked{}}).Label))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:0:close-->"); err != nil {
@@ -1444,7 +1488,7 @@ func App(model Model) gothic.Component {
 			if err := write("</button>"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-14=\"ui-button-primary\" data-gothic-on=\"27\""); err != nil {
+			if err := write("<button data-gothic-class-12=\"ui-button-primary\" data-gothic-on=\"23\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
@@ -1497,7 +1541,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:2:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ButtonCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ButtonCode}).Title))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:2:close-->"); err != nil {
@@ -1515,7 +1559,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:3:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ButtonCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ButtonCode}).Code))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:3:close-->"); err != nil {
@@ -1674,7 +1718,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:6:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CardCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.CardCode}).Title))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:6:close-->"); err != nil {
@@ -1692,7 +1736,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:7:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CardCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.CardCode}).Code))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:7:close-->"); err != nil {
@@ -1833,7 +1877,7 @@ func App(model Model) gothic.Component {
 			if err := write("\""); err != nil {
 				return err
 			}
-			if err := write(" data-gothic-on=\"28\""); err != nil {
+			if err := write(" data-gothic-on=\"24\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"slot-input"); err != nil {
@@ -1908,7 +1952,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:11:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.FieldCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.FieldCode}).Title))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:11:close-->"); err != nil {
@@ -1926,7 +1970,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:12:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.FieldCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.FieldCode}).Code))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:12:close-->"); err != nil {
@@ -1998,7 +2042,7 @@ func App(model Model) gothic.Component {
 			if err := write("<p>"); err != nil {
 				return err
 			}
-			if err := write("Select the third tab, then remove a tab. The component clamps its active index from the items prop."); err != nil {
+			if err := write("Select the third tab, then remove a tab. The component clamps its active index from the items prop, and the controls disable at the ends of the range."); err != nil {
 				return err
 			}
 			if err := write("</p>"); err != nil {
@@ -2034,16 +2078,19 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-15=\"ui-button-primary\" data-gothic-on=\"29\""); err != nil {
+			if err := write("<button data-gothic-attr-2=\"disabled\""); err != nil {
+				return err
+			}
+			if len(model.Tabs) <= len(model.FewTabs) {
+				if err := write(" disabled"); err != nil {
+					return err
+				}
+			}
+			if err := write(" data-gothic-on=\"25\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
 				return err
-			}
-			if (ui.ButtonProps{Label: "Fewer tabs", Primary: false, Onclick: FewerTabs{}}).Primary {
-				if err := write(" ui-button-primary"); err != nil {
-					return err
-				}
 			}
 			if err := write("\""); err != nil {
 				return err
@@ -2051,25 +2098,27 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:13:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Fewer tabs", Primary: false, Onclick: FewerTabs{}}).Label))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:13:close-->"); err != nil {
+			if err := write("Fewer tabs"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-16=\"ui-button-primary\" data-gothic-on=\"30\""); err != nil {
+			if err := write("<button data-gothic-class-13=\"ui-button-primary\" data-gothic-attr-3=\"disabled\""); err != nil {
+				return err
+			}
+			if len(model.Tabs) >= len(model.ManyTabs) {
+				if err := write(" disabled"); err != nil {
+					return err
+				}
+			}
+			if err := write(" data-gothic-on=\"26\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
 				return err
 			}
-			if (ui.ButtonProps{Label: "More tabs", Primary: false, Onclick: MoreTabs{}}).Primary {
+			if len(model.Tabs) < len(model.ManyTabs) {
 				if err := write(" ui-button-primary"); err != nil {
 					return err
 				}
@@ -2080,13 +2129,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:14:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "More tabs", Primary: false, Onclick: MoreTabs{}}).Label))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:14:close-->"); err != nil {
+			if err := write("More tabs"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
@@ -2113,13 +2156,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:15:open-->"); err != nil {
+			if err := write("<!--g:text:13:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.TabsCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.TabsCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:15:close-->"); err != nil {
+			if err := write("<!--g:text:13:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -2131,13 +2174,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:16:open-->"); err != nil {
+			if err := write("<!--g:text:14:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.TabsCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.TabsCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:16:close-->"); err != nil {
+			if err := write("<!--g:text:14:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -2248,13 +2291,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:17:open-->"); err != nil {
+			if err := write("<!--g:text:15:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.AccordionCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.AccordionCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:17:close-->"); err != nil {
+			if err := write("<!--g:text:15:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -2266,13 +2309,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:18:open-->"); err != nil {
+			if err := write("<!--g:text:16:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.AccordionCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.AccordionCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:18:close-->"); err != nil {
+			if err := write("<!--g:text:16:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -2383,13 +2426,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:19:open-->"); err != nil {
+			if err := write("<!--g:text:17:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.DisclosureCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:19:close-->"); err != nil {
+			if err := write("<!--g:text:17:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -2401,13 +2444,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:20:open-->"); err != nil {
+			if err := write("<!--g:text:18:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.DisclosureCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:20:close-->"); err != nil {
+			if err := write("<!--g:text:18:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -2430,143 +2473,8 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:if:7:open-->"); err != nil {
 			return err
 		}
-		if model.Page == "counter" {
-			if err := write("<!--g:if:7:then-->"); err != nil {
-				return err
-			}
-			if err := write("<header"); err != nil {
-				return err
-			}
-			if err := write(" class=\"page-head"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<p"); err != nil {
-				return err
-			}
-			if err := write(" class=\"eyebrow"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("component"); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			if err := write("<h1>"); err != nil {
-				return err
-			}
-			if err := write("Counter"); err != nil {
-				return err
-			}
-			if err := write("</h1>"); err != nil {
-				return err
-			}
-			if err := write("<p>"); err != nil {
-				return err
-			}
-			if err := write("Client-side state inside a component. The value stays local to the component."); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			if err := write("</header>"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"demo"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := ui.Counter("c3", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"code-block"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<h3>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:21:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CounterCode}).Title))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:21:close-->"); err != nil {
-				return err
-			}
-			if err := write("</h3>"); err != nil {
-				return err
-			}
-			if err := write("<pre>"); err != nil {
-				return err
-			}
-			if err := write("<code>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:22:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.CounterCode}).Code))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:22:close-->"); err != nil {
-				return err
-			}
-			if err := write("</code>"); err != nil {
-				return err
-			}
-			if err := write("</pre>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-		} else {
-			if err := write("<!--g:if:7:else-->"); err != nil {
-				return err
-			}
-		}
-		if err := write("<!--g:if:7:close-->"); err != nil {
-			return err
-		}
-		if err := write("<!--g:if:8:open-->"); err != nil {
-			return err
-		}
 		if model.Page == "virtual-list" {
-			if err := write("<!--g:if:8:then-->"); err != nil {
+			if err := write("<!--g:if:7:then-->"); err != nil {
 				return err
 			}
 			if err := write("<header"); err != nil {
@@ -2632,7 +2540,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := __gothicuiVirtualListComponent("c4", "", ui.VirtualListProps{Items: gothic.AnySlice(model.VirtualRows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+			if err := __gothicuiVirtualListComponent("c3", "", ui.VirtualListProps{Items: gothic.AnySlice(model.VirtualRows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {
@@ -2653,13 +2561,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:23:open-->"); err != nil {
+			if err := write("<!--g:text:19:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.VirtualCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.VirtualCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:23:close-->"); err != nil {
+			if err := write("<!--g:text:19:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -2671,13 +2579,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:24:open-->"); err != nil {
+			if err := write("<!--g:text:20:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.VirtualCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.VirtualCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:24:close-->"); err != nil {
+			if err := write("<!--g:text:20:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -2690,294 +2598,18 @@ func App(model Model) gothic.Component {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:8:else-->"); err != nil {
+			if err := write("<!--g:if:7:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:8:close-->"); err != nil {
+		if err := write("<!--g:if:7:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:if:9:open-->"); err != nil {
-			return err
-		}
-		if model.Page == "slots" {
-			if err := write("<!--g:if:9:then-->"); err != nil {
-				return err
-			}
-			if err := write("<header"); err != nil {
-				return err
-			}
-			if err := write(" class=\"page-head"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<p"); err != nil {
-				return err
-			}
-			if err := write(" class=\"eyebrow"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("pattern"); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			if err := write("<h1>"); err != nil {
-				return err
-			}
-			if err := write("Slots"); err != nil {
-				return err
-			}
-			if err := write("</h1>"); err != nil {
-				return err
-			}
-			if err := write("<p>"); err != nil {
-				return err
-			}
-			if err := write("A pure component supplies layout while the App keeps state and events in the slotted content."); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			if err := write("</header>"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"demo"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-field"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<span"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-field-label"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:25:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((ui.FieldProps{Label: "Your name"}).Label))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:25:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("<input data-gothic-attr-2=\"value\""); err != nil {
-				return err
-			}
-			if err := write(" value=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-on=\"31\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"slot-input"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("<p"); err != nil {
-				return err
-			}
-			if err := write(" class=\"server-count"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("Hello,"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:26:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:26:close-->"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:27:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:27:close-->"); err != nil {
-				return err
-			}
-			if err := write("!"); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-field"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<span"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-field-label"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:28:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((ui.FieldProps{Label: "A stateful child"}).Label))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:28:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := ui.Counter("c5", "", ui.CounterProps{Label: "Increment inside a slot"}).Render(ctx, w); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("<div"); err != nil {
-				return err
-			}
-			if err := write(" class=\"code-block"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<h3>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:29:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.SlotCode}).Title))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:29:close-->"); err != nil {
-				return err
-			}
-			if err := write("</h3>"); err != nil {
-				return err
-			}
-			if err := write("<pre>"); err != nil {
-				return err
-			}
-			if err := write("<code>"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:30:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.SlotCode}).Code))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:30:close-->"); err != nil {
-				return err
-			}
-			if err := write("</code>"); err != nil {
-				return err
-			}
-			if err := write("</pre>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-		} else {
-			if err := write("<!--g:if:9:else-->"); err != nil {
-				return err
-			}
-		}
-		if err := write("<!--g:if:9:close-->"); err != nil {
-			return err
-		}
-		if err := write("<!--g:if:10:open-->"); err != nil {
+		if err := write("<!--g:if:8:open-->"); err != nil {
 			return err
 		}
 		if model.Page == "conditionals" {
-			if err := write("<!--g:if:10:then-->"); err != nil {
+			if err := write("<!--g:if:8:then-->"); err != nil {
 				return err
 			}
 			if err := write("<header"); err != nil {
@@ -3055,7 +2687,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-17=\"ui-button-primary\" data-gothic-on=\"32\""); err != nil {
+			if err := write("<button data-gothic-class-14=\"ui-button-primary\" data-gothic-on=\"27\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
@@ -3072,13 +2704,13 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:31:open-->"); err != nil {
+			if err := write("<!--g:text:21:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Toggle panel", Primary: true, Onclick: ToggleExample{}}).Label))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:31:close-->"); err != nil {
+			if err := write("<!--g:text:21:close-->"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
@@ -3087,18 +2719,18 @@ func App(model Model) gothic.Component {
 			if err := write("</div>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:if:11:open-->"); err != nil {
+			if err := write("<!--g:if:9:open-->"); err != nil {
 				return err
 			}
 			if model.ShowExample {
-				if err := write("<!--g:if:11:then-->"); err != nil {
+				if err := write("<!--g:if:9:then-->"); err != nil {
 					return err
 				}
-				if err := ui.Disclosure("c6", "", ui.DisclosureProps{Item: model.FeatureDisclosure}).Render(ctx, w); err != nil {
+				if err := ui.Disclosure("c4", "", ui.DisclosureProps{Item: model.FeatureDisclosure}).Render(ctx, w); err != nil {
 					return err
 				}
 			} else {
-				if err := write("<!--g:if:11:else-->"); err != nil {
+				if err := write("<!--g:if:9:else-->"); err != nil {
 					return err
 				}
 				if err := write("<p"); err != nil {
@@ -3120,25 +2752,76 @@ func App(model Model) gothic.Component {
 					return err
 				}
 			}
-			if err := write("<!--g:if:11:close-->"); err != nil {
+			if err := write("<!--g:if:9:close-->"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
+				return err
+			}
+			if err := write("<div"); err != nil {
+				return err
+			}
+			if err := write(" class=\"code-block"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<h3>"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:22:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ConditionalsCode}).Title))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:22:close-->"); err != nil {
+				return err
+			}
+			if err := write("</h3>"); err != nil {
+				return err
+			}
+			if err := write("<pre>"); err != nil {
+				return err
+			}
+			if err := write("<code>"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:23:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ConditionalsCode}).Code))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:23:close-->"); err != nil {
+				return err
+			}
+			if err := write("</code>"); err != nil {
+				return err
+			}
+			if err := write("</pre>"); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:10:else-->"); err != nil {
+			if err := write("<!--g:if:8:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:10:close-->"); err != nil {
+		if err := write("<!--g:if:8:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:if:12:open-->"); err != nil {
+		if err := write("<!--g:if:10:open-->"); err != nil {
 			return err
 		}
 		if model.Page == "stateful-lists" {
-			if err := write("<!--g:if:12:then-->"); err != nil {
+			if err := write("<!--g:if:10:then-->"); err != nil {
 				return err
 			}
 			if err := write("<header"); err != nil {
@@ -3220,7 +2903,7 @@ func App(model Model) gothic.Component {
 				return err
 			}
 			for _, item := range model.Visible {
-				if err := ui.Disclosure("c7", fmt.Sprint(item.ID), ui.DisclosureProps{Item: item}).Render(ctx, w); err != nil {
+				if err := ui.Disclosure("c5", fmt.Sprint(item.ID), ui.DisclosureProps{Item: item}).Render(ctx, w); err != nil {
 					return err
 				}
 			}
@@ -3242,7 +2925,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-18=\"ui-button-primary\" data-gothic-on=\"33\""); err != nil {
+			if err := write("<button data-gothic-class-15=\"ui-button-primary\" data-gothic-on=\"28\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
@@ -3259,19 +2942,19 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:32:open-->"); err != nil {
+			if err := write("<!--g:text:24:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Previous page", Primary: false, Onclick: PrevPage{}}).Label))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:32:close-->"); err != nil {
+			if err := write("<!--g:text:24:close-->"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-19=\"ui-button-primary\" data-gothic-on=\"34\""); err != nil {
+			if err := write("<button data-gothic-class-16=\"ui-button-primary\" data-gothic-on=\"29\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
@@ -3288,13 +2971,13 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:33:open-->"); err != nil {
+			if err := write("<!--g:text:25:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Next page", Primary: true, Onclick: NextPage{}}).Label))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:33:close-->"); err != nil {
+			if err := write("<!--g:text:25:close-->"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
@@ -3315,13 +2998,13 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:34:open-->"); err != nil {
+			if err := write("<!--g:text:26:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(model.PageLabel))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:34:close-->"); err != nil {
+			if err := write("<!--g:text:26:close-->"); err != nil {
 				return err
 			}
 			if err := write("</p>"); err != nil {
@@ -3345,13 +3028,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:35:open-->"); err != nil {
+			if err := write("<!--g:text:27:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.StatefulListsCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:35:close-->"); err != nil {
+			if err := write("<!--g:text:27:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -3363,13 +3046,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:36:open-->"); err != nil {
+			if err := write("<!--g:text:28:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.DisclosureCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.StatefulListsCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:36:close-->"); err != nil {
+			if err := write("<!--g:text:28:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -3382,18 +3065,18 @@ func App(model Model) gothic.Component {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:12:else-->"); err != nil {
+			if err := write("<!--g:if:10:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:12:close-->"); err != nil {
+		if err := write("<!--g:if:10:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:if:13:open-->"); err != nil {
+		if err := write("<!--g:if:11:open-->"); err != nil {
 			return err
 		}
 		if model.Page == "server-state" {
-			if err := write("<!--g:if:13:then-->"); err != nil {
+			if err := write("<!--g:if:11:then-->"); err != nil {
 				return err
 			}
 			if err := write("<header"); err != nil {
@@ -3471,10 +3154,22 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := ui.Counter("c8", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
+			if err := ui.Counter("c6", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
 				return err
 			}
-			if err := write("<button data-gothic-class-20=\"ui-button-primary\" data-gothic-on=\"35\""); err != nil {
+			if err := write("<div"); err != nil {
+				return err
+			}
+			if err := write(" class=\"ui-counter"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<button data-gothic-class-17=\"ui-button-primary\" data-gothic-on=\"30\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-button"); err != nil {
@@ -3491,25 +3186,22 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:37:open-->"); err != nil {
+			if err := write("<!--g:text:29:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Increment on server", Primary: true, Onclick: IncrementClicked{}}).Label))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:37:close-->"); err != nil {
+			if err := write("<!--g:text:29:close-->"); err != nil {
 				return err
 			}
 			if err := write("</button>"); err != nil {
 				return err
 			}
-			if err := write("</div>"); err != nil {
+			if err := write("<strong"); err != nil {
 				return err
 			}
-			if err := write("<p"); err != nil {
-				return err
-			}
-			if err := write(" class=\"server-count"); err != nil {
+			if err := write(" class=\"ui-counter-value"); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -3518,19 +3210,22 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("Server count:"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:38:open-->"); err != nil {
+			if err := write("<!--g:text:30:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(model.Count))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:38:close-->"); err != nil {
+			if err := write("<!--g:text:30:close-->"); err != nil {
 				return err
 			}
-			if err := write("</p>"); err != nil {
+			if err := write("</strong>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {
@@ -3551,13 +3246,13 @@ func App(model Model) gothic.Component {
 			if err := write("<h3>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:39:open-->"); err != nil {
+			if err := write("<!--g:text:31:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ServerCode}).Title))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:39:close-->"); err != nil {
+			if err := write("<!--g:text:31:close-->"); err != nil {
 				return err
 			}
 			if err := write("</h3>"); err != nil {
@@ -3569,13 +3264,13 @@ func App(model Model) gothic.Component {
 			if err := write("<code>"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:40:open-->"); err != nil {
+			if err := write("<!--g:text:32:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Code))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Page code", Code: model.ServerCode}).Code))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:40:close-->"); err != nil {
+			if err := write("<!--g:text:32:close-->"); err != nil {
 				return err
 			}
 			if err := write("</code>"); err != nil {
@@ -3588,18 +3283,18 @@ func App(model Model) gothic.Component {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:13:else-->"); err != nil {
+			if err := write("<!--g:if:11:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:13:close-->"); err != nil {
+		if err := write("<!--g:if:11:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:if:14:open-->"); err != nil {
+		if err := write("<!--g:if:12:open-->"); err != nil {
 			return err
 		}
 		if model.Page == "notfound" {
-			if err := write("<!--g:if:14:then-->"); err != nil {
+			if err := write("<!--g:if:12:then-->"); err != nil {
 				return err
 			}
 			if err := write("<header"); err != nil {
@@ -3647,22 +3342,22 @@ func App(model Model) gothic.Component {
 			if err := write("No page matches"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:41:open-->"); err != nil {
+			if err := write("<!--g:text:33:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:41:close-->"); err != nil {
+			if err := write("<!--g:text:33:close-->"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:42:open-->"); err != nil {
+			if err := write("<!--g:text:34:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(model.Path))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:42:close-->"); err != nil {
+			if err := write("<!--g:text:34:close-->"); err != nil {
 				return err
 			}
 			if err := write("."); err != nil {
@@ -3674,7 +3369,7 @@ func App(model Model) gothic.Component {
 			if err := write("</header>"); err != nil {
 				return err
 			}
-			if err := write("<a href=\"/\" data-gothic-on=\"36\""); err != nil {
+			if err := write("<a href=\"/\" data-gothic-on=\"31\""); err != nil {
 				return err
 			}
 			if err := write(" class=\"nav-link"); err != nil {
@@ -3693,11 +3388,11 @@ func App(model Model) gothic.Component {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:14:else-->"); err != nil {
+			if err := write("<!--g:if:12:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:14:close-->"); err != nil {
+		if err := write("<!--g:if:12:close-->"); err != nil {
 			return err
 		}
 		if err := write("</div>"); err != nil {

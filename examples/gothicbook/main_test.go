@@ -87,9 +87,7 @@ func TestGothicbookNavigation(t *testing.T) {
 		{"/tabs", `<h1>Tabs</h1>`},
 		{"/accordion", `<h1>Accordion</h1>`},
 		{"/disclosure", `<h1>Disclosure</h1>`},
-		{"/counter", `<h1>Counter</h1>`},
 		{"/virtual-list", `<h1>Virtual list</h1>`},
-		{"/slots", `<h1>Slots</h1>`},
 		{"/conditionals", `<h1>Conditionals</h1>`},
 		{"/stateful-lists", `<h1>Stateful lists</h1>`},
 		{"/server-state", `<h1>Server state</h1>`},
@@ -119,9 +117,8 @@ func TestGothicbookNavigation(t *testing.T) {
 	if !strings.Contains(tabs, "nav-link active") {
 		t.Errorf("tabs nav item is not active\n\n%s", tabs)
 	}
-	slots := getPage(t, ts.URL+"/slots")
-	if !strings.Contains(slots, "Increment inside a slot") {
-		t.Errorf("slots page missing the stateful slot\n\n%s", slots)
+	if got := strings.Count(tabs, " disabled "); got != 1 {
+		t.Errorf("tabs page has %d disabled buttons, want 1\n\n%s", got, tabs)
 	}
 	lists := getPage(t, ts.URL+"/stateful-lists")
 	for _, want := range []string{
@@ -170,6 +167,8 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 		`model.Visible`,
 		`SlotTextChanged`,
 		`IncrementClicked`,
+		`ButtonClicked`,
+		`window.alert("Hello from Gothicbook")`,
 		`LocationChanged`,
 		`dispatch`,
 	} {
@@ -212,7 +211,7 @@ func TestGothicbookServerState(t *testing.T) {
 	postRPC(t, ts.URL, "Increment", `[]`)
 	page := getPage(t, ts.URL+"/server-state")
 	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(page, "")
-	if !strings.Contains(stripped, "Server count:1") {
+	if !strings.Contains(stripped, `ui-counter-value">1</strong>`) {
 		t.Fatalf("server count did not update\n\n%s", stripped)
 	}
 }

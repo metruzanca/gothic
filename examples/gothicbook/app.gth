@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/js"
 	"github.com/metruzanca/gothic/ui"
 )
 
@@ -33,10 +34,10 @@ type Model struct {
 	FieldCode         string
 	TabsCode          string
 	AccordionCode     string
-	CounterCode       string
+	ConditionalsCode  string
+	StatefulListsCode string
 	ServerCode        string
 	DisclosureCode    string
-	SlotCode          string
 	SlotText          string
 	ShowExample       bool
 	ListPage          int
@@ -69,18 +70,161 @@ func NewModel(count int) Model {
 			{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
 			{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
 		},
-		Count:         count,
-		ButtonCode:    `<ui.Button label="Save changes" primary={ true } onclick={ nil } />`,
-		CardCode:      `<ui.Card title="Card title" body="Card body" />`,
-		FieldCode:     `<ui.Field label="Your name">\n\t<input value={ model.Name } ... />\n</ui.Field>`,
-		TabsCode:      `<ui.Tabs items={ model.Tabs } active={ model.TabStart } />`,
-		AccordionCode: `<ui.Accordion items={ model.Accordion } />`,
-		CounterCode:   `<ui.Counter label="Increment on client" />`,
-		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
-		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
-		SlotCode:       `<ui.Field label="Your name">\n\t<input value={ model.Name } ... />\n</ui.Field>`,
-		SlotText:       "friend",
-		ShowExample:    true,
+		Count: count,
+		ButtonCode: `// Page
+<ui.Button label="Say hello" primary={ true } onclick={ ButtonClicked{} } />
+<ui.Button label="Cancel" primary={ false } onclick={ nil } />
+
+// Message and update
+type ButtonClicked struct{}
+
+case ButtonClicked:
+	return m, func() gothic.Msg {
+		js.Alert("Hello from Gothicbook")
+		return nil
+	}`,
+		CardCode: `// Page
+<ui.Card title="A simple card" body="Cards group related content with a small surface." />
+
+// ui/card.gth
+type CardProps struct {
+	Title string
+	Body  string
+}
+
+	view Card(props CardProps) {
+		<section class="ui-card">
+			<h2>{ props.Title }</h2>
+			<p>{ props.Body }</p>
+		</section>
+	}`,
+		FieldCode: `// Page
+<ui.Field label="Your name">
+	<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
+</ui.Field>
+<p class="server-count">Hello, { model.SlotText }!</p>
+
+// Message and update
+type SlotTextChanged struct{ Text string }
+
+case SlotTextChanged:
+	m.SlotText = msg.Text`,
+		TabsCode: `// Page
+<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
+<div class="row">
+	<button
+		class="ui-button"
+		disabled={ len(model.Tabs) <= len(model.FewTabs) }
+		onclick={ FewerTabs{} }
+	>Fewer tabs</button>
+	<button
+		class="ui-button"
+		class:ui-button-primary={ len(model.Tabs) < len(model.ManyTabs) }
+		disabled={ len(model.Tabs) >= len(model.ManyTabs) }
+		onclick={ MoreTabs{} }
+	>More tabs</button>
+</div>
+
+// Messages and update
+type FewerTabs struct{}
+type MoreTabs struct{}
+
+case FewerTabs:
+	m.Tabs = m.FewTabs
+case MoreTabs:
+	m.Tabs = m.ManyTabs`,
+		AccordionCode: `// Page
+<ui.Accordion items={ model.Accordion } />
+
+// Model
+Accordion: []ui.AccordionItem{
+	{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
+	{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
+	{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
+},`,
+		DisclosureCode: `// Page
+<ui.Disclosure item={ model.FeatureDisclosure } />
+
+// Model
+FeatureDisclosure: ui.DisclosureItem{
+	ID:    999,
+	Title: "Conditional disclosure",
+	Details: []string{
+		"Expand me, then hide the branch.",
+		"Show the branch again and I start collapsed.",
+	},
+},`,
+		ConditionalsCode: `// Page
+<div class="row">
+	<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
+</div>
+if model.ShowExample {
+	<ui.Disclosure item={ model.FeatureDisclosure } />
+} else {
+	<p class="server-count">The else branch is visible instead.</p>
+}
+
+// Message and update
+type ToggleExample struct{}
+
+case ToggleExample:
+	m.ShowExample = !m.ShowExample`,
+		StatefulListsCode: `// Page
+<div class="ui-disclosure-list">
+	for _, item := range model.Visible {
+		<ui.Disclosure key={ item.ID } item={ item } />
+	}
+</div>
+<div class="row">
+	<ui.Button label="Previous page" primary={ false } onclick={ PrevPage{} } />
+	<ui.Button label="Next page" primary={ true } onclick={ NextPage{} } />
+</div>
+<p class="server-count">{ model.PageLabel }</p>
+
+// Messages and update
+type NextPage struct{}
+type PrevPage struct{}
+
+case NextPage:
+	m.ListPage = 1
+	m.Visible = m.PageTwo
+	m.PageLabel = "Showing 11-20 of 20"
+case PrevPage:
+	m.ListPage = 0
+	m.Visible = m.PageOne
+	m.PageLabel = "Showing 1-10 of 20"`,
+		ServerCode: `// Page
+<div class="row">
+	<ui.Counter label="Increment on client" />
+	<div class="ui-counter">
+		<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
+		<strong class="ui-counter-value">{ model.Count }</strong>
+	</div>
+</div>
+
+// app.gth prelude
+type IncrementClicked struct{}
+
+type Procedures interface {
+	gothic.RPCService
+	Increment(ctx context.Context) (int, error)
+}
+
+case IncrementClicked:
+	return m, func() gothic.Msg {
+		count, err := Increment()
+		if err != nil {
+			return CountFailed{Message: err.Error()}
+		}
+		return CountUpdated{Count: count}
+	}
+
+// main.go
+func (p procedures) Increment(ctx context.Context) (int, error) {
+	return p.counter.increment(), nil
+}`,
+		SlotText:    "friend",
+		ShowExample: true,
 		FeatureDisclosure: ui.DisclosureItem{
 			ID:    999,
 			Title: "Conditional disclosure",
@@ -93,7 +237,21 @@ func NewModel(count int) Model {
 		PageTwo:     sampleDisclosures(11, 10),
 		PageLabel:   "Showing 1-10 of 20",
 		VirtualRows: sampleVirtualRows(1000),
-		VirtualCode: `<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />`,
+		VirtualCode: `// Page
+<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />
+
+// Row view
+	view VirtualRow(row VirtualRowData) {
+		<div class="virtual-row-content">
+			<strong class="ui-virtual-title">{ row.Title }</strong>
+			<span class="ui-virtual-detail">{ row.Detail }</span>
+		</div>
+	}
+
+type VirtualRowData struct {
+	Title  string
+	Detail string
+}`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
@@ -120,12 +278,8 @@ func NewModelAt(path string, count int) Model {
 		m.Page = "accordion"
 	case "/disclosure":
 		m.Page = "disclosure"
-	case "/counter":
-		m.Page = "counter"
 	case "/virtual-list":
 		m.Page = "virtual-list"
-	case "/slots":
-		m.Page = "slots"
 	case "/conditionals":
 		m.Page = "conditionals"
 	case "/stateful-lists":
@@ -175,6 +329,7 @@ func sampleDisclosures(from, count int) []ui.DisclosureItem {
 }
 
 type IncrementClicked struct{}
+type ButtonClicked struct{}
 type CountUpdated struct{ Count int }
 type CountFailed struct{ Message string }
 type ToggleExample struct{}
@@ -217,12 +372,8 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Page = "accordion"
 		case "/disclosure":
 			m.Page = "disclosure"
-		case "/counter":
-			m.Page = "counter"
 		case "/virtual-list":
 			m.Page = "virtual-list"
-		case "/slots":
-			m.Page = "slots"
 		case "/conditionals":
 			m.Page = "conditionals"
 		case "/stateful-lists":
@@ -231,6 +382,11 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Page = "server-state"
 		default:
 			m.Page = "notfound"
+		}
+	case ButtonClicked:
+		return m, func() gothic.Msg {
+			js.Alert("Hello from Gothicbook")
+			return nil
 		}
 	case IncrementClicked:
 		return m, func() gothic.Msg {
@@ -293,10 +449,8 @@ view App(model Model) {
 				<a class="nav-link" href="/tabs" route class:active={ model.Page == "tabs" }>Tabs</a>
 				<a class="nav-link" href="/accordion" route class:active={ model.Page == "accordion" }>Accordion</a>
 				<a class="nav-link" href="/disclosure" route class:active={ model.Page == "disclosure" }>Disclosure</a>
-				<a class="nav-link" href="/counter" route class:active={ model.Page == "counter" }>Counter</a>
 				<a class="nav-link" href="/virtual-list" route class:active={ model.Page == "virtual-list" }>Virtual list</a>
 				<p class="nav-group">Patterns</p>
-				<a class="nav-link" href="/slots" route class:active={ model.Page == "slots" }>Slots</a>
 				<a class="nav-link" href="/conditionals" route class:active={ model.Page == "conditionals" }>Conditionals</a>
 				<a class="nav-link" href="/stateful-lists" route class:active={ model.Page == "stateful-lists" }>Stateful lists</a>
 				<a class="nav-link" href="/server-state" route class:active={ model.Page == "server-state" }>Server state</a>
@@ -344,17 +498,9 @@ view App(model Model) {
 							<strong>Disclosure</strong>
 							<span>Reveal details on demand.</span>
 						</a>
-						<a class="tile" href="/counter" route>
-							<strong>Counter</strong>
-							<span>Client-side state inside a component.</span>
-						</a>
 						<a class="tile" href="/virtual-list" route>
 							<strong>Virtual list</strong>
 							<span>Render only the visible window.</span>
-						</a>
-						<a class="tile" href="/slots" route>
-							<strong>Slots</strong>
-							<span>Pass app-owned content into a component.</span>
 						</a>
 						<a class="tile" href="/conditionals" route>
 							<strong>Conditionals</strong>
@@ -375,15 +521,15 @@ view App(model Model) {
 					<header class="page-head">
 						<p class="eyebrow">component</p>
 						<h1>Button</h1>
-						<p>Primary and secondary actions. The primary button carries the accent color.</p>
+						<p>Primary and secondary actions. The primary button calls js.Alert.</p>
 					</header>
 					<div class="demo">
 						<div class="row">
-							<ui.Button label="Save changes" primary={ true } onclick={ nil } />
+							<ui.Button label="Say hello" primary={ true } onclick={ ButtonClicked{} } />
 							<ui.Button label="Cancel" primary={ false } onclick={ nil } />
 						</div>
 					</div>
-					<Code title="Usage" code={ model.ButtonCode } />
+					<Code title="Page code" code={ model.ButtonCode } />
 				}
 
 				if model.Page == "card" {
@@ -395,7 +541,7 @@ view App(model Model) {
 					<div class="demo">
 						<ui.Card title="A simple card" body="Cards group related content with a small surface." />
 					</div>
-					<Code title="Usage" code={ model.CardCode } />
+					<Code title="Page code" code={ model.CardCode } />
 				}
 
 				if model.Page == "field" {
@@ -410,23 +556,23 @@ view App(model Model) {
 						</ui.Field>
 						<p class="server-count">Hello,{ " " }{ model.SlotText }!</p>
 					</div>
-					<Code title="Usage" code={ model.FieldCode } />
+					<Code title="Page code" code={ model.FieldCode } />
 				}
 
 				if model.Page == "tabs" {
 					<header class="page-head">
 						<p class="eyebrow">component</p>
 						<h1>Tabs</h1>
-						<p>Select the third tab, then remove a tab. The component clamps its active index from the items prop.</p>
+						<p>Select the third tab, then remove a tab. The component clamps its active index from the items prop, and the controls disable at the ends of the range.</p>
 					</header>
 					<div class="demo">
 						<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
 						<div class="row">
-							<ui.Button label="Fewer tabs" primary={ false } onclick={ FewerTabs{} } />
-							<ui.Button label="More tabs" primary={ false } onclick={ MoreTabs{} } />
+							<button class="ui-button" disabled={ len(model.Tabs) <= len(model.FewTabs) } onclick={ FewerTabs{} }>Fewer tabs</button>
+							<button class="ui-button" class:ui-button-primary={ len(model.Tabs) < len(model.ManyTabs) } disabled={ len(model.Tabs) >= len(model.ManyTabs) } onclick={ MoreTabs{} }>More tabs</button>
 						</div>
 					</div>
-					<Code title="Usage" code={ model.TabsCode } />
+					<Code title="Page code" code={ model.TabsCode } />
 				}
 
 				if model.Page == "accordion" {
@@ -438,7 +584,7 @@ view App(model Model) {
 					<div class="demo">
 						<ui.Accordion items={ model.Accordion } />
 					</div>
-					<Code title="Usage" code={ model.AccordionCode } />
+					<Code title="Page code" code={ model.AccordionCode } />
 				}
 
 				if model.Page == "disclosure" {
@@ -450,19 +596,7 @@ view App(model Model) {
 					<div class="demo">
 						<ui.Disclosure item={ model.FeatureDisclosure } />
 					</div>
-					<Code title="Usage" code={ model.DisclosureCode } />
-				}
-
-				if model.Page == "counter" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Counter</h1>
-						<p>Client-side state inside a component. The value stays local to the component.</p>
-					</header>
-					<div class="demo">
-						<ui.Counter label="Increment on client" />
-					</div>
-					<Code title="Usage" code={ model.CounterCode } />
+					<Code title="Page code" code={ model.DisclosureCode } />
 				}
 
 				if model.Page == "virtual-list" {
@@ -474,25 +608,7 @@ view App(model Model) {
 					<div class="demo">
 						<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />
 					</div>
-					<Code title="Usage" code={ model.VirtualCode } />
-				}
-
-				if model.Page == "slots" {
-					<header class="page-head">
-						<p class="eyebrow">pattern</p>
-						<h1>Slots</h1>
-						<p>A pure component supplies layout while the App keeps state and events in the slotted content.</p>
-					</header>
-					<div class="demo">
-						<ui.Field label="Your name">
-							<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
-						</ui.Field>
-						<p class="server-count">Hello,{ " " }{ model.SlotText }!</p>
-						<ui.Field label="A stateful child">
-							<ui.Counter label="Increment inside a slot" />
-						</ui.Field>
-					</div>
-					<Code title="Usage" code={ model.SlotCode } />
+					<Code title="Page code" code={ model.VirtualCode } />
 				}
 
 				if model.Page == "conditionals" {
@@ -511,6 +627,7 @@ view App(model Model) {
 							<p class="server-count">The else branch is visible instead.</p>
 						}
 					</div>
+					<Code title="Page code" code={ model.ConditionalsCode } />
 				}
 
 				if model.Page == "stateful-lists" {
@@ -531,7 +648,7 @@ view App(model Model) {
 						</div>
 						<p class="server-count">{ model.PageLabel }</p>
 					</div>
-					<Code title="Usage" code={ model.DisclosureCode } />
+					<Code title="Page code" code={ model.StatefulListsCode } />
 				}
 
 				if model.Page == "server-state" {
@@ -543,11 +660,13 @@ view App(model Model) {
 					<div class="demo">
 						<div class="row">
 							<ui.Counter label="Increment on client" />
-							<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
+							<div class="ui-counter">
+								<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
+								<strong class="ui-counter-value">{ model.Count }</strong>
+							</div>
 						</div>
-						<p class="server-count">Server count: { model.Count }</p>
 					</div>
-					<Code title="Usage" code={ model.ServerCode } />
+					<Code title="Page code" code={ model.ServerCode } />
 				}
 
 				if model.Page == "notfound" {

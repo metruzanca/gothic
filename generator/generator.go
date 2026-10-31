@@ -561,14 +561,6 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 				idx := g.focusN
 				g.focusN++
 				static.WriteString(fmt.Sprintf(" data-gothic-focus=\"%d\"", idx))
-			case "checked":
-				idx := g.attrN
-				g.attrN++
-				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=\"checked\"", idx))
-				flush()
-				fmt.Fprintf(b, "\t\tif %s {\n", goExpr(a.Expr))
-				g.emitWrite(b, " checked")
-				b.WriteString("\t\t}\n")
 			case "value":
 				idx := g.attrN
 				g.attrN++
@@ -577,6 +569,14 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 				g.emitWrite(b, " value=\"")
 				g.emitEscapedExpr(b, a.Expr)
 				g.emitWrite(b, "\"")
+			case "checked", "disabled", "selected", "readonly", "required", "multiple", "autofocus", "hidden", "open", "inert", "novalidate", "formnovalidate":
+				idx := g.attrN
+				g.attrN++
+				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=%q", idx, a.Name))
+				flush()
+				fmt.Fprintf(b, "\t\tif %s {\n", goExpr(a.Expr))
+				g.emitWrite(b, " "+a.Name)
+				b.WriteString("\t\t}\n")
 			default:
 				idx := g.attrN
 				g.attrN++

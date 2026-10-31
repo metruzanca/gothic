@@ -16,19 +16,18 @@ builds against this checkout. A consumer would use tagged module versions.
 
 ## Shows
 
-- `ui.Button`
+- `ui.Button`, including a primary action that calls `js.Alert`
 - `ui.Card`
-- `ui.Field` wrapping a controlled input and a stateful Counter
-- `ui.Tabs`
+- `ui.Field` wrapping a controlled input
+- `ui.Tabs`, with controls that disable at the ends of the range
 - `ui.Accordion`
 - `ui.Disclosure` in a conditional branch and in a paginated list
-- `ui.Counter` as a purely client-side counter next to a server-backed action,
-  with `Counter` using `Button` internally
+- `ui.Counter` as a purely client-side counter next to a server-backed counter
+  with the same layout, with `Counter` using `Button` internally
 - a short `.gth` usage snippet for each component
 - props structs behind the named tag props
 - a server-backed Button action that emits a message to the app, runs an RPC
   procedure, and receives the new count as model state
-- slotted content that keeps its input event and state in the App
 - a scrollable list with 20 disclosures across two pages of 10
 - a grouped sidebar with one page per component and pattern
 - client-side routing with server-rendered deep links
@@ -47,8 +46,8 @@ The sidebar links to flat, deep-linkable paths:
 
 - `/` overview
 - `/button`, `/card`, `/field`, `/tabs`, `/accordion`, `/disclosure`,
-  `/counter`, `/virtual-list`
-- `/slots`, `/conditionals`, `/stateful-lists`, `/server-state`
+  `/virtual-list`
+- `/conditionals`, `/stateful-lists`, `/server-state`
 
 `NewModelAt` maps the request path to the initial page on the server, and a
 `LocationChanged` handler does the same on the client. Links use the `route`
@@ -94,7 +93,9 @@ module versions still matter for real consumers.
 
 The stylesheet, UI stylesheet, wordmark, and social card URLs carry a content
 hash (`?v=...`). The Railway edge caches static assets for hours, so the hash
-ensures a deploy is never served the previous file.
+ensures a deploy is never served the previous file. Generated JavaScript
+modules and the runtime are served with `Cache-Control: no-store` for the same
+reason.
 
 Locally, the replaces in `go.mod` point at this checkout, so `go test ./...`
 here uses the working tree.

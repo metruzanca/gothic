@@ -36,9 +36,7 @@ Flat, deep-linkable paths:
 | `/tabs` | Tabs |
 | `/accordion` | Accordion |
 | `/disclosure` | Disclosure |
-| `/counter` | Counter |
 | `/virtual-list` | Virtual list |
-| `/slots` | Slots |
 | `/conditionals` | Conditionals |
 | `/stateful-lists` | Stateful lists |
 | `/server-state` | Server state |
@@ -51,6 +49,18 @@ router example. Unknown paths render a small Not found page.
 The route switch is written out in both `NewModelAt` and `Update`. A shared
 helper function is not emitted into the client module by the generator, even
 though the Update call site is, so inlining is the supported form for now.
+
+## Demo interactions
+
+- The Button page primary action calls `js.Alert` from an app command.
+- The Tabs controls disable when two tabs are showing or when all three are
+  showing, so the demo cannot move past its bounds.
+- The Counter component page and the Slots pattern page were removed. Server
+  state keeps a client counter and a server-backed counter in the same layout,
+  differing only in where the count is stored.
+- Dynamic boolean attributes such as `disabled` are emitted on the server only
+  when true. Previously they rendered as `disabled="false"`, which still
+  disabled the element.
 
 ## Theme
 
@@ -76,7 +86,8 @@ theme, so the script only handles the click.
 - the brand, groups, and overview tiles
 - every route returns its own page inside the shell
 - the active nav item on a deep link
-- the button, field, tabs, slots, stateful list, and virtual list demos
+- the button alert, field, tabs disabled states, stateful list, and virtual
+  list demos
 - the Not found page
 - the server-backed counter on `/server-state`
 - pagination SSR on `/stateful-lists`
@@ -99,6 +110,10 @@ The Railway edge caches static assets such as CSS and images for several hours.
 The app gives its stylesheets, wordmark, and social card content-hashed URLs
 (`?v=<hash>`) computed from the embedded bytes, so a deploy always references a
 new cache key. The server routes ignore the query string.
+
+Generated JavaScript modules and the runtime are served with
+`Cache-Control: no-store`. They change on every deploy, and a stale module
+mounts components that no longer exist.
 
 The framework assets under `/_gothic/` still use a fixed one hour cache. They
 rarely change, but a future change to the default icon or framework card needs
