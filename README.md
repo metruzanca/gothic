@@ -147,6 +147,7 @@ go get github.com/metruzanca/gothic/ui
 ```
 
 See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
+It includes a `VirtualList` component for fixed-height virtualized lists.
 
 ## Status
 
@@ -183,6 +184,7 @@ The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
 - [Path parameters](docs/ITERATION_16.md)
 - [Nested stateful components](docs/ITERATION_17.md)
 - [Virtualized list](docs/ITERATION_18.md)
+- [Virtual list package and component](docs/ITERATION_19.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current

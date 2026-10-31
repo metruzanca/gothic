@@ -35,6 +35,9 @@ func TestGothicbook(t *testing.T) {
 		`data-gothic-component="Tabs"`,
 		`data-gothic-component="Counter"`,
 		`data-gothic-component="Disclosure"`,
+		`data-gothic-component="VirtualList"`,
+		`class="ui-virtual-list"`,
+		`Virtualized list`,
 		`{"Active":1}`,
 		`class="ui-disclosure-list"`,
 		`class="ui-field`,
@@ -54,6 +57,10 @@ func TestGothicbook(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
+	}
+
+	if got := strings.Count(html, `class="ui-virtual-row"`); got != 12 {
+		t.Errorf("SSR rendered %d virtual rows, want 12", got)
 	}
 
 	for _, path := range []string{"/gothic-ui.css", "/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg"} {
@@ -103,6 +110,9 @@ func TestGothicbook(t *testing.T) {
 		`export function mountCounter`,
 		`export function mountDisclosure`,
 		`export function createDisclosure`,
+		`export function mountVirtualList`,
+		`export function createVirtualList`,
+		`virtualWindow(`,
 	} {
 		if !strings.Contains(string(uiJS), want) {
 			t.Errorf("UI JS missing %q", want)

@@ -189,6 +189,7 @@ from the server and reconciled. There is no virtual DOM.
 | `js/` | Curated client-only browser interop. |
 | `route/` | Path pattern matching shared by the server and client. |
 | `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
+| `virtual/` | Headless fixed-height list windowing shared by the server and client. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
@@ -240,6 +241,7 @@ Supported now:
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
 - fixed-height virtualized lists with scroll events and `dom.Px` spacers,
+- the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
 - `if`, `else if`, and `else` in views, including inside loops and pure components,
 - `for` loops directly inside conditional branches when the body is one element,
 - `len` in conditions with null-safe client lowering,
@@ -297,7 +299,7 @@ These will be planned in detail after the proof of concept is evaluated:
 7. Manifest, content hashing, and production serving.
 8. Formatter, LSP, and source maps.
 9. Selective vendoring of templ's HTML and whitespace handling with tests.
-10. Responsive and variable-height virtualized lists.
+10. Responsive and variable-height virtualized lists, and custom row content.
 
 ## Risks
 
@@ -323,6 +325,8 @@ These will be planned in detail after the proof of concept is evaluated:
   The virtualized list demonstrates this: the DOM stays small, but the full
   list still travels in the state script.
 - Virtualized lists currently assume a fixed row height and viewport height.
+  The UI kit component also renders a fixed Title/Detail row; custom rows use
+  the headless `virtual` package.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
 - The client runtime and generated JavaScript are not yet minimized or hashed.

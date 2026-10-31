@@ -41,14 +41,30 @@ Use namespaced tags in `.gth` views:
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
 <ui.Disclosure key={ item.ID } item={ item } />
+<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } />
 ```
 
 `Button` emits its `onclick` message to the parent app through `emit`. The app
 owns the message handler and any server procedures it calls.
 
-`Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`, and
-`Disclosure` uses `ui.DisclosureItem`. `Tabs` accepts an optional `active`
-pointer prop and seeds its active tab from it.
+`Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`,
+`Disclosure` uses `ui.DisclosureItem`, and `VirtualList` uses
+`[]ui.VirtualItem`. `Tabs` accepts an optional `active` pointer prop and seeds
+its active tab from it.
+
+`VirtualList` renders a fixed-height window of a long list:
+
+```go
+type VirtualItem struct {
+	ID     int
+	Title  string
+	Detail string
+}
+```
+
+Pass `items`, `height`, and `rowheight`. A zero height or row height falls back
+to 432px and 36px. The component owns its scroll offset and keeps only the
+visible rows in the DOM.
 
 ## Components
 
@@ -64,12 +80,17 @@ Stateful components:
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
 - `Disclosure` with `item DisclosureItem`, keeping its expanded state
+- `VirtualList` with `items []VirtualItem`, `height`, and `rowheight`
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app. `Field` receives its
 children from the App view, so events and state stay in the App. `Tabs`,
-`Accordion`, and `Disclosure` react to prop changes through their component
-`Update`.
+`Accordion`, `Disclosure`, and `VirtualList` react to prop changes through their
+component `Update`.
+
+`VirtualList` uses the headless
+[`virtual`](https://pkg.go.dev/github.com/metruzanca/gothic/virtual) package.
+Use that package directly when you need custom row markup.
 
 ## Development
 

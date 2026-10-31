@@ -1,3 +1,7 @@
+> Historical note: the example now uses the headless `virtual` package, and
+> the UI kit has a `VirtualList` component. See
+> [Iteration 19](ITERATION_19.md).
+
 # Iteration 18: virtualized list
 
 Status: complete. A 5,000 row list keeps only its visible window in the DOM.

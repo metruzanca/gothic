@@ -559,28 +559,50 @@ their events.
 
 ### Virtualized lists
 
-Render a window of a larger list with a scroll event and two spacers:
+The UI kit has a ready-made fixed-height virtual list:
+
+```templ
+<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } />
+```
+
+`ui.VirtualItem` has `ID`, `Title`, and `Detail` fields. The component owns its
+scroll offset, seeds its initial window from props, and keeps only the visible
+rows in the DOM. Zero `height` or `rowheight` falls back to 432px and 36px.
+
+For custom rows, use the headless `virtual` package:
+
+```go
+import "github.com/metruzanca/gothic/virtual"
+
+win := virtual.WindowFor(msg.Top, 36, 432, len(m.Items))
+m.Start = win.Start
+m.Count = win.Count
+m.Top = win.Top
+m.Bottom = win.Bottom
+```
+
+`virtual.WindowFor` snaps the scroll offset to a row boundary and clamps it to
+the end of the list. The same rules run on the server and in the browser
+through a `virtualWindow` runtime helper.
+
+Render the window with a scroll event and two spacers:
 
 ```templ
 <div class="viewport" onscroll={ Scrolled{Top: event.target.scrollTop} }>
 	<div class="spacer" style={ "height:" + dom.Px(model.Top) }></div>
-	for _, item := range model.VisibleItems {
+	for _, item := range model.Items[model.Start : model.Start+model.Count] {
 		<div class="row" key={ item.ID }>{ item.Text }</div>
 	}
 	<div class="spacer" style={ "height:" + dom.Px(model.Bottom) }></div>
 </div>
 ```
 
-Update slices the visible rows and computes the spacer heights. The top and
-bottom spacers keep the total scroll height constant, so only the visible rows
-exist in the DOM.
-
 `dom.Px(n)` formats an integer pixel length as a string on the server and
 lowers to a `px` runtime helper in the browser.
 
-The example uses a fixed row height and a fixed viewport height. See
-`examples/virtual`. Variable heights, responsive viewport measurement, and
-scroll throttling are not implemented yet.
+Both paths use a fixed row height and viewport height. See `examples/virtual`
+and the Gothicbook Virtualized list section. Variable heights, responsive
+viewport measurement, and scroll throttling are not implemented yet.
 
 ### Conditionals
 
@@ -1006,6 +1028,7 @@ The proof of concept supports:
 - procedure arguments,
 - lists over a model field and keyed list reconciliation,
 - fixed-height virtualized lists with scroll events and `dom.Px` spacers,
+- the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
 - reactive interpolated text and message-valued event bindings,
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,

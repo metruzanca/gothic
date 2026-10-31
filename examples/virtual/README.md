@@ -4,8 +4,12 @@ A 5,000 row list that keeps only the visible window in the DOM.
 
 The scroll container is a fixed 432px tall with 36px rows, so 12 rows are
 visible. Scrolling dispatches `Scrolled` with `event.target.scrollTop`. Update
-snaps the offset to a row boundary, slices the visible rows, and computes the
-top and bottom spacer heights.
+calls `virtual.WindowFor` to snap the offset, slice the visible rows, and
+compute the top and bottom spacer heights.
+
+This example keeps custom row markup. The UI kit also ships
+`ui.VirtualList` with standard Title/Detail rows, and the headless `virtual`
+package is available at `github.com/metruzanca/gothic/virtual`.
 
 The view renders:
 

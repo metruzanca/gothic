@@ -3,6 +3,8 @@ package main
 //gothic:components github.com/metruzanca/gothic/ui
 
 import (
+	"fmt"
+
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/ui"
 )
@@ -34,6 +36,8 @@ type Model struct {
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
+	VirtualItems      []ui.VirtualItem
+	VirtualCode       string
 }
 
 func NewModel(count int) Model {
@@ -70,15 +74,30 @@ func NewModel(count int) Model {
 				"Show the branch again and I start collapsed.",
 			},
 		},
-		PageOne:   sampleDisclosures(1, 10),
-		PageTwo:   sampleDisclosures(11, 10),
-		PageLabel: "Showing 1-10 of 20",
+		PageOne:      sampleDisclosures(1, 10),
+		PageTwo:      sampleDisclosures(11, 10),
+		PageLabel:    "Showing 1-10 of 20",
+		VirtualItems: sampleVirtualItems(1000),
+		VirtualCode:  `<ui.VirtualList items={ model.VirtualItems } height={ 432 } rowheight={ 36 } />`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
 	m.TabStart = &startTab
 	m.Visible = m.PageOne
 	return m
+}
+
+func sampleVirtualItems(count int) []ui.VirtualItem {
+	items := make([]ui.VirtualItem, count)
+	for i := range items {
+		n := i + 1
+		items[i] = ui.VirtualItem{
+			ID:     n,
+			Title:  fmt.Sprintf("Row %d", n),
+			Detail: fmt.Sprintf("Virtual item %d of %d", n, count),
+		}
+	}
+	return items
 }
 
 func sampleDisclosures(from, count int) []ui.DisclosureItem {
@@ -243,6 +262,13 @@ view App(model Model) {
 			</div>
 			<p class="server-count">{ model.PageLabel }</p>
 			<Code title="Usage" code={ model.DisclosureCode } />
+		</section>
+
+		<section class="section">
+			<h2>Virtualized list</h2>
+			<p>One thousand rows, with only the visible window in the DOM. Scroll inside the list to move the window.</p>
+			<ui.VirtualList items={ model.VirtualItems } height={ 432 } rowheight={ 36 } />
+			<Code title="Usage" code={ model.VirtualCode } />
 		</section>
 
 		<section class="section">

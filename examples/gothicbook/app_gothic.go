@@ -40,6 +40,8 @@ type Model struct {
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
+	VirtualItems      []ui.VirtualItem
+	VirtualCode       string
 }
 
 func NewModel(count int) Model {
@@ -76,15 +78,30 @@ func NewModel(count int) Model {
 				"Show the branch again and I start collapsed.",
 			},
 		},
-		PageOne:   sampleDisclosures(1, 10),
-		PageTwo:   sampleDisclosures(11, 10),
-		PageLabel: "Showing 1-10 of 20",
+		PageOne:      sampleDisclosures(1, 10),
+		PageTwo:      sampleDisclosures(11, 10),
+		PageLabel:    "Showing 1-10 of 20",
+		VirtualItems: sampleVirtualItems(1000),
+		VirtualCode:  `<ui.VirtualList items={ model.VirtualItems } height={ 432 } rowheight={ 36 } />`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
 	m.TabStart = &startTab
 	m.Visible = m.PageOne
 	return m
+}
+
+func sampleVirtualItems(count int) []ui.VirtualItem {
+	items := make([]ui.VirtualItem, count)
+	for i := range items {
+		n := i + 1
+		items[i] = ui.VirtualItem{
+			ID:     n,
+			Title:  fmt.Sprintf("Row %d", n),
+			Detail: fmt.Sprintf("Virtual item %d of %d", n, count),
+		}
+	}
+	return items
 }
 
 func sampleDisclosures(from, count int) []ui.DisclosureItem {
@@ -1327,6 +1344,93 @@ func App(model Model) gothic.Component {
 		if err := write("<h2>"); err != nil {
 			return err
 		}
+		if err := write("Virtualized list"); err != nil {
+			return err
+		}
+		if err := write("</h2>"); err != nil {
+			return err
+		}
+		if err := write("<p>"); err != nil {
+			return err
+		}
+		if err := write("One thousand rows, with only the visible window in the DOM. Scroll inside the list to move the window."); err != nil {
+			return err
+		}
+		if err := write("</p>"); err != nil {
+			return err
+		}
+		if err := ui.VirtualList("c5", "", ui.VirtualListProps{Items: model.VirtualItems, Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := write("<div"); err != nil {
+			return err
+		}
+		if err := write(" class=\"code-block"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("<h3>"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:26:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.VirtualCode}).Title))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:26:close-->"); err != nil {
+			return err
+		}
+		if err := write("</h3>"); err != nil {
+			return err
+		}
+		if err := write("<pre>"); err != nil {
+			return err
+		}
+		if err := write("<code>"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:27:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.VirtualCode}).Code))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:27:close-->"); err != nil {
+			return err
+		}
+		if err := write("</code>"); err != nil {
+			return err
+		}
+		if err := write("</pre>"); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
+			return err
+		}
+		if err := write("</section>"); err != nil {
+			return err
+		}
+		if err := write("<section"); err != nil {
+			return err
+		}
+		if err := write(" class=\"section"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("<h2>"); err != nil {
+			return err
+		}
 		if err := write("Client and server state"); err != nil {
 			return err
 		}
@@ -1354,7 +1458,7 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := ui.Counter("c5", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
+		if err := ui.Counter("c6", "", ui.CounterProps{Label: "Increment on client"}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<button data-gothic-class-7=\"ui-button-primary\" data-gothic-on=\"8\""); err != nil {
@@ -1374,13 +1478,13 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:26:open-->"); err != nil {
+		if err := write("<!--g:text:28:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint((ui.ButtonProps{Label: "Increment on server", Primary: true, Onclick: IncrementClicked{}}).Label))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:26:close-->"); err != nil {
+		if err := write("<!--g:text:28:close-->"); err != nil {
 			return err
 		}
 		if err := write("</button>"); err != nil {
@@ -1404,13 +1508,13 @@ func App(model Model) gothic.Component {
 		if err := write("Server count:"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:27:open-->"); err != nil {
+		if err := write("<!--g:text:29:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint(model.Count))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:27:close-->"); err != nil {
+		if err := write("<!--g:text:29:close-->"); err != nil {
 			return err
 		}
 		if err := write("</p>"); err != nil {
@@ -1431,13 +1535,13 @@ func App(model Model) gothic.Component {
 		if err := write("<h3>"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:28:open-->"); err != nil {
+		if err := write("<!--g:text:30:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Title))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:28:close-->"); err != nil {
+		if err := write("<!--g:text:30:close-->"); err != nil {
 			return err
 		}
 		if err := write("</h3>"); err != nil {
@@ -1449,13 +1553,13 @@ func App(model Model) gothic.Component {
 		if err := write("<code>"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:29:open-->"); err != nil {
+		if err := write("<!--g:text:31:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint((CodeProps{Title: "Usage", Code: model.ServerCode}).Code))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:29:close-->"); err != nil {
+		if err := write("<!--g:text:31:close-->"); err != nil {
 			return err
 		}
 		if err := write("</code>"); err != nil {
