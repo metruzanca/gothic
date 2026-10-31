@@ -202,28 +202,6 @@ type componentImport struct {
 	names []string
 }
 
-func containsComponentCall(nodes []parser.Node) bool {
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *parser.ComponentCall:
-			return true
-		case *parser.Element:
-			if containsComponentCall(n.Children) {
-				return true
-			}
-		case *parser.If:
-			if containsComponentCall(n.Then) || containsComponentCall(n.Else) {
-				return true
-			}
-		case *parser.For:
-			if containsComponentCall(n.Children) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func componentImports(components []*generator.Stateful, all map[string]*generator.Stateful, selfURL string) ([]componentImport, error) {
 	byURL := map[string]map[string]bool{}
 	var order []string
@@ -484,9 +462,6 @@ func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
 }
 
 func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
-	if g.componentModule && containsComponentCall(f.Children) {
-		return "", parser.PosError(f.NodePosition, "move the stateful child to a static position", "stateful components inside lists are not supported within another stateful component yet")
-	}
 	if f.Value == "" {
 		return "", parser.PosError(f.NodePosition, "use for index, value := range items", "for loops must use _, value := range expr")
 	}
@@ -656,9 +631,6 @@ func eventHandler(event, msg string, parent bool) (string, string) {
 // root and marker arguments. The marker index is passed in so callers can emit
 // open and close comments with the same index.
 func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
-	if g.componentModule && (containsComponentCall(n.Then) || containsComponentCall(n.Else)) {
-		return "", parser.NodeError(n, "move the stateful child to a static position", "stateful components inside conditionals are not supported within another stateful component yet")
-	}
 	ctx.pos = n.NodePosition
 	cond, err := g.expr(n.Cond, ctx)
 	if err != nil {

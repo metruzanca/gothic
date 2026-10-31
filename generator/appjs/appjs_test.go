@@ -1828,7 +1828,7 @@ func TestGenerateNestedExternalComponentImport(t *testing.T) {
 	}
 }
 
-func TestRejectNestedComponentInComponentConditional(t *testing.T) {
+func TestGenerateNestedComponentInComponentConditional(t *testing.T) {
 	child, _, app := nestedComponentFixtures(t)
 	parentView, err := parser.Parse("parent.gth", []byte(`package app
 
@@ -1852,20 +1852,31 @@ view Parent(model ParentModel) {
 		Name: "Parent", View: parentView.Templates[0], App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
 		MountFunc: "mountParent", CreateFunc: "createParent",
 	}
-	_, err = appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
+	out, err := appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
 		FileName:    "components.gth",
 		AllStateful: []*generator.Stateful{childComp, parentComp},
 	})
-	if err == nil || !strings.Contains(err.Error(), "stateful components inside conditionals are not supported within another stateful component yet") {
-		t.Fatalf("error = %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`ifBlockLocal(root, "0",`,
+		`createChild("c0", {Label: "hi"})`,
+		`mountChild(`,
+		`, emit);`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
 	}
 }
 
-func TestRejectNestedComponentInComponentList(t *testing.T) {
+func TestGenerateNestedComponentInComponentList(t *testing.T) {
 	child, _, app := nestedComponentFixtures(t)
 	parentView, err := parser.Parse("parent.gth", []byte(`package app
 
-view Parent(model ParentModel, props ChildProps) {
+view Parent(model ParentModel) {
 	<div>
 		for _, label := range model.Labels {
 			<Child label={ label } />
@@ -1885,11 +1896,22 @@ view Parent(model ParentModel, props ChildProps) {
 		Name: "Parent", View: parentView.Templates[0], App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
 		MountFunc: "mountParent", CreateFunc: "createParent",
 	}
-	_, err = appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
+	out, err := appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
 		FileName:    "components.gth",
 		AllStateful: []*generator.Stateful{childComp, parentComp},
 	})
-	if err == nil || !strings.Contains(err.Error(), "stateful components inside lists are not supported within another stateful component yet") {
-		t.Fatalf("error = %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`listLocal(root, "0",`,
+		`createChild("c0", {Label: label})`,
+		`mountChild(node, {Label: label}, emit)`,
+		`inst.updateProps({Label: label})`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
 	}
 }
