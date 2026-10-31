@@ -9,9 +9,8 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 
 ## Prior art
 
-gothic is inspired by [templ](https://github.com/a-h/templ), created by
-[Adrian Hesketh](https://github.com/a-h).
-
-No templ source code is currently vendored. If templ code is added, its MIT
-notice and copyright will be included in a third-party notices file and kept
-with the copied source.
+- **[templ](https://github.com/a-h/templ)**: the inspiration for the view language.
+- **[Gleam](https://gleam.run)**: compiling one source into Erlang (server) and javascript (client).
+- **[Topcoat](https://github.com/tokio-rs/topcoat)**: also transpiles to javascript.
+- **[Lustre](https://github.com/lustre-labs/lustre)**, **[Bubble Tea](https://github.com/charmbracelet/bubbletea)**: The Elm Architecture. Bubbletea inspired much of our state architecture.
+- **[Svelte](https://svelte.dev/)**, **[Solid](https://www.solidjs.com/)**: compile-time direct DOM updates.

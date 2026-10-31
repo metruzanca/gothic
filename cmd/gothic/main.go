@@ -779,6 +779,20 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	return n, len(paths), nil
 }
 
+func appUsesComponent(f *viewparser.File, name string) bool {
+	for _, t := range f.Templates {
+		if t.Name != "App" {
+			continue
+		}
+		for _, call := range collectComponentCalls(t.Children) {
+			if call.Name == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func findRowSlot(nodes []viewparser.Node) *viewparser.ComponentCall {
 	for _, node := range nodes {
 		switch n := node.(type) {
@@ -1056,6 +1070,10 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 			}
 		}
 		for _, comp := range inlineManifest {
+			inlineName := manifest.Alias + "." + comp.Name
+			if !appUsesComponent(s.view, inlineName) {
+				continue
+			}
 			var tmpl *viewparser.Template
 			var compApp *goapp.App
 			for _, f := range pureFiles {
@@ -1080,7 +1098,6 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
 			}
-			inlineName := manifest.Alias + "." + comp.Name
 			if findRowSlot(tmpl.Children) != nil {
 				rowName, err := bakeInlineRow(s.view, inlineName, tmpl, appRegistry)
 				if err != nil {
