@@ -161,14 +161,21 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, fmt.Errorf("unknown component %s", call.Name)
 	}
 	if component.Stateful {
-		if len(call.Children) > 0 {
+		if len(call.Children) > 0 && !component.Inline {
 			return nil, fmt.Errorf("stateful component %s cannot accept children yet", call.Name)
 		}
 		props := make([]Prop, len(call.Props))
 		for i, prop := range call.Props {
 			props[i] = Prop{Name: prop.Name, Value: substExpr(prop.Value, env)}
 		}
-		return &ComponentCall{NodePosition: call.NodePosition, Name: call.Name, Key: substExpr(call.Key, env), Props: props}, nil
+		children, err := expandNodes(call.Children, env, stack, components, propsTypes)
+		if err != nil {
+			return nil, err
+		}
+		if err := rejectSlots(children); err != nil {
+			return nil, err
+		}
+		return &ComponentCall{NodePosition: call.NodePosition, Name: call.Name, Key: substExpr(call.Key, env), Props: props, Children: children}, nil
 	}
 	for _, name := range stack {
 		if name == call.Name {

@@ -274,7 +274,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
 	for _, ext := range external {
-		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, ParamList: ext.Props}
+		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, Inline: ext.Inline, ParamList: ext.Props}
 	}
 	for name, t := range externalPure {
 		if _, exists := registry[name]; exists {
@@ -322,6 +322,7 @@ func addAppComponents(registry viewparser.ComponentSet, s *source) ([]*viewparse
 			comp := s.app.Components[t.ParamList[0].Type]
 			if comp != nil && comp.Init != nil && comp.Update != nil {
 				t.Stateful = true
+				t.Inline = true
 				if err := addComponent(registry, t); err != nil {
 					return nil, err
 				}
@@ -512,10 +513,37 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 			View:                  expanded,
 			App:                   app,
 			Listable:              true,
+			Slot:                  hasSlot(expanded.Children),
 			ModuleURL:             generator.ComponentsModuleURL(s.base),
 		})
 	}
 	return components, nil
+}
+
+func hasSlot(nodes []viewparser.Node) bool {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *viewparser.Slot:
+			return true
+		case *viewparser.Element:
+			if hasSlot(n.Children) {
+				return true
+			}
+		case *viewparser.If:
+			if hasSlot(n.Then) || hasSlot(n.Else) {
+				return true
+			}
+		case *viewparser.For:
+			if hasSlot(n.Children) {
+				return true
+			}
+		case *viewparser.ComponentCall:
+			if hasSlot(n.Children) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func paramsString(params []viewparser.Param) string {
@@ -1166,6 +1194,7 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 					App:                   compApp,
 					Listable:              comp.Listable,
 					Inline:                true,
+					Slot:                  hasSlot(expanded.Children),
 					ImportAlias:           manifest.Alias,
 					ImportPath:            manifest.Package,
 					ModuleURL:             generator.ComponentsModuleURL(s.base),

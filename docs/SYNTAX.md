@@ -558,6 +558,36 @@ case gothic.ChildMessage:
 List children should include their own item identity in local messages, because
 `Source` is the component instance id.
 
+#### Slots on stateful components
+
+Inline stateful components can declare one default slot:
+
+```templ
+view Panel(model PanelModel, props PanelProps) {
+	<section>
+		<h2>{ props.Title }</h2>
+		<slot />
+	</section>
+}
+```
+
+Use it in the App view:
+
+```templ
+<Panel title="Slotted panel">
+	<input class="slot-input" value={ model.Text } oninput={ TextChanged{Text: event.target.value} } />
+	<p class="slot-text">{ model.Text }</p>
+</Panel>
+```
+
+- Slotted content keeps the App scope, so App state and events work.
+- The component owns its own state around the slot.
+- Stateful components inside slotted content are mounted by the App.
+- Slots on stateful components are supported in static App positions for now.
+- Named slots and fallback content are not supported yet.
+- Precompiled library stateful components cannot accept children; use an
+  inline stateful component or an App-local component.
+
 ### Markup
 
 Elements, constant attributes, text, and interpolation work as in templ:
@@ -1235,6 +1265,7 @@ The proof of concept supports:
 - component-to-parent action messages through `emit`,
 - parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
   `gothic.Bubble`,
+- one default slot on inline stateful components in static App positions,
 - App-owned procedures passed to components as action props,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 

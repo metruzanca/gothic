@@ -131,6 +131,7 @@ The ping/pong proof of concept runs end to end.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Nested children can send local actions to their parent with `emitLocal`, and the parent can handle, transform, or bubble them with `gothic.Bubble`.
+- Inline stateful components can take one default slot, so containers keep state while the App owns the slotted content.
 - Gothicbook is a small design system demo for the UI kit, including slotted form fields, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - A curated `js` package covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
@@ -148,7 +149,7 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 
 ## What comes next
 
-1. Children on stateful components.
+1. Named slots and fallback content.
 2. Wildcard or optional route segments and reverse URL building.
 3. Typed procedure argument validation and the no-JS form fallback.
 4. `go/packages` type information for stronger compiler checks.

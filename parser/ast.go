@@ -32,6 +32,8 @@ type Template struct {
 	Children  []Node
 	// Stateful is set by the compiler for component roots with their own model.
 	Stateful bool
+	// Inline marks a library stateful component compiled into the app.
+	Inline bool
 }
 
 // StateDecl declares component state. Init is a real Go expression.

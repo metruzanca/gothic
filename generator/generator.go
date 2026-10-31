@@ -57,6 +57,7 @@ type Stateful struct {
 	Listable              bool
 	External              bool
 	Inline                bool
+	Slot                  bool
 	ImportAlias           string
 	ImportPath            string
 	ModuleURL             string
@@ -274,6 +275,7 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 			appRoot:       false,
 			allowStateful: true,
 			stateful:      statefulMap(opts.Stateful),
+			slotParam:     slotParam(comp),
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {
@@ -435,6 +437,7 @@ type templateGen struct {
 	attrN         int
 	classN        int
 	focusN        int
+	slotParam     string
 	usesHTML      bool
 	usesFmt       bool
 }
@@ -490,7 +493,11 @@ func (g *templateGen) generateComponentView() (string, error) {
 		name = g.t.Name + "View"
 	}
 	var b strings.Builder
-	g.writeFuncPrefix(&b, name, paramsOrEmpty(g.t))
+	params := paramsOrEmpty(g.t)
+	if g.slotParam != "" {
+		params = strings.TrimSuffix(params, ")") + ", " + g.slotParam + " gothic.Component)"
+	}
+	g.writeFuncPrefix(&b, name, params)
 	if err := g.writeElement(&b, root, true); err != nil {
 		return "", err
 	}
@@ -675,7 +682,15 @@ func (g *templateGen) writeNode(b *strings.Builder, n parser.Node) error {
 	case *parser.If:
 		return g.writeIf(b, n)
 	case *parser.Slot:
-		return parser.NodeError(n, "slots are only supported in pure components; pass a prop instead", "slot is only supported in pure components")
+		if g.slotParam == "" {
+			return parser.NodeError(n, "slots are only supported in pure components and inline stateful components", "slot is only supported in pure and inline stateful components")
+		}
+		g.emitWrite(b, "<div data-gothic-slot=\"default\">")
+		fmt.Fprintf(b, "\t\tif %s != nil {\n", g.slotParam)
+		fmt.Fprintf(b, "\t\t\tif err := %s.Render(ctx, w); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n", g.slotParam)
+		b.WriteString("\t\t}\n")
+		g.emitWrite(b, "</div>")
+		return nil
 	case *parser.ComponentCall:
 		return g.writeStatefulCall(b, n)
 	default:
@@ -733,6 +748,13 @@ func (g *templateGen) emitWrite(b *strings.Builder, s string) {
 	fmt.Fprintf(b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote(s))
 }
 
+func slotParam(comp *Stateful) string {
+	if comp.Slot {
+		return "slot"
+	}
+	return ""
+}
+
 func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 	propsSig := ""
 	viewProps := ""
@@ -740,7 +762,12 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 		propsSig = ", props " + comp.PropsGoType()
 		viewProps = ", props"
 	}
-	fmt.Fprintf(b, "func %s(id string, key string%s) gothic.Component {\n", comp.GoName, propsSig)
+	slotSig := ""
+	if comp.Slot {
+		slotSig = ", slot gothic.Component"
+		viewProps += ", slot"
+	}
+	fmt.Fprintf(b, "func %s(id string, key string%s%s) gothic.Component {\n", comp.GoName, propsSig, slotSig)
 	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
 	if comp.Constructor != "" {
 		args := ""
@@ -841,6 +868,23 @@ func (g *templateGen) writeStatefulCall(b *strings.Builder, call *parser.Compone
 	}
 	if comp.PropsType != "" {
 		args = append(args, props)
+	}
+	if comp.Slot {
+		slotArg := "nil"
+		if len(call.Children) > 0 {
+			slotVar := "slot" + id
+			fmt.Fprintf(b, "\t\t%s := gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n", slotVar)
+			for _, child := range call.Children {
+				if err := g.writeNode(b, child); err != nil {
+					return err
+				}
+			}
+			b.WriteString("\t\t\treturn nil\n\t\t})\n")
+			slotArg = slotVar
+		}
+		args = append(args, slotArg)
+	} else if len(call.Children) > 0 {
+		return parser.NodeError(call, "add a slot to the component view", "stateful component %s does not accept children", call.Name)
 	}
 	callee := comp.GoName
 	if comp.External {
@@ -1033,6 +1077,7 @@ func GenerateLibrary(opts LibraryOptions) ([]byte, error) {
 			appRoot:       false,
 			allowStateful: true,
 			stateful:      statefulMap(opts.Stateful),
+			slotParam:     slotParam(comp),
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {

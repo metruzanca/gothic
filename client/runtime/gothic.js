@@ -79,10 +79,11 @@ function findEl(root, selector, skipComponents) {
   const candidates = [];
   if (root.matches?.(selector)) candidates.push(root);
   if (root.querySelectorAll) candidates.push(...root.querySelectorAll(selector));
+  const rootOwner = root.closest?.("[data-gothic-component]") || null;
   for (const el of candidates) {
     if (!skipComponents) return el;
-    const owner = el.closest?.("[data-gothic-component]");
-    if (!owner || owner === root) return el;
+    const owner = el.closest?.("[data-gothic-component]") || null;
+    if (!owner || owner === root || owner === rootOwner) return el;
   }
   return null;
 }

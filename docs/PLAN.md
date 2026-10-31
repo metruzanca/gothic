@@ -263,6 +263,7 @@ Supported now:
 - component-to-parent action messages through `emit`,
 - parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
   `gothic.Bubble`,
+- one default slot on inline stateful components in static App positions,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
@@ -276,7 +277,7 @@ Not supported yet:
 - address-of expressions in views,
 - controlled components and function-valued props,
 - multiple app models,
-- children on stateful components,
+- named slots or fallback content on stateful components,
 - named slots and fallback slot content,
 - Go-callable component functions,
 - `switch` in views,
@@ -297,8 +298,7 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Children on stateful components, named slots, and fallback content if a
-   real use case appears.
+1. Named slots, fallback content, and slotted components in branches or lists.
 2. Wildcard or optional route segments and reverse URL building.
 3. Typed procedure argument validation and the no-JS fallback.
 4. `go/packages` for type information and stronger validation.
@@ -315,10 +315,10 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful component support is still narrow: no declared procedures.
-  Prop change detection is reference-based. Constructors must be deterministic
-  and client-compilable. Commands are guarded after unmount, but there is no
-  general cancellation.
+- Stateful component support is still narrow: no declared procedures and one
+  default slot only in static App positions. Prop change detection is
+  reference-based. Constructors must be deterministic and client-compilable.
+  Commands are guarded after unmount, but there is no general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

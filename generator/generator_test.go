@@ -652,3 +652,69 @@ view App(model Model) {
 		t.Errorf("generated Go should not render disabled with a value\n\n%s", generated)
 	}
 }
+
+func TestGenerateStatefulSlot(t *testing.T) {
+	appFile, err := parser.Parse("app.gth", []byte(`package app
+
+view App(model Model) {
+	<main>
+		<Panel title={ model.Title }>
+			<p>Hello</p>
+		</Panel>
+	</main>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	panelFile, err := parser.Parse("panel.gth", []byte(`package app
+
+view Panel(model PanelModel, props PanelProps) {
+	<section>
+		<h2>{ props.Title }</h2>
+		<slot />
+	</section>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Title string }
+type PanelProps struct{ Title string }
+type PanelModel struct{}
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+func (m PanelModel) Init() Cmd { return nil }
+func (m PanelModel) Update(msg Msg) (PanelModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(appFile, app, generator.Options{
+		FileName:   "app.gth",
+		ModuleBase: "app",
+		App:        app,
+		Stateful: []*generator.Stateful{{
+			Name: "Panel", GoName: "__gothicPanelComponent", ViewName: "__gothicPanelView",
+			ModelType: "PanelModel", ModelJSON: `{}`, PropsType: "PanelProps",
+			Props: []parser.Param{{Name: "Title", Type: "string"}}, View: panelFile.Templates[0], Slot: true,
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`slotc0 := gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {`,
+		`__gothicPanelComponent("c0", "", PanelProps{Title: model.Title}, slotc0)`,
+		`func __gothicPanelView(model PanelModel, props PanelProps, slot gothic.Component) gothic.Component {`,
+		`if slot != nil {`,
+		`slot.Render(ctx, w)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+}

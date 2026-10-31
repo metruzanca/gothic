@@ -12,6 +12,109 @@ function readComponentState(root) {
   try { return JSON.parse(el.textContent || 'null'); } catch (_) { return null; }
 }
 
+const INITIAL_Panel = {"Open":false};
+
+export function mountPanel(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
+  let model = readComponentState(root) || cloneInitial(INITIAL_Panel);
+  let alive = true;
+  function emit(msg) {
+    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
+  }
+  function emitLocal(msg) {
+    if (msg == null) return;
+    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
+    if (__gothicParentDispatch) __gothicParentDispatch(msg);
+  }
+  onLocal(root, "0", "click", (event) => dispatch({tag: "PanelToggled"}));
+  function render(model) {
+    textLocal(root, "0", props.Title);
+    textLocal(root, "1", model.Open);
+  }
+
+  function update(m, msg) {
+    switch (msg.tag) {
+    case "PanelToggled":
+    {
+      m.Open = !m.Open;
+      break;
+    }
+    }
+    return [m, null];
+  }
+
+  function init() {
+    return null;
+  }
+
+  function dispatch(msg) {
+    if (!alive) return;
+    const result = update(model, msg);
+    model = result[0];
+    render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    if (cmd.__gothicBatch) {
+      await Promise.all(cmd.__gothicBatch.map((sub) => run(sub)));
+      return;
+    }
+    if (cmd.__gothicSequence) {
+      for (const sub of cmd.__gothicSequence) {
+        if (!alive) return;
+        await run(sub);
+      }
+      return;
+    }
+    const msg = await cmd();
+    if (alive && msg) {
+      if (msg.tag === "Bubble") {
+        emit(msg.Msg);
+      } else {
+        dispatch(msg);
+      }
+    }
+  }
+  render(model);
+  run(init());
+  return { updateProps(nextProps) {
+    if (!alive) return;
+    let changed = false;
+    if (!Object.is(props.Title, nextProps.Title)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
+  }, destroy() { alive = false; } };
+}
+
+export function createPanel(id, props) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "Panel");
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = cloneInitial(INITIAL_Panel);
+    const e0 = document.createElement("section");
+    e0.setAttribute("class", "panel");
+    const e1 = document.createElement("h2");
+    e1.appendChild(document.createComment("g:text:0:open"));
+    e1.appendChild(document.createTextNode(String(props.Title)));
+    e1.appendChild(document.createComment("g:text:0:close"));
+    e0.appendChild(e1);
+    const e2 = document.createElement("button");
+    e2.setAttribute("class", "panel-toggle");
+    e2.setAttribute("data-gothic-on", "0");
+    e2.appendChild(document.createTextNode("Toggle panel"));
+    e0.appendChild(e2);
+    const e3 = document.createElement("p");
+    e3.setAttribute("class", "panel-open");
+    e3.appendChild(document.createComment("g:text:1:open"));
+    e3.appendChild(document.createTextNode(String(model.Open)));
+    e3.appendChild(document.createComment("g:text:1:close"));
+    e0.appendChild(e3);
+    const e4 = document.createElement("div");
+    e4.setAttribute("data-gothic-slot", "default");
+    e0.appendChild(e4);
+  wrapper.appendChild(e0);
+  return wrapper;
+}
+
 const INITIAL_Counter = {"Count":0};
 
 export function mountCounter(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
