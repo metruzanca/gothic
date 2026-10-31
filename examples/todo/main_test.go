@@ -83,7 +83,7 @@ func TestTodoApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow }`,
 		`window.addEventListener("hashchange"`,
 		`{tag: "HashChanged", Hash: window.location.hash}`,
 		`list(root, "0", (todo, __i0) => {`,

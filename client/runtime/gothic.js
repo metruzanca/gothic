@@ -301,6 +301,25 @@ export function routeMatch(pattern, path) {
   return routeParams(pattern, path) !== null;
 }
 
+export function virtualWindow(scrollTop, rowHeight, viewportHeight, total) {
+  if (!(rowHeight > 0) || !(total > 0)) {
+    return { Start: 0, Count: 0, Top: 0, Bottom: 0 };
+  }
+  let count = Math.floor(viewportHeight / rowHeight);
+  if (count < 1) count = 1;
+  if (count > total) count = total;
+  let start = Math.floor(scrollTop / rowHeight);
+  if (start < 0) start = 0;
+  const maxStart = total - count;
+  if (start > maxStart) start = maxStart;
+  return {
+    Start: start,
+    Count: count,
+    Top: start * rowHeight,
+    Bottom: (total - start - count) * rowHeight,
+  };
+}
+
 export function px(value) {
   return `${value}px`;
 }

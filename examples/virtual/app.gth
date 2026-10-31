@@ -5,12 +5,14 @@ import (
 
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/dom"
+	"github.com/metruzanca/gothic/virtual"
 )
 
 const (
-	totalRows    = 5000
-	rowHeight    = 36
-	visibleCount = 12
+	totalRows      = 5000
+	rowHeight      = 36
+	viewportHeight = 432
+	visibleCount   = 12
 )
 
 type Row struct {
@@ -19,13 +21,10 @@ type Row struct {
 }
 
 type Model struct {
-	Items        []Row
-	VisibleItems []Row
-	Top          int
-	Start        int
-	RowHeight    int
-	VisibleCount int
-	Bottom       int
+	Items     []Row
+	Window    virtual.Window
+	RowHeight int
+	Height    int
 }
 
 type Scrolled struct{ Top int }
@@ -35,12 +34,8 @@ func NewModel() Model {
 	for i := range items {
 		items[i] = Row{ID: i + 1, Text: fmt.Sprintf("Row %d", i+1)}
 	}
-	m := Model{Items: items, RowHeight: rowHeight, VisibleCount: visibleCount}
-	if m.VisibleCount > len(m.Items) {
-		m.VisibleCount = len(m.Items)
-	}
-	m.VisibleItems = m.Items[:m.VisibleCount]
-	m.Bottom = (len(m.Items) - m.VisibleCount) * m.RowHeight
+	m := Model{Items: items, RowHeight: rowHeight, Height: viewportHeight}
+	m.Window = virtual.WindowFor(0, m.RowHeight, m.Height, len(m.Items))
 	return m
 }
 
@@ -51,17 +46,7 @@ func (m Model) Init() gothic.Cmd {
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case Scrolled:
-		m.Top = msg.Top - msg.Top%m.RowHeight
-		if m.Top < 0 {
-			m.Top = 0
-		}
-		maxTop := (len(m.Items) - m.VisibleCount) * m.RowHeight
-		if m.Top > maxTop {
-			m.Top = maxTop
-		}
-		m.Start = m.Top / m.RowHeight
-		m.VisibleItems = m.Items[m.Start : m.Start+m.VisibleCount]
-		m.Bottom = (len(m.Items) - m.Start - m.VisibleCount) * m.RowHeight
+		m.Window = virtual.WindowFor(msg.Top, m.RowHeight, m.Height, len(m.Items))
 	}
 	return m, nil
 }
@@ -70,17 +55,17 @@ view App(model Model) {
 	<main class="app">
 		<h1>Virtualized list</h1>
 		<p class="range">
-			Showing{ " " }{ model.Start + 1 }-{ model.Start + len(model.VisibleItems) }{ " " }of{ " " }{ len(model.Items) }
+			Showing{ " " }{ model.Window.Start + 1 }-{ model.Window.Start + model.Window.Count }{ " " }of{ " " }{ len(model.Items) }
 		</p>
 		<div class="viewport" onscroll={ Scrolled{Top: event.target.scrollTop} }>
-			<div class="spacer" style={ "height:" + dom.Px(model.Top) }></div>
-			for _, item := range model.VisibleItems {
+			<div class="spacer" style={ "height:" + dom.Px(model.Window.Top) }></div>
+			for _, item := range model.Items[model.Window.Start : model.Window.Start+model.Window.Count] {
 				<div class="row" key={ item.ID }>
 					<span class="id">{ item.ID }</span>
 					<span>{ item.Text }</span>
 				</div>
 			}
-			<div class="spacer" style={ "height:" + dom.Px(model.Bottom) }></div>
+			<div class="spacer" style={ "height:" + dom.Px(model.Window.Bottom) }></div>
 		</div>
 		<p class="hint">Only the visible rows are in the DOM. Scroll to move the window.</p>
 	</main>

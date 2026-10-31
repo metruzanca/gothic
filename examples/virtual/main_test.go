@@ -56,9 +56,9 @@ func TestVirtualListModule(t *testing.T) {
 	js := string(body)
 	for _, want := range []string{
 		`on(root, "0", "scroll", (event) => dispatch({tag: "Scrolled", Top: event.target.scrollTop}));`,
-		`attr(root, "0", "height:" + px(model.Top));`,
-		`m.VisibleItems = ((m.Items) ?? []).slice(m.Start, m.Start + m.VisibleCount);`,
-		`renderList0(model.VisibleItems);`,
+		`attr(root, "0", "height:" + px(model.Window.Top));`,
+		`m.Window = virtualWindow(msg.Top, m.RowHeight, m.Height, len(m.Items));`,
+		`renderList0(((model.Items) ?? []).slice(model.Window.Start, model.Window.Start + model.Window.Count));`,
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("module JS missing %q\n\n%s", want, js)

@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1946,7 +1946,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -1982,6 +1982,81 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		RuntimeURL: "/_gothic/runtime.js",
 	})
 	if err == nil || !strings.Contains(err.Error(), "unknown dom function Rem") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateVirtualWindow(t *testing.T) {
+	view, err := parser.Parse("virtual.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Top int }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	win := virtual.WindowFor(m.Top, 36, 432, 5000)
+	m.Top = win.Top
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "virtual.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const win = virtualWindow(m.Top, 36, 432, 5000);`,
+		`m.Top = win.Top;`,
+		`virtualWindow } from "/_gothic/runtime.js"`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectUnknownVirtualFunction(t *testing.T) {
+	view, err := parser.Parse("virtual.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Top int }
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Top = virtual.Page(1)
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName:   "virtual.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown virtual function Page") {
 		t.Fatalf("error = %v", err)
 	}
 }

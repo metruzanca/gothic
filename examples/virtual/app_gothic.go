@@ -9,14 +9,16 @@ import (
 	"fmt"
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/dom"
+	"github.com/metruzanca/gothic/virtual"
 	"html"
 	"io"
 )
 
 const (
-	totalRows    = 5000
-	rowHeight    = 36
-	visibleCount = 12
+	totalRows      = 5000
+	rowHeight      = 36
+	viewportHeight = 432
+	visibleCount   = 12
 )
 
 type Row struct {
@@ -25,13 +27,10 @@ type Row struct {
 }
 
 type Model struct {
-	Items        []Row
-	VisibleItems []Row
-	Top          int
-	Start        int
-	RowHeight    int
-	VisibleCount int
-	Bottom       int
+	Items     []Row
+	Window    virtual.Window
+	RowHeight int
+	Height    int
 }
 
 type Scrolled struct{ Top int }
@@ -41,12 +40,8 @@ func NewModel() Model {
 	for i := range items {
 		items[i] = Row{ID: i + 1, Text: fmt.Sprintf("Row %d", i+1)}
 	}
-	m := Model{Items: items, RowHeight: rowHeight, VisibleCount: visibleCount}
-	if m.VisibleCount > len(m.Items) {
-		m.VisibleCount = len(m.Items)
-	}
-	m.VisibleItems = m.Items[:m.VisibleCount]
-	m.Bottom = (len(m.Items) - m.VisibleCount) * m.RowHeight
+	m := Model{Items: items, RowHeight: rowHeight, Height: viewportHeight}
+	m.Window = virtual.WindowFor(0, m.RowHeight, m.Height, len(m.Items))
 	return m
 }
 
@@ -57,17 +52,7 @@ func (m Model) Init() gothic.Cmd {
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case Scrolled:
-		m.Top = msg.Top - msg.Top%m.RowHeight
-		if m.Top < 0 {
-			m.Top = 0
-		}
-		maxTop := (len(m.Items) - m.VisibleCount) * m.RowHeight
-		if m.Top > maxTop {
-			m.Top = maxTop
-		}
-		m.Start = m.Top / m.RowHeight
-		m.VisibleItems = m.Items[m.Start : m.Start+m.VisibleCount]
-		m.Bottom = (len(m.Items) - m.Start - m.VisibleCount) * m.RowHeight
+		m.Window = virtual.WindowFor(msg.Top, m.RowHeight, m.Height, len(m.Items))
 	}
 	return m, nil
 }
@@ -142,7 +127,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:1:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(model.Start + 1))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint(model.Window.Start + 1))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:1:close-->"); err != nil {
@@ -154,7 +139,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:text:2:open-->"); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint(model.Start + len(model.VisibleItems)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint(model.Window.Start + model.Window.Count))); err != nil {
 			return err
 		}
 		if err := write("<!--g:text:2:close-->"); err != nil {
@@ -211,7 +196,7 @@ func App(model Model) gothic.Component {
 		if err := write(" style=\""); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Top)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Window.Top)))); err != nil {
 			return err
 		}
 		if err := write("\""); err != nil {
@@ -232,7 +217,7 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:each:0:open-->"); err != nil {
 			return err
 		}
-		for _, item := range model.VisibleItems {
+		for _, item := range model.Items[model.Window.Start : model.Window.Start+model.Window.Count] {
 			if err := write("<div"); err != nil {
 				return err
 			}
@@ -306,7 +291,7 @@ func App(model Model) gothic.Component {
 		if err := write(" style=\""); err != nil {
 			return err
 		}
-		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Bottom)))); err != nil {
+		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Window.Bottom)))); err != nil {
 			return err
 		}
 		if err := write("\""); err != nil {
