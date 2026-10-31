@@ -217,6 +217,7 @@ Supported now:
 - stateful components in static positions, conditional branches, and keyed lists,
 - stateful components with internal loops and conditionals as list items,
 - stateful components unmount and reset when a branch or list item leaves,
+- nested stateful components in static positions, branches, and keyed lists,
 - component Update and Init receive the props struct,
 - component Init runs once on mount,
 - optional `New<Model>(props)` constructors seed initial state from props,
@@ -284,9 +285,9 @@ compiler as a legacy path. It is not the direction of the project.
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Nested stateful components.
-2. Children on stateful components, named slots, and fallback content if a
+1. Children on stateful components, named slots, and fallback content if a
    real use case appears.
+2. Parent-local child message handling.
 3. Nested routers and wildcard or optional route segments.
 4. `Batch` and `Sequence` commands.
 5. Typed procedure argument validation and the no-JS fallback.
@@ -306,9 +307,9 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no declared procedures and no
-  nested stateful components. Prop change detection is reference-based.
-  Constructors must be deterministic and client-compilable. Commands are
-  guarded after unmount, but there is no general cancellation.
+  parent-local child message handling. Prop change detection is
+  reference-based. Constructors must be deterministic and client-compilable.
+  Commands are guarded after unmount, but there is no general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

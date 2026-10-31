@@ -116,6 +116,7 @@ The ping/pong proof of concept runs end to end.
 - Pure components compose views with typed props, in the app file or separate files.
 - Pure components accept children through a default slot; slotted events and state stay in the App.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
+- Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions bubble to the App.
 - Components unmount when their branch or list item leaves, so state resets on remount.
 - Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
 - Components can seed their initial state from props with an optional `New<Model>(props)` constructor.
@@ -142,7 +143,7 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 
 ## What comes next
 
-1. Nested stateful components.
+1. Children on stateful components and parent-local child message handling.
 2. Nested routers and wildcard or optional route segments.
 3. `Batch` and `Sequence` commands.
 4. Typed procedure argument validation and the no-JS form fallback.

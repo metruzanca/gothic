@@ -493,6 +493,40 @@ Use namespaced tags for external components:
 The compiler reads the package manifest and mounts each external component as a
 self-contained root.
 
+#### Nested stateful components
+
+A stateful component view can render another stateful component in a static
+position, an `if` branch, or a keyed list:
+
+```templ
+view Dashboard(model DashboardModel, props DashboardProps) {
+	<section>
+		<Counter label="static" onpick={ PickedChild{Label: "static"} } />
+		if model.ShowBranch {
+			<Counter label="branch" onpick={ PickedChild{Label: "branch"} } />
+		}
+		for i, item := range model.Items {
+			<Counter key={ i } label={ item } onpick={ PickedChild{Label: item} } />
+		}
+	</section>
+}
+```
+
+Rules:
+
+- each child owns its own model and state,
+- props flow from the parent on every render,
+- a child `emit` bubbles up through the parent to the App,
+- closing a branch destroys its children, so their state resets on re-entry,
+- removing a list item destroys its child,
+- unmounting the parent destroys the whole nested tree,
+- keyed list children keep their state while their key stays in the list,
+- components in separate app `.gth` files are pure; declare app-owned stateful
+  components in the app file.
+
+The App handles emitted messages. A parent component does not intercept child
+messages yet.
+
 ### Markup
 
 Elements, constant attributes, text, and interpolation work as in templ:
@@ -926,6 +960,7 @@ The proof of concept supports:
 - `if`, `else if`, and `else` in views, including inside loops and pure
   components,
 - stateful components inside conditional branches, with unmount and state reset,
+- nested stateful components in static positions, branches, and keyed lists,
 - stateful components as keyed list items, including components with internal
   loops,
 - `gothic.PropsChanged` on prop changes,
@@ -962,7 +997,6 @@ Not supported yet:
 - component-declared procedures; procedures are App-only,
 - address-of expressions in views,
 - controlled components and function-valued props,
-- stateful components nested inside other stateful components,
 - multiple app models,
 - children on stateful components,
 - named slots and fallback slot content,
@@ -972,7 +1006,7 @@ Not supported yet:
 - `Batch` and `Sequence`,
 - typed procedure argument validation,
 - arbitrary browser globals outside the `js` package,
-- path parameters, nested routers, and route matching helpers,
+- nested routers and wildcard or optional route segments,
 - message serialization,
 - `go/packages` type information.
 

@@ -1,0 +1,116 @@
+package main
+
+import "github.com/metruzanca/gothic"
+
+type Model struct {
+	ShowDashboard bool
+	Picked        string
+}
+
+type ToggleDashboard struct{}
+type PickedChild struct{ Label string }
+
+func NewModel() Model {
+	return Model{ShowDashboard: true}
+}
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case ToggleDashboard:
+		m.ShowDashboard = !m.ShowDashboard
+	case PickedChild:
+		m.Picked = msg.Label
+	}
+	return m, nil
+}
+
+type DashboardProps struct {
+	Title string
+	Items []string
+}
+
+type DashboardModel struct {
+	ShowBranch bool
+	Items      []string
+}
+
+type DashboardToggled struct{}
+type AddItem struct{}
+
+func NewDashboardModel(props DashboardProps) DashboardModel {
+	return DashboardModel{Items: props.Items}
+}
+
+func (m DashboardModel) Init() gothic.Cmd {
+	return nil
+}
+
+func (m DashboardModel) Update(msg gothic.Msg, props DashboardProps) (DashboardModel, gothic.Cmd) {
+	switch msg.(type) {
+	case DashboardToggled:
+		m.ShowBranch = !m.ShowBranch
+	case AddItem:
+		m.Items = append(m.Items, "item")
+	}
+	return m, nil
+}
+
+type CounterProps struct {
+	Label  string
+	OnPick gothic.Msg
+}
+
+type CounterModel struct {
+	Count int
+}
+
+type CounterClicked struct{}
+
+func (m CounterModel) Init() gothic.Cmd {
+	return nil
+}
+
+func (m CounterModel) Update(msg gothic.Msg, props CounterProps) (CounterModel, gothic.Cmd) {
+	switch msg.(type) {
+	case CounterClicked:
+		m.Count++
+	}
+	return m, nil
+}
+
+view App(model Model) {
+	<main class="app">
+		<h1>Nested stateful components</h1>
+		<p class="picked">Picked:{ " " }{ model.Picked }</p>
+		<button class="toggle-dashboard" onclick={ ToggleDashboard{} }>Toggle dashboard</button>
+		if model.ShowDashboard {
+			<Dashboard title="Nested dashboard" items={ []string{"alpha", "beta"} } />
+		}
+	</main>
+}
+
+view Counter(model CounterModel, props CounterProps) {
+	<div class="counter">
+		<button class="increment" onclick={ CounterClicked{} }>{ props.Label }:{ " " }{ model.Count }</button>
+		<button class="pick" onclick={ emit(props.OnPick) }>Pick { props.Label }</button>
+	</div>
+}
+
+view Dashboard(model DashboardModel, props DashboardProps) {
+	<section class="dashboard">
+		<h2>{ props.Title }</h2>
+		<button class="toggle-branch" onclick={ DashboardToggled{} }>Toggle branch child</button>
+		<button class="add-item" onclick={ AddItem{} }>Add list child</button>
+		<Counter label="static" onpick={ PickedChild{Label: "static"} } />
+		if model.ShowBranch {
+			<Counter label="branch" onpick={ PickedChild{Label: "branch"} } />
+		}
+		for i, item := range model.Items {
+			<Counter key={ i } label={ item } onpick={ PickedChild{Label: item} } />
+		}
+	</section>
+}
