@@ -879,6 +879,66 @@ Limits:
 - duplicate parameter names keep the last segment,
 - query and hash are not part of the pattern.
 
+#### Route tables
+
+Define a table once and use it on both server and client:
+
+```go
+var routes = []route.Route{
+	{Pattern: "/", Page: "home"},
+	{Pattern: "/about", Page: "about"},
+	{Pattern: "/hello/:name", Page: "hello"},
+}
+```
+
+Store the table in the model so it is available after hydration:
+
+```go
+type Model struct {
+	Routes []route.Route
+	Page   string
+	Name   string
+}
+
+func NewModel(path string) Model {
+	m := Model{Routes: routes}
+	match := route.Resolve(m.Routes, path)
+	m.Page = match.Page
+	m.Name = match.Params["name"]
+	return m
+}
+```
+
+`Update` uses the same call:
+
+```go
+match := route.Resolve(m.Routes, msg.Path)
+m.Page = match.Page
+if match.Matched {
+	m.Name = match.Params["name"]
+}
+```
+
+`route.Resolved` has `Page`, `Matched`, and `Params`. The first matching route
+wins. `route.Resolve` lowers to a `routeResolve` runtime helper.
+
+Prefix a table for nested sections with `route.Join`:
+
+```go
+admin := route.Join("/admin", routes)
+```
+
+`route.Join` returns a new table and lowers to `routeJoin`.
+
+The router example now defines one table and uses it in `NewModel` and
+`Update`.
+
+Limits:
+
+- no wildcard or optional segments,
+- no reverse URL builder,
+- route tables are ordered, so earlier routes win.
+
 ### Browser interop
 
 The `js` package is a curated, client-only surface:
@@ -1138,6 +1198,7 @@ The proof of concept supports:
 - path, query, and hash URL state through a `LocationChanged` message,
 - `route` links with pushState, replaceState, back, and popstate,
 - path pattern matching and parameters through the `route` package,
+- route tables through `route.Resolve` and prefixed tables through `route.Join`,
 - request-scoped app models and catch-all app mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,

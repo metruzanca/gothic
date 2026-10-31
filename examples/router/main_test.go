@@ -92,7 +92,7 @@ func TestRouterModule(t *testing.T) {
 		`localStorage.getItem("lastPath")`,
 		`localStorage.setItem("lastPath", msg.Path)`,
 		`document.title`,
-		`routeParams("/hello/:name", msg.Path)`,
+		`routeResolve(m.Routes, msg.Path)`,
 		`navigate("/hello/" + name)`,
 		`{tag: "NameChanged", Name: event.target.value}`,
 	} {

@@ -14,32 +14,32 @@ import (
 	"io"
 )
 
+var routes = []route.Route{
+	{Pattern: "/", Page: "home"},
+	{Pattern: "/about", Page: "about"},
+	{Pattern: "/settings", Page: "settings"},
+	{Pattern: "/hello/:name", Page: "hello"},
+}
+
 type Model struct {
 	Path     string
 	Page     string
 	Name     string
 	Draft    string
 	LastPath string
+	Routes   []route.Route
 }
 
 func NewModel(path string) Model {
-	m := Model{Path: path}
-	switch path {
-	case "/":
-		m.Page = "home"
-	case "/about":
-		m.Page = "about"
-	case "/settings":
-		m.Page = "settings"
-	default:
-		params := route.Params("/hello/:name", path)
-		if params != nil {
-			m.Page = "hello"
-			m.Name = params["name"]
-			m.Draft = m.Name
-		} else {
-			m.Page = "notfound"
-		}
+	m := Model{Path: path, Routes: routes}
+	match := route.Resolve(m.Routes, path)
+	m.Page = match.Page
+	if m.Page == "" {
+		m.Page = "notfound"
+	}
+	if match.Matched && match.Page == "hello" {
+		m.Name = match.Params["name"]
+		m.Draft = m.Name
 	}
 	return m
 }
@@ -68,22 +68,14 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case LocationChanged:
 		m.Path = msg.Path
 		m.Name = ""
-		switch msg.Path {
-		case "/":
-			m.Page = "home"
-		case "/about":
-			m.Page = "about"
-		case "/settings":
-			m.Page = "settings"
-		default:
-			params := route.Params("/hello/:name", msg.Path)
-			if params != nil {
-				m.Page = "hello"
-				m.Name = params["name"]
-				m.Draft = m.Name
-			} else {
-				m.Page = "notfound"
-			}
+		match := route.Resolve(m.Routes, msg.Path)
+		m.Page = match.Page
+		if m.Page == "" {
+			m.Page = "notfound"
+		}
+		if match.Matched && match.Page == "hello" {
+			m.Name = match.Params["name"]
+			m.Draft = m.Name
 		}
 		m.LastPath = js.GetItem("lastPath")
 		js.SetItem("lastPath", msg.Path)

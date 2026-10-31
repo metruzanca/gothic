@@ -320,6 +320,28 @@ export function routeMatch(pattern, path) {
   return routeParams(pattern, path) !== null;
 }
 
+function joinRoutePath(prefix, pattern) {
+  if (!prefix) return pattern;
+  if (!pattern) return prefix;
+  return `${String(prefix).replace(/\/$/, "")}/${String(pattern).replace(/^\//, "")}`;
+}
+
+export function routeResolve(routes, path) {
+  for (const route of routes || []) {
+    const params = routeParams(route.Pattern, path);
+    if (params) return { Page: route.Page, Matched: true, Params: params };
+  }
+  return { Page: "", Matched: false, Params: {} };
+}
+
+export function routeJoin(prefix, routes) {
+  if (!prefix) return (routes || []).slice();
+  return (routes || []).map((route) => ({
+    Pattern: joinRoutePath(prefix, route.Pattern),
+    Page: route.Page,
+  }));
+}
+
 export function virtualWindow(scrollTop, rowHeight, viewportHeight, total) {
   if (!(rowHeight > 0) || !(total > 0)) {
     return { Start: 0, Count: 0, Top: 0, Bottom: 0 };

@@ -45,3 +45,44 @@ func TestMatch(t *testing.T) {
 		t.Fatal("expected no match")
 	}
 }
+
+func TestResolve(t *testing.T) {
+	routes := []Route{
+		{Pattern: "/", Page: "home"},
+		{Pattern: "/about", Page: "about"},
+		{Pattern: "/hello/:name", Page: "hello"},
+	}
+	for _, tc := range []struct {
+		path    string
+		matched bool
+		page    string
+		param   string
+	}{
+		{"/", true, "home", ""},
+		{"/about", true, "about", ""},
+		{"/hello/ada", true, "hello", "ada"},
+		{"/missing", false, "", ""},
+	} {
+		got := Resolve(routes, tc.path)
+		if got.Matched != tc.matched || got.Page != tc.page {
+			t.Errorf("Resolve(%q) = %+v", tc.path, got)
+		}
+		if tc.param != "" && got.Params["name"] != tc.param {
+			t.Errorf("Resolve(%q) name = %q, want %q", tc.path, got.Params["name"], tc.param)
+		}
+	}
+}
+
+func TestJoin(t *testing.T) {
+	base := []Route{
+		{Pattern: "/", Page: "home"},
+		{Pattern: "/users/:id", Page: "user"},
+	}
+	got := Join("/admin", base)
+	if got[0].Pattern != "/admin/" || got[1].Pattern != "/admin/users/:id" {
+		t.Fatalf("Join = %+v", got)
+	}
+	if base[0].Pattern != "/" {
+		t.Fatalf("Join mutated input: %+v", base)
+	}
+}

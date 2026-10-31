@@ -123,6 +123,7 @@ The ping/pong proof of concept runs end to end.
 - `Update` and commands support indexing, two-index slicing, map literals, `len`, `delete`, compound assignment, `++`/`--`, range loops, and non-type switch statements.
 - `gothic.Batch` and `gothic.Sequence` compose commands.
 - Path patterns and parameters work through the `route` package on the server and in the browser.
+- Route tables use `route.Resolve` and `route.Join` on both sides.
 - The virtualized list example keeps 12 rows in the DOM for a 5,000 row model using the headless `virtual` package and `dom.Px` spacers.
 - The UI kit ships `VirtualList`, a virtual component that takes an app-defined one-parameter row view, supports responsive viewport measurement, and handles variable row heights.
 - Components run their own commands and are destroyed on unmount.
@@ -147,7 +148,7 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 ## What comes next
 
 1. Children on stateful components and parent-local child message handling.
-2. Nested routers and wildcard or optional route segments.
+2. Wildcard or optional route segments and reverse URL building.
 3. Typed procedure argument validation and the no-JS form fallback.
 4. `go/packages` type information for stronger compiler checks.
 5. Manifest, content hashing, formatter, LSP, and source maps.

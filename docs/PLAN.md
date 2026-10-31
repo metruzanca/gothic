@@ -256,6 +256,7 @@ Supported now:
 - hash routing through a `HashChanged` message,
 - path, query, and hash state through `LocationChanged`,
 - path pattern matching and parameters through the `route` package,
+- route tables through `route.Resolve` and prefixed tables through `route.Join`,
 - `route` links, pushState, replaceState, back, and popstate,
 - request-scoped app models and catch-all mounting for deep links,
 - curated browser interop through the `js` package,
@@ -282,7 +283,7 @@ Not supported yet:
 - `go/packages` type information,
 - typed procedure argument validation,
 - arbitrary browser globals outside the `js` package,
-- nested routers and wildcard or optional route segments,
+- wildcard or optional route segments and reverse URL building,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps,
@@ -297,7 +298,7 @@ These will be planned in detail after the proof of concept is evaluated:
 1. Children on stateful components, named slots, and fallback content if a
    real use case appears.
 2. Parent-local child message handling.
-3. Nested routers and wildcard or optional route segments.
+3. Wildcard or optional route segments and reverse URL building.
 4. Typed procedure argument validation and the no-JS fallback.
 5. `go/packages` for type information and stronger validation.
 6. Manifest, content hashing, and production serving.

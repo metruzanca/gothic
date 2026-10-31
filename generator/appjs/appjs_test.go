@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeJoin, routeMatch, routeParams, routeResolve, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1946,7 +1946,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeJoin, routeMatch, routeParams, routeResolve, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -2323,5 +2323,53 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	if !strings.Contains(src, `m.Height = (document.querySelector("#rows")?.clientHeight ?? 0);`) {
 		t.Errorf("generated JS missing ClientHeight lowering\n\n%s", src)
+	}
+}
+
+func TestGenerateRouteTable(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ model.Page }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Page   string
+	Routes []route.Route
+}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	match := route.Resolve(m.Routes, "/hello/ada")
+	m.Page = match.Page
+	m.Routes = route.Join("/admin", m.Routes)
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "routes.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const match = routeResolve(m.Routes, "/hello/ada");`,
+		`m.Page = match.Page;`,
+		`m.Routes = routeJoin("/admin", m.Routes);`,
+		`routeJoin, routeMatch, routeParams, routeResolve, text`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
 	}
 }
