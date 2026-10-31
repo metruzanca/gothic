@@ -55,6 +55,10 @@
         {
           "name": "Items",
           "type": "[]Tab"
+        },
+        {
+          "name": "Active",
+          "type": "*int"
         }
       ],
       "listable": true

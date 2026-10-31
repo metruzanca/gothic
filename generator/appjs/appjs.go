@@ -1662,6 +1662,60 @@ func (g *gen) componentInit(comp *generator.Stateful) (string, bool, error) {
 	return b.String(), paramName != "", nil
 }
 
+func (g *gen) constructorInfo(comp *generator.Stateful) (*ast.FuncDecl, bool, error) {
+	if comp.Constructor == "" {
+		return nil, false, nil
+	}
+	fn := comp.App.Commands[comp.Constructor]
+	if fn == nil {
+		return nil, false, parser.PosError(comp.View.NodePosition, "declare "+comp.Constructor+" in the prelude", "component %s: constructor %s not found", comp.Name, comp.Constructor)
+	}
+	var params []*ast.Field
+	if fn.Type.Params != nil {
+		params = append(params, fn.Type.Params.List...)
+	}
+	if len(params) > 1 {
+		return nil, false, parser.PosError(g.appPos(fn.Pos()), "take zero parameters or one props parameter", "component %s: constructor takes too many parameters", comp.Name)
+	}
+	takesProps := false
+	if len(params) == 1 {
+		if len(params[0].Names) == 0 {
+			return nil, false, parser.PosError(g.appPos(fn.Pos()), "name the constructor parameter", "component %s: constructor parameter must be named", comp.Name)
+		}
+		if comp.PropsType == "" {
+			return nil, false, parser.PosError(g.appPos(fn.Pos()), "remove the constructor parameter; the component has no props struct", "component %s: constructor cannot take props without a props type", comp.Name)
+		}
+		if typ := typeText(params[0].Type); typ != comp.PropsType {
+			return nil, false, parser.PosError(g.appPos(fn.Pos()), "match the props type "+comp.PropsType, "component %s: constructor parameter has type %s, want %s", comp.Name, typ, comp.PropsType)
+		}
+		takesProps = true
+	}
+	results := fn.Type.Results
+	if results == nil || len(results.List) != 1 {
+		return nil, false, parser.PosError(g.appPos(fn.Pos()), "return one "+comp.ModelType, "component %s: constructor must return %s", comp.Name, comp.ModelType)
+	}
+	if typ := typeText(results.List[0].Type); typ != comp.ModelType {
+		return nil, false, parser.PosError(g.appPos(fn.Pos()), "return "+comp.ModelType, "component %s: constructor returns %s, want %s", comp.Name, typ, comp.ModelType)
+	}
+	return fn, takesProps, nil
+}
+
+func (g *gen) emitConstructor(b *strings.Builder, comp *generator.Stateful, fn *ast.FuncDecl, takesProps bool) error {
+	param := ""
+	if takesProps {
+		param = fn.Type.Params.List[0].Names[0].Name
+	}
+	fmt.Fprintf(b, "function %s(%s) {\n", "new"+jsIdent(comp.Name), param)
+	ctx := &exprCtx{}
+	for _, st := range fn.Body.List {
+		if err := g.stmt(b, st, ctx, 1); err != nil {
+			return err
+		}
+	}
+	b.WriteString("}\n\n")
+	return nil
+}
+
 // GenerateComponents renders a JavaScript module with stateful component
 // mount and create functions.
 func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte, error) {
@@ -1706,6 +1760,22 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		if updatePropParam == "m" || updatePropParam == "msg" {
 			return nil, parser.PosError(g.appPos(comp.App.Update.Pos()), "rename the props parameter", "component %s: Update props parameter %q conflicts with a generated name", comp.Name, updatePropParam)
 		}
+		ctorFn, ctorTakesProps, err := g.constructorInfo(comp)
+		if err != nil {
+			return nil, wrapFile(comp.Name, err)
+		}
+		ctorCall := ""
+		if comp.Constructor != "" {
+			ctorCall = "new" + jsIdent(comp.Name)
+			if ctorTakesProps {
+				ctorCall += "(props)"
+			} else {
+				ctorCall += "()"
+			}
+			if err := g.emitConstructor(&b, comp, ctorFn, ctorTakesProps); err != nil {
+				return nil, wrapFile(comp.Name, err)
+			}
+		}
 		var bindings strings.Builder
 		if err := g.emitViewBindings(&bindings); err != nil {
 			return nil, wrapFile(comp.Name, err)
@@ -1725,7 +1795,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 
 		fmt.Fprintf(&b, "export function %s(root%s, __gothicParentDispatch) {\n", comp.MountFunc, propSig)
-		fmt.Fprintf(&b, "  let %s = readComponentState(root) || cloneInitial(%s);\n", modelName, initial)
+		if ctorCall != "" {
+			fmt.Fprintf(&b, "  let %s = readComponentState(root) || %s;\n", modelName, ctorCall)
+		} else {
+			fmt.Fprintf(&b, "  let %s = readComponentState(root) || cloneInitial(%s);\n", modelName, initial)
+		}
 		b.WriteString("  let alive = true;\n")
 		b.WriteString("  function emit(msg) {\n    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);\n  }\n")
 		b.WriteString(indentJS(bindings.String(), "  "))
@@ -1785,7 +1859,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		b.WriteString("  const wrapper = document.createElement('div');\n")
 		fmt.Fprintf(&b, "  wrapper.setAttribute('data-gothic-component', %s);\n", jsString(comp.Name))
 		b.WriteString("  wrapper.setAttribute('data-gothic-component-id', id);\n")
-		fmt.Fprintf(&b, "  const %s = cloneInitial(%s);\n", modelName, initial)
+		if ctorCall != "" {
+			fmt.Fprintf(&b, "  const %s = %s;\n", modelName, ctorCall)
+		} else {
+			fmt.Fprintf(&b, "  const %s = cloneInitial(%s);\n", modelName, initial)
+		}
 		b.WriteString(indentJS(dom.String(), "  "))
 		fmt.Fprintf(&b, "  wrapper.appendChild(%s);\n", rootVar)
 		b.WriteString("  return wrapper;\n}\n\n")

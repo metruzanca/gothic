@@ -30,6 +30,7 @@ type Model struct {
 	Page              int
 	PageLabel         string
 	FeatureDisclosure ui.DisclosureItem
+	TabStart          *int
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
@@ -54,7 +55,7 @@ func NewModel(count int) Model {
 		Count:         count,
 		ButtonCode:    `<ui.Button label="Save changes" primary={ true } onclick={ nil } />`,
 		CardCode:      `<ui.Card title="Card title" body="Card body" />`,
-		TabsCode:      `<ui.Tabs items={ model.Tabs } />`,
+		TabsCode:      `<ui.Tabs items={ model.Tabs } active={ model.TabStart } />`,
 		AccordionCode: `<ui.Accordion items={ model.Accordion } />`,
 		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
 		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
@@ -74,6 +75,8 @@ func NewModel(count int) Model {
 		PageLabel: "Showing 1-10 of 20",
 	}
 	m.ManyTabs = m.Tabs
+	startTab := 1
+	m.TabStart = &startTab
 	m.Visible = m.PageOne
 	return m
 }
@@ -199,7 +202,7 @@ view App(model Model) {
 		<section class="section">
 			<h2>Tabs</h2>
 			<p>Select the third tab, then remove a tab. The component clamps its active index from the items prop.</p>
-			<ui.Tabs items={ model.Tabs } />
+			<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
 			<div class="row">
 				<ui.Button label="Fewer tabs" primary={ false } onclick={ FewerTabs{} } />
 				<ui.Button label="More tabs" primary={ false } onclick={ MoreTabs{} } />

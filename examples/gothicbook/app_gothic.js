@@ -12,7 +12,7 @@ on(root, "0", "click", (event) => dispatch(({Label: "Save changes", Primary: tru
 on(root, "1", "click", (event) => dispatch(({Label: "Cancel", Primary: false, Onclick: null}).Onclick));
 on(root, "2", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
 const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), {Label: "Increment inside a slot"}, dispatch);
-const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), {Items: model.Tabs}, dispatch);
+const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), {Items: model.Tabs, Active: model.TabStart}, dispatch);
 on(root, "3", "click", (event) => dispatch(({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Onclick));
 on(root, "4", "click", (event) => dispatch(({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Onclick));
 const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), {Items: model.Accordion}, dispatch);
@@ -55,7 +55,7 @@ if (!gc4Inst) {
  },
     (region) => {  });
   c0.updateProps({Label: "Increment inside a slot"});
-  c1.updateProps({Items: model.Tabs});
+  c1.updateProps({Items: model.Tabs, Active: model.TabStart});
   c2.updateProps({Items: model.Accordion});
   c5.updateProps({Label: "Increment on client"});
   text(root, "0", ({Label: "Save changes", Primary: true, Onclick: null}).Label);

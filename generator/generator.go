@@ -40,22 +40,24 @@ type Options struct {
 
 // Stateful is a stateful component rendered as an island.
 type Stateful struct {
-	Name        string
-	ViewName    string
-	GoName      string
-	MountFunc   string
-	CreateFunc  string
-	ModelType   string
-	ModelJSON   string
-	PropsType   string
-	Props       []parser.Param
-	View        *parser.Template
-	App         *goapp.App
-	Listable    bool
-	External    bool
-	ImportAlias string
-	ImportPath  string
-	ModuleURL   string
+	Name                  string
+	ViewName              string
+	GoName                string
+	MountFunc             string
+	CreateFunc            string
+	ModelType             string
+	ModelJSON             string
+	Constructor           string
+	ConstructorTakesProps bool
+	PropsType             string
+	Props                 []parser.Param
+	View                  *parser.Template
+	App                   *goapp.App
+	Listable              bool
+	External              bool
+	ImportAlias           string
+	ImportPath            string
+	ModuleURL             string
 }
 
 // PropsGoType returns the Go type used for the component props, qualified for
@@ -713,7 +715,15 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 	}
 	fmt.Fprintf(b, "func %s(id string, key string%s) gothic.Component {\n", comp.GoName, propsSig)
 	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
-	fmt.Fprintf(b, "\t\tvar model %s\n", comp.ModelType)
+	if comp.Constructor != "" {
+		args := ""
+		if comp.ConstructorTakesProps {
+			args = "props"
+		}
+		fmt.Fprintf(b, "\t\tmodel := %s(%s)\n", comp.Constructor, args)
+	} else {
+		fmt.Fprintf(b, "\t\tvar model %s\n", comp.ModelType)
+	}
 	b.WriteString("\t\tstateJSON, err := json.Marshal(model)\n")
 	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
 	fmt.Fprintf(b, "\t\tif _, err := io.WriteString(w, %s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<div data-gothic-component=\""+comp.Name+"\" data-gothic-component-id=\""))

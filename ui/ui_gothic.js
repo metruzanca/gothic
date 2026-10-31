@@ -299,8 +299,22 @@ export function createDisclosure(id, props) {
 
 const INITIAL_Tabs = {"Active":0};
 
+function newTabs(props) {
+  const m = {tag: "TabsModel"};
+  if (props.Active != null) {
+    m.Active = props.Active;
+  }
+  if (m.Active >= ((props.Items) ?? []).length) {
+    m.Active = ((props.Items) ?? []).length - 1;
+  }
+  if (m.Active < 0) {
+    m.Active = 0;
+  }
+  return m;
+}
+
 export function mountTabs(root, props, __gothicParentDispatch) {
-  let model = readComponentState(root) || cloneInitial(INITIAL_Tabs);
+  let model = readComponentState(root) || newTabs(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
@@ -386,6 +400,7 @@ export function mountTabs(root, props, __gothicParentDispatch) {
     if (!alive) return;
     let changed = false;
     if (!Object.is(props.Items, nextProps.Items)) changed = true;
+    if (!Object.is(props.Active, nextProps.Active)) changed = true;
     if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
   }, destroy() { alive = false; } };
 }
@@ -394,7 +409,7 @@ export function createTabs(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "Tabs");
   wrapper.setAttribute('data-gothic-component-id', id);
-  const model = cloneInitial(INITIAL_Tabs);
+  const model = newTabs(props);
     const e0 = document.createElement("div");
     e0.setAttribute("class", "ui-tabs");
     const e1 = document.createElement("div");

@@ -35,6 +35,7 @@ func TestGothicbook(t *testing.T) {
 		`data-gothic-component="Tabs"`,
 		`data-gothic-component="Counter"`,
 		`data-gothic-component="Disclosure"`,
+		`{"Active":1}`,
 		`class="ui-disclosure-list"`,
 		`class="ui-field`,
 		`class="slot-input`,

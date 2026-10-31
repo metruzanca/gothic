@@ -120,11 +120,26 @@ type Tab struct {
 }
 
 type TabsProps struct {
-	Items []Tab
+	Items  []Tab
+	Active *int
 }
 
 type TabsModel struct {
 	Active int
+}
+
+func NewTabsModel(props TabsProps) TabsModel {
+	m := TabsModel{}
+	if props.Active != nil {
+		m.Active = *props.Active
+	}
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
+	}
+	if m.Active < 0 {
+		m.Active = 0
+	}
+	return m
 }
 
 type TabClicked struct{ Index int }
@@ -743,7 +758,7 @@ func __gothicTabsView(model TabsModel, props TabsProps) gothic.Component {
 
 func Tabs(id string, key string, props TabsProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model TabsModel
+		model := NewTabsModel(props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err

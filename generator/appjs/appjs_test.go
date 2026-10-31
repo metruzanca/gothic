@@ -1200,3 +1200,89 @@ func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestGenerateComponentConstructor(t *testing.T) {
+	view, err := parser.Parse("tabs.gth", []byte(`package ui
+
+view Tabs(model TabsModel, props TabsProps) {
+	<div>{ model.Active }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
+
+type TabsProps struct{ Active *int }
+type TabsModel struct{ Active int }
+
+func NewTabsModel(props TabsProps) TabsModel {
+	m := TabsModel{}
+	if props.Active != nil {
+		m.Active = *props.Active
+	}
+	return m
+}
+
+func (m TabsModel) Init() Cmd { return nil }
+func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("TabsModel")
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Tabs", View: view.Templates[0], App: component, ModelJSON: `{"Active":0}`, ModelType: "TabsModel",
+		Constructor: "NewTabsModel", ConstructorTakesProps: true,
+		PropsType: "TabsProps", Props: []parser.Param{{Name: "Active", Type: "*int"}},
+		MountFunc: "mountTabs", CreateFunc: "createTabs",
+	}}, appjs.Options{FileName: "tabs.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`function newTabs(props) {`,
+		`const model = newTabs(props);`,
+		`readComponentState(root) || newTabs(props)`,
+		`if (props.Active != null)`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectComponentConstructorWrongResult(t *testing.T) {
+	view, err := parser.Parse("tabs.gth", []byte(`package ui
+
+view Tabs(model TabsModel, props TabsProps) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
+
+type TabsProps struct{}
+type TabsModel struct{}
+
+func NewTabsModel(props TabsProps) string { return "" }
+func (m TabsModel) Init() Cmd { return nil }
+func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := app.ComponentApp("TabsModel")
+	_, err = appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Tabs", View: view.Templates[0], App: component, ModelJSON: `{}`, ModelType: "TabsModel",
+		Constructor: "NewTabsModel", ConstructorTakesProps: true,
+		PropsType: "TabsProps",
+		MountFunc: "mountTabs", CreateFunc: "createTabs",
+	}}, appjs.Options{FileName: "tabs.gth"})
+	if err == nil || !strings.Contains(err.Error(), "constructor returns string, want TabsModel") {
+		t.Fatalf("error = %v", err)
+	}
+}

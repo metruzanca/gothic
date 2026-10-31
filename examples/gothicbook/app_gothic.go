@@ -36,6 +36,7 @@ type Model struct {
 	Page              int
 	PageLabel         string
 	FeatureDisclosure ui.DisclosureItem
+	TabStart          *int
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
@@ -60,7 +61,7 @@ func NewModel(count int) Model {
 		Count:          count,
 		ButtonCode:     `<ui.Button label="Save changes" primary={ true } onclick={ nil } />`,
 		CardCode:       `<ui.Card title="Card title" body="Card body" />`,
-		TabsCode:       `<ui.Tabs items={ model.Tabs } />`,
+		TabsCode:       `<ui.Tabs items={ model.Tabs } active={ model.TabStart } />`,
 		AccordionCode:  `<ui.Accordion items={ model.Accordion } />`,
 		ServerCode:     `<ui.Button label="Increment" onclick={ IncrementClicked{} } />`,
 		DisclosureCode: `<ui.Disclosure key={ item.ID } item={ item } />`,
@@ -80,6 +81,8 @@ func NewModel(count int) Model {
 		PageLabel: "Showing 1-10 of 20",
 	}
 	m.ManyTabs = m.Tabs
+	startTab := 1
+	m.TabStart = &startTab
 	m.Visible = m.PageOne
 	return m
 }
@@ -781,7 +784,7 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := ui.Tabs("c1", "", ui.TabsProps{Items: model.Tabs}).Render(ctx, w); err != nil {
+		if err := ui.Tabs("c1", "", ui.TabsProps{Items: model.Tabs, Active: model.TabStart}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<div"); err != nil {
