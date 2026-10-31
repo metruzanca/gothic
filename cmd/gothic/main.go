@@ -715,9 +715,10 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		return 0, 0, err
 	}
 	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
-		FileName:   filepath.Join(dir, "library.gth"),
-		RuntimeURL: "/_gothic/runtime.js",
-		PropsTypes: usedPropsTypes(pure, stateful),
+		FileName:    filepath.Join(dir, "library.gth"),
+		RuntimeURL:  "/_gothic/runtime.js",
+		AllStateful: stateful,
+		PropsTypes:  usedPropsTypes(pure, stateful),
 	})
 	if err != nil {
 		return 0, 0, err
@@ -915,6 +916,8 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 		compSrc, err := appjs.GenerateComponents(localStateful, appjs.Options{
 			FileName:       s.path,
 			RuntimeURL:     "/_gothic/runtime.js",
+			Stateful:       stateful,
+			AllStateful:    stateful,
 			ProcedureNames: procedureNames,
 			PropsTypes:     propsTypes,
 		})

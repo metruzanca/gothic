@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,7 @@ type Options struct {
 	FileName            string
 	RuntimeURL          string
 	Stateful            []*generator.Stateful
+	AllStateful         []*generator.Stateful
 	ComponentsModuleURL string
 	// ProcedureNames are App-owned procedures that components must not call.
 	ProcedureNames map[string]bool
@@ -52,6 +54,7 @@ func Generate(view *parser.File, app *goapp.App, opts Options) ([]byte, error) {
 		eventN:          0,
 		stateful:        statefulByName(opts.Stateful),
 		statefulList:    opts.Stateful,
+		parentDispatch:  "dispatch",
 		componentsURL:   opts.ComponentsModuleURL,
 		allowNested:     true,
 		appModule:       true,
@@ -174,6 +177,8 @@ type gen struct {
 	componentUpdates []string
 	stateful         map[string]*generator.Stateful
 	statefulList     []*generator.Stateful
+	parentDispatch   string
+	componentModule  bool
 	componentsURL    string
 	localHelpers     bool
 	allowNested      bool
@@ -190,6 +195,90 @@ func (g *gen) helper(name string) string {
 		return name + "Local"
 	}
 	return name
+}
+
+type componentImport struct {
+	url   string
+	names []string
+}
+
+func containsComponentCall(nodes []parser.Node) bool {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *parser.ComponentCall:
+			return true
+		case *parser.Element:
+			if containsComponentCall(n.Children) {
+				return true
+			}
+		case *parser.If:
+			if containsComponentCall(n.Then) || containsComponentCall(n.Else) {
+				return true
+			}
+		case *parser.For:
+			if containsComponentCall(n.Children) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func componentImports(components []*generator.Stateful, all map[string]*generator.Stateful, selfURL string) ([]componentImport, error) {
+	byURL := map[string]map[string]bool{}
+	var order []string
+	var walk func(nodes []parser.Node) error
+	walk = func(nodes []parser.Node) error {
+		for _, node := range nodes {
+			switch n := node.(type) {
+			case *parser.ComponentCall:
+				target := all[n.Name]
+				if target == nil {
+					return parser.NodeError(n, "add a //gothic:components directive for the component package", "unknown stateful component %s", n.Name)
+				}
+				if target.ModuleURL == "" || target.ModuleURL == selfURL {
+					continue
+				}
+				if byURL[target.ModuleURL] == nil {
+					byURL[target.ModuleURL] = map[string]bool{}
+					order = append(order, target.ModuleURL)
+				}
+				byURL[target.ModuleURL][target.MountFunc] = true
+				byURL[target.ModuleURL][target.CreateFunc] = true
+			case *parser.Element:
+				if err := walk(n.Children); err != nil {
+					return err
+				}
+			case *parser.If:
+				if err := walk(n.Then); err != nil {
+					return err
+				}
+				if err := walk(n.Else); err != nil {
+					return err
+				}
+			case *parser.For:
+				if err := walk(n.Children); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	for _, comp := range components {
+		if err := walk(comp.View.Children); err != nil {
+			return nil, err
+		}
+	}
+	imports := make([]componentImport, 0, len(order))
+	for _, url := range order {
+		names := make([]string, 0, len(byURL[url]))
+		for name := range byURL[url] {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		imports = append(imports, componentImport{url: url, names: names})
+	}
+	return imports, nil
 }
 
 func statefulByName(components []*generator.Stateful) map[string]*generator.Stateful {
@@ -312,10 +401,16 @@ func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall
 	g.componentN++
 	id := fmt.Sprintf("c%d", idx)
 	inst := id
-	mountCall := comp.MountFunc + "(root.querySelector('[data-gothic-component-id=\"" + id + "\"]')"
-	mountCall += commaArgs(props)
-	mountCall += ", dispatch)"
-	fmt.Fprintf(b, "const %s = %s;\n", inst, mountCall)
+	if g.componentModule {
+		fmt.Fprintf(b, "const %sNode = root.querySelector('[data-gothic-component-id=\"%s\"]');\n", inst, id)
+		fmt.Fprintf(b, "const %s = %s(%sNode%s, %s);\n", inst, comp.MountFunc, inst, commaArgs(props), g.parentDispatch)
+		fmt.Fprintf(b, "if (%sNode) %sNode.__gothicInstances = { %s: %s };\n", inst, inst, jsString(id), inst)
+	} else {
+		mountCall := comp.MountFunc + "(root.querySelector('[data-gothic-component-id=\"" + id + "\"]')"
+		mountCall += commaArgs(props)
+		mountCall += ", dispatch)"
+		fmt.Fprintf(b, "const %s = %s;\n", inst, mountCall)
+	}
 	g.componentUpdates = append(g.componentUpdates, fmt.Sprintf("%s.updateProps(%s);", inst, props))
 	return nil
 }
@@ -389,6 +484,9 @@ func (g *gen) emitForBinding(b *strings.Builder, f *parser.For) error {
 }
 
 func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
+	if g.componentModule && containsComponentCall(f.Children) {
+		return "", parser.PosError(f.NodePosition, "move the stateful child to a static position", "stateful components inside lists are not supported within another stateful component yet")
+	}
 	if f.Value == "" {
 		return "", parser.PosError(f.NodePosition, "use for index, value := range items", "for loops must use _, value := range expr")
 	}
@@ -485,11 +583,11 @@ func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.Comp
 	if keyExpr != "" {
 		fmt.Fprintf(&b, "  node.setAttribute(\"data-gothic-key\", String(%s));\n", keyExpr)
 	}
-	fmt.Fprintf(&b, "  const inst = %s(node%s, dispatch);\n", comp.MountFunc, commaArgs(props))
+	fmt.Fprintf(&b, "  const inst = %s(node%s, %s);\n", comp.MountFunc, commaArgs(props), g.parentDispatch)
 	fmt.Fprintf(&b, "  node.__gothicInstances = { %s: inst };\n", jsString(compID))
 	b.WriteString("  return node;\n}, (node, " + f.Value + ", " + indexName + ") => {\n")
 	fmt.Fprintf(&b, "  let inst = node.__gothicInstances && node.__gothicInstances[%s];\n", jsString(compID))
-	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, dispatch);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(props), jsString(compID), props)
+	fmt.Fprintf(&b, "  if (!inst) {\n    inst = %s(node%s, %s);\n    node.__gothicInstances = { %s: inst };\n  } else {\n    inst.updateProps(%s);\n  }\n", comp.MountFunc, commaArgs(props), g.parentDispatch, jsString(compID), props)
 	b.WriteString("}")
 	if keyExpr != "" {
 		fmt.Fprintf(&b, ", (%s, %s) => String(%s)", f.Value, indexName, keyExpr)
@@ -558,6 +656,9 @@ func eventHandler(event, msg string, parent bool) (string, string) {
 // root and marker arguments. The marker index is passed in so callers can emit
 // open and close comments with the same index.
 func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
+	if g.componentModule && (containsComponentCall(n.Then) || containsComponentCall(n.Else)) {
+		return "", parser.NodeError(n, "move the stateful child to a static position", "stateful components inside conditionals are not supported within another stateful component yet")
+	}
 	ctx.pos = n.NodePosition
 	cond, err := g.expr(n.Cond, ctx)
 	if err != nil {
@@ -617,7 +718,7 @@ func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string
 	bind := fmt.Sprintf(`const %s = __ROOT__.querySelector('[data-gothic-component-id="%s"]');
 let %s = %s && %s.__gothicInstances && %s.__gothicInstances[%s];
 if (!%s) {
-  %s = %s(%s%s, dispatch);
+  %s = %s(%s%s, __GOTHIC_DISPATCH__);
   %s.__gothicInstances = { %s: %s };
 } else {
   %s.updateProps(%s);
@@ -629,7 +730,7 @@ if (!%s) {
 		nodeName, jsString(id), instName,
 		instName, props)
 
-	return varName, build.String(), bind, nil
+	return varName, build.String(), strings.ReplaceAll(bind, "__GOTHIC_DISPATCH__", g.parentDispatch), nil
 }
 
 func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error) {
@@ -1937,9 +2038,23 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 	if opts.RuntimeURL == "" {
 		opts.RuntimeURL = "/_gothic/runtime.js"
 	}
+	allStateful := opts.AllStateful
+	if len(allStateful) == 0 {
+		allStateful = components
+	}
+	all := statefulByName(allStateful)
+	selfURL := components[0].ModuleURL
+	nestedImports, err := componentImports(components, all, selfURL)
+	if err != nil {
+		return nil, err
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "// Code generated by gothic from %s. DO NOT EDIT.\n\n", baseName(opts.FileName))
-	fmt.Fprintf(&b, "import { attrLocal, classToggleLocal, entries, focusLocal, ifBlockLocal, len, listLocal, onLocal, routeMatch, routeParams, textLocal } from %s;\n\n", jsString(opts.RuntimeURL))
+	fmt.Fprintf(&b, "import { attrLocal, classToggleLocal, entries, focusLocal, ifBlockLocal, len, listLocal, onLocal, routeMatch, routeParams, textLocal } from %s;\n", jsString(opts.RuntimeURL))
+	for _, imp := range nestedImports {
+		fmt.Fprintf(&b, "import { %s } from %s;\n", strings.Join(imp.names, ", "), jsString(imp.url))
+	}
+	b.WriteString("\n")
 	b.WriteString("function cloneInitial(value) {\n  return JSON.parse(JSON.stringify(value));\n}\n\n")
 	b.WriteString("function readComponentState(root) {\n")
 	b.WriteString("  const el = root.querySelector('script[data-gothic-component-state]');\n")
@@ -1963,7 +2078,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			propSig = ", props"
 		}
 
-		g := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes}
+		g := &gen{
+			t: comp.View, app: comp.App, modelName: modelName,
+			localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes,
+			stateful: all, allowNested: true, componentModule: true, parentDispatch: "emit",
+		}
 		updatePropParam, err := g.updatePropsParamName(comp)
 		if err != nil {
 			return nil, wrapFile(comp.Name, err)
@@ -2055,7 +2174,11 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 		}
 		b.WriteString("  }, destroy() { alive = false; } };\n}\n\n")
 
-		cg := &gen{t: comp.View, app: comp.App, modelName: modelName, localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes}
+		cg := &gen{
+			t: comp.View, app: comp.App, modelName: modelName,
+			localHelpers: true, procedureNames: opts.ProcedureNames, propsTypes: opts.PropsTypes,
+			stateful: all, allowNested: true, componentModule: true, parentDispatch: "emit",
+		}
 		locals := map[string]bool{}
 		for _, p := range comp.Props {
 			locals[p.Name] = true

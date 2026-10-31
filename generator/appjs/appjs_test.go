@@ -1720,3 +1720,176 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		}
 	}
 }
+
+func nestedComponentFixtures(t *testing.T) (*parser.Template, *parser.Template, *goapp.App) {
+	t.Helper()
+	childView, err := parser.Parse("child.gth", []byte(`package app
+
+view Child(model ChildModel, props ChildProps) {
+	<span>{ props.Label }</span>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentView, err := parser.Parse("parent.gth", []byte(`package app
+
+view Parent(model ParentModel) {
+	<div>
+		<Child label={ "hi" } />
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("components.go", []byte(`package app
+
+type ChildProps struct{ Label string }
+type ChildModel struct{ Count int }
+type ParentModel struct {
+	Show   bool
+	Labels []string
+}
+
+func (m ChildModel) Init() Cmd { return nil }
+func (m ChildModel) Update(msg Msg, props ChildProps) (ChildModel, Cmd) { return m, nil }
+
+func (m ParentModel) Init() Cmd { return nil }
+func (m ParentModel) Update(msg Msg) (ParentModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return childView.Templates[0], parentView.Templates[0], app
+}
+
+func TestGenerateNestedStatefulComponent(t *testing.T) {
+	child, parent, app := nestedComponentFixtures(t)
+	childComp := &generator.Stateful{
+		Name: "Child", View: child, App: app.ComponentApp("ChildModel"), ModelJSON: `{"Count":0}`, ModelType: "ChildModel",
+		PropsType: "ChildProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountChild", CreateFunc: "createChild",
+	}
+	parentComp := &generator.Stateful{
+		Name: "Parent", View: parent, App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
+		MountFunc: "mountParent", CreateFunc: "createParent",
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
+		FileName:    "components.gth",
+		AllStateful: []*generator.Stateful{childComp, parentComp},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const c0Node = root.querySelector('[data-gothic-component-id="c0"]');`,
+		`const c0 = mountChild(c0Node, {Label: "hi"}, emit);`,
+		`if (c0Node) c0Node.__gothicInstances = { "c0": c0 };`,
+		`c0.updateProps({Label: "hi"});`,
+		`createChild("c0", {Label: "hi"});`,
+		`export function mountChild(root, props, __gothicParentDispatch) {`,
+		`export function createChild(id, props) {`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateNestedExternalComponentImport(t *testing.T) {
+	child, parent, app := nestedComponentFixtures(t)
+	childComp := &generator.Stateful{
+		Name: "Child", View: child, App: app.ComponentApp("ChildModel"), ModelJSON: `{"Count":0}`, ModelType: "ChildModel",
+		PropsType: "ChildProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountCounter", CreateFunc: "createCounter",
+		External: true, ModuleURL: "/_gothic/modules/ui.js",
+	}
+	parentComp := &generator.Stateful{
+		Name: "Parent", View: parent, App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
+		MountFunc: "mountParent", CreateFunc: "createParent", ModuleURL: "/_gothic/modules/app.js",
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{parentComp}, appjs.Options{
+		FileName:    "components.gth",
+		AllStateful: []*generator.Stateful{childComp, parentComp},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`import { createCounter, mountCounter } from "/_gothic/modules/ui.js";`,
+		`const c0 = mountCounter(c0Node, {Label: "hi"}, emit);`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectNestedComponentInComponentConditional(t *testing.T) {
+	child, _, app := nestedComponentFixtures(t)
+	parentView, err := parser.Parse("parent.gth", []byte(`package app
+
+view Parent(model ParentModel) {
+	<div>
+		if model.Show {
+			<Child label={ "hi" } />
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	childComp := &generator.Stateful{
+		Name: "Child", View: child, App: app.ComponentApp("ChildModel"), ModelJSON: `{"Count":0}`, ModelType: "ChildModel",
+		PropsType: "ChildProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountChild", CreateFunc: "createChild",
+	}
+	parentComp := &generator.Stateful{
+		Name: "Parent", View: parentView.Templates[0], App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
+		MountFunc: "mountParent", CreateFunc: "createParent",
+	}
+	_, err = appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
+		FileName:    "components.gth",
+		AllStateful: []*generator.Stateful{childComp, parentComp},
+	})
+	if err == nil || !strings.Contains(err.Error(), "stateful components inside conditionals are not supported within another stateful component yet") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRejectNestedComponentInComponentList(t *testing.T) {
+	child, _, app := nestedComponentFixtures(t)
+	parentView, err := parser.Parse("parent.gth", []byte(`package app
+
+view Parent(model ParentModel, props ChildProps) {
+	<div>
+		for _, label := range model.Labels {
+			<Child label={ label } />
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	childComp := &generator.Stateful{
+		Name: "Child", View: child, App: app.ComponentApp("ChildModel"), ModelJSON: `{"Count":0}`, ModelType: "ChildModel",
+		PropsType: "ChildProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
+		MountFunc: "mountChild", CreateFunc: "createChild",
+	}
+	parentComp := &generator.Stateful{
+		Name: "Parent", View: parentView.Templates[0], App: app.ComponentApp("ParentModel"), ModelJSON: `{"Show":false}`, ModelType: "ParentModel",
+		MountFunc: "mountParent", CreateFunc: "createParent",
+	}
+	_, err = appjs.GenerateComponents([]*generator.Stateful{childComp, parentComp}, appjs.Options{
+		FileName:    "components.gth",
+		AllStateful: []*generator.Stateful{childComp, parentComp},
+	})
+	if err == nil || !strings.Contains(err.Error(), "stateful components inside lists are not supported within another stateful component yet") {
+		t.Fatalf("error = %v", err)
+	}
+}

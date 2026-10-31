@@ -246,7 +246,8 @@ func generateBody(f *parser.File, opts Options) (string, bool, bool, error) {
 			t:             comp.View,
 			funcName:      comp.ViewName,
 			appRoot:       false,
-			allowStateful: false,
+			allowStateful: true,
+			stateful:      statefulMap(opts.Stateful),
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {
@@ -1004,7 +1005,8 @@ func GenerateLibrary(opts LibraryOptions) ([]byte, error) {
 			t:             comp.View,
 			funcName:      comp.ViewName,
 			appRoot:       false,
-			allowStateful: false,
+			allowStateful: true,
+			stateful:      statefulMap(opts.Stateful),
 		}
 		code, err := viewGen.generateComponentView()
 		if err != nil {

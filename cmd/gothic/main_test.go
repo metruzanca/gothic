@@ -334,3 +334,89 @@ view App() {
 		t.Fatalf("error lacks a hint: %v", err)
 	}
 }
+
+func TestGenerateNestedStatefulComponents(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "app.gth", `package main
+
+import "github.com/metruzanca/gothic"
+
+type Model struct{}
+
+func (m Model) Init() gothic.Cmd { return nil }
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) { return m, nil }
+
+type ChildProps struct{ Label string }
+type ChildModel struct{ Count int }
+type IncClicked struct{}
+
+func (m ChildModel) Init() gothic.Cmd { return nil }
+func (m ChildModel) Update(msg gothic.Msg, props ChildProps) (ChildModel, gothic.Cmd) {
+	switch msg.(type) {
+	case IncClicked:
+		m.Count++
+	}
+	return m, nil
+}
+
+type ParentModel struct{ Title string }
+
+func (m ParentModel) Init() gothic.Cmd { return nil }
+func (m ParentModel) Update(msg gothic.Msg) (ParentModel, gothic.Cmd) { return m, nil }
+
+view Child(model ChildModel, props ChildProps) {
+	<button onclick={ IncClicked{} }>{ props.Label }: { model.Count }</button>
+}
+
+view Parent(model ParentModel) {
+	<section>
+		<h2>{ model.Title }</h2>
+		<Child label={ "nested" } />
+	</section>
+}
+
+view App(model Model) {
+	<main>
+		<Parent />
+	</main>
+}
+`)
+	var out bytes.Buffer
+	if err := generate(dir, &out); err != nil {
+		t.Fatal(err)
+	}
+	goSrc, err := os.ReadFile(filepath.Join(dir, "app_gothic.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(goSrc), `__gothicChildComponent("c0", "", ChildProps{Label: "nested"}).Render(ctx, w)`) {
+		t.Errorf("generated Go missing nested component call\n\n%s", goSrc)
+	}
+	compSrc, err := os.ReadFile(filepath.Join(dir, "app_components_gothic.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`const c0 = mountChild(c0Node, {Label: "nested"}, emit);`,
+		`if (c0Node) c0Node.__gothicInstances = { "c0": c0 };`,
+		`c0.updateProps({Label: "nested"});`,
+		`createChild("c0", {Label: "nested"})`,
+	} {
+		if !strings.Contains(string(compSrc), want) {
+			t.Errorf("generated component JS missing %q\n\n%s", want, compSrc)
+		}
+	}
+	appJS, err := os.ReadFile(filepath.Join(dir, "app_gothic.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`from "/_gothic/modules/app_components_gothic.js"`,
+		`mountParent`,
+		`createParent`,
+	} {
+		if !strings.Contains(string(appJS), want) {
+			t.Errorf("generated app JS missing %q\n\n%s", want, appJS)
+		}
+	}
+}

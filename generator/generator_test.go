@@ -568,3 +568,55 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		t.Fatalf("error lacks source context:\n%s", msg)
 	}
 }
+
+func TestGenerateNestedStatefulComponentView(t *testing.T) {
+	appFile, err := parser.Parse("app.gth", []byte(`package app
+
+view App(model Model) {
+	<main></main>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentFile, err := parser.Parse("parent.gth", []byte(`package app
+
+view Parent(model ParentModel) {
+	<div>
+		<Badge />
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+type ParentModel struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+func (m ParentModel) Init() Cmd { return nil }
+func (m ParentModel) Update(msg Msg) (ParentModel, Cmd) { return m, nil }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := generator.GenerateSingle(appFile, app, generator.Options{
+		FileName:   "app.gth",
+		ModuleBase: "app",
+		App:        app,
+		Stateful: []*generator.Stateful{
+			{Name: "Badge", GoName: "Badge", External: true, ImportAlias: "ui"},
+			{Name: "Parent", GoName: "__gothicParentComponent", ViewName: "__gothicParentView", ModelType: "ParentModel", View: parentFile.Templates[0], ModelJSON: `{}`},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	if !strings.Contains(src, `ui.Badge("c0", "").Render(ctx, w)`) {
+		t.Errorf("generated Go missing nested component call\n\n%s", src)
+	}
+}
