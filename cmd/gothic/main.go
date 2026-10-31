@@ -45,13 +45,14 @@ type result struct {
 }
 
 type libraryConfig struct {
-	Kind       string `json:"kind"`
-	Package    string `json:"package"`
-	Alias      string `json:"alias"`
-	ModuleFile string `json:"module_file"`
-	ModuleURL  string `json:"module_url"`
-	GoFile     string `json:"go_file"`
-	Manifest   string `json:"manifest"`
+	Kind       string   `json:"kind"`
+	Package    string   `json:"package"`
+	Alias      string   `json:"alias"`
+	ModuleFile string   `json:"module_file"`
+	ModuleURL  string   `json:"module_url"`
+	GoFile     string   `json:"go_file"`
+	Manifest   string   `json:"manifest"`
+	Inline     []string `json:"inline"`
 }
 
 type libraryManifest struct {
@@ -69,6 +70,7 @@ type libraryComponent struct {
 	PropsType string        `json:"props_type,omitempty"`
 	Props     []libraryProp `json:"props"`
 	Listable  bool          `json:"listable"`
+	Inline    bool          `json:"inline,omitempty"`
 }
 
 type libraryProp struct {
@@ -516,6 +518,14 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 	return components, nil
 }
 
+func paramsString(params []viewparser.Param) string {
+	parts := make([]string, len(params))
+	for i, p := range params {
+		parts[i] = p.Name + " " + p.Type
+	}
+	return "(" + strings.Join(parts, ", ") + ")"
+}
+
 func viewparserName(name string) string {
 	var b strings.Builder
 	for i, r := range name {
@@ -574,6 +584,14 @@ func readLibraryConfig(dir string) (libraryConfig, bool, error) {
 		return cfg, false, nil
 	}
 	return cfg, true, nil
+}
+
+func inlineComponents(names []string) map[string]bool {
+	set := make(map[string]bool, len(names))
+	for _, name := range names {
+		set[name] = true
+	}
+	return set
 }
 
 func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Writer) (int, int, error) {
@@ -679,6 +697,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		name := t.Name
 		constructor, constructorTakesProps := componentConstructor(sv.app.Commands, t.ParamList[0].Type)
+		inlineSet := inlineComponents(cfg.Inline)
 		stateful = append(stateful, &generator.Stateful{
 			Name:                  name,
 			GoName:                name,
@@ -694,6 +713,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			View:                  expanded,
 			App:                   sv.app.ComponentApp(t.ParamList[0].Type),
 			Listable:              true,
+			Inline:                inlineSet[name],
 			ModuleURL:             cfg.ModuleURL,
 		})
 	}
@@ -703,18 +723,24 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		preludes = append(preludes, f.prelude)
 	}
 
+	var precompiled []*generator.Stateful
+	for _, comp := range stateful {
+		if !comp.Inline {
+			precompiled = append(precompiled, comp)
+		}
+	}
 	goSrc, err := generator.GenerateLibrary(generator.LibraryOptions{
 		FileName:   filepath.Join(dir, "library.gth"),
 		Package:    "",
 		ModuleFile: cfg.ModuleFile,
 		ModuleURL:  cfg.ModuleURL,
 		Preludes:   preludes,
-		Stateful:   stateful,
+		Stateful:   precompiled,
 	})
 	if err != nil {
 		return 0, 0, err
 	}
-	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
+	jsSrc, err := appjs.GenerateComponents(precompiled, appjs.Options{
 		FileName:    filepath.Join(dir, "library.gth"),
 		RuntimeURL:  "/_gothic/runtime.js",
 		AllStateful: stateful,
@@ -731,7 +757,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		manifest.Components = append(manifest.Components, libraryComponent{
 			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
-			PropsType: comp.PropsType, Props: props, Listable: comp.Listable,
+			PropsType: comp.PropsType, Props: props, Listable: comp.Listable, Inline: comp.Inline,
 		})
 	}
 	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
@@ -775,8 +801,13 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 			return nil, nil, nil, fmt.Errorf("component package %s: missing alias in manifest", path)
 		}
 		statefulNames := map[string]bool{}
+		var inlineManifest []libraryComponent
 		for _, comp := range manifest.Components {
 			statefulNames[comp.Name] = true
+			if comp.Inline {
+				inlineManifest = append(inlineManifest, comp)
+				continue
+			}
 			props := make([]viewparser.Param, len(comp.Props))
 			for i, p := range comp.Props {
 				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
@@ -803,6 +834,7 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 		type pureFile struct {
 			path    string
 			appFile *viewparser.AppFile
+			app     *goapp.App
 		}
 		var pureFiles []pureFile
 		pkgProps := viewparser.PropsTypes{}
@@ -819,11 +851,11 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			pureFiles = append(pureFiles, pureFile{path: file, appFile: appFile})
 			app, err := goapp.ParseComponents(file, appFile.GoSource)
 			if err != nil {
 				return nil, nil, nil, err
 			}
+			pureFiles = append(pureFiles, pureFile{path: file, appFile: appFile, app: app})
 			for name, fields := range app.Messages {
 				params := make([]viewparser.Param, len(fields))
 				for i, field := range fields {
@@ -832,6 +864,77 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 				pkgProps[name] = viewparser.PropsType{Name: name, Fields: params}
 			}
 		}
+		localPure := viewparser.ComponentSet{}
+		for _, f := range pureFiles {
+			for _, t := range f.appFile.View.Templates {
+				if statefulNames[t.Name] {
+					continue
+				}
+				localPure[t.Name] = t
+			}
+		}
+		for _, comp := range inlineManifest {
+			var tmpl *viewparser.Template
+			var compApp *goapp.App
+			for _, f := range pureFiles {
+				for _, t := range f.appFile.View.Templates {
+					if t.Name != comp.Name {
+						continue
+					}
+					tmpl = t
+					if len(t.ParamList) > 0 {
+						compApp = f.app.ComponentApp(t.ParamList[0].Type)
+					}
+				}
+			}
+			if tmpl == nil {
+				return nil, nil, nil, fmt.Errorf("component package %s: inline component %s has no view", path, comp.Name)
+			}
+			if len(tmpl.ParamList) == 0 || compApp == nil {
+				return nil, nil, nil, fmt.Errorf("component package %s: inline component %s has no model Init and Update", path, comp.Name)
+			}
+			modelType := tmpl.ParamList[0].Type
+			modelJSON, err := zeroModelJSON(compApp.Messages[modelType])
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
+			}
+			expanded, err := viewparser.ExpandTemplateWithProps(tmpl, localPure, pkgProps)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
+			}
+			for i := range expanded.ParamList {
+				expanded.ParamList[i].Type = manifest.Alias + "." + expanded.ParamList[i].Type
+			}
+			expanded.Params = paramsString(expanded.ParamList)
+			constructor, constructorTakesProps := componentConstructor(compApp.Commands, modelType)
+			props := make([]viewparser.Param, len(comp.Props))
+			for i, p := range comp.Props {
+				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
+			}
+			prefix := viewparserName(manifest.Alias + comp.Name)
+			out = append(out, &generator.Stateful{
+				Name:                  manifest.Alias + "." + comp.Name,
+				DisplayName:           comp.Name,
+				GoName:                "__gothic" + prefix + "Component",
+				ViewName:              "__gothic" + prefix + "View",
+				MountFunc:             "mount" + prefix,
+				CreateFunc:            "create" + prefix,
+				ModelType:             modelType,
+				ModelJSON:             modelJSON,
+				Constructor:           constructor,
+				ConstructorTakesProps: constructorTakesProps,
+				PropsType:             comp.PropsType,
+				Props:                 props,
+				View:                  expanded,
+				App:                   compApp,
+				Listable:              comp.Listable,
+				Inline:                true,
+				ImportAlias:           manifest.Alias,
+				ImportPath:            manifest.Package,
+				ModuleURL:             generator.ComponentsModuleURL(s.base),
+			})
+		}
+
 		for _, f := range pureFiles {
 			for _, t := range f.appFile.View.Templates {
 				if statefulNames[t.Name] {

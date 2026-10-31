@@ -58,28 +58,29 @@ func TestVirtualListModules(t *testing.T) {
 	appJS := string(body)
 	for _, want := range []string{
 		`from "/_gothic/modules/ui_gothic.js"`,
-		`mountVirtualList`,
-		`createVirtualList`,
+		`from "/_gothic/modules/app_components_gothic.js"`,
+		`mountuiVirtualList`,
+		`createuiVirtualList`,
 	} {
 		if !strings.Contains(appJS, want) {
 			t.Errorf("app JS missing %q\n\n%s", want, appJS)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/ui_gothic.js")
+	res, err = http.Get(ts.URL + "/_gothic/modules/app_components_gothic.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ = io.ReadAll(res.Body)
 	res.Body.Close()
-	uiJS := string(body)
+	compJS := string(body)
 	for _, want := range []string{
-		`export function mountVirtualList`,
-		`export function createVirtualList`,
+		`export function mountuiVirtualList`,
+		`export function createuiVirtualList`,
 		`virtualWindow(`,
 	} {
-		if !strings.Contains(uiJS, want) {
-			t.Errorf("UI JS missing %q\n\n%s", want, uiJS)
+		if !strings.Contains(compJS, want) {
+			t.Errorf("component JS missing %q\n\n%s", want, compJS)
 		}
 	}
 }

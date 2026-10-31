@@ -1,10 +1,7 @@
 package ui
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/metruzanca/gothic"
@@ -18,37 +15,15 @@ func virtualItems(n int) []VirtualItem {
 	return items
 }
 
-func TestVirtualListRender(t *testing.T) {
-	props := VirtualListProps{Items: virtualItems(100), Height: 72, RowHeight: 36}
-	var b bytes.Buffer
-	if err := VirtualList("v1", "", props).Render(context.Background(), &b); err != nil {
-		t.Fatal(err)
-	}
-	html := b.String()
-	for _, want := range []string{
-		`class="ui-virtual-list"`,
-		`style="height:72px"`,
-		`style="height:0px"`,
-		`style="height:3528px"`,
-		`Row 1`,
-		`Row 2`,
-		`"Start":0,"Count":2`,
-	} {
-		if !strings.Contains(html, want) {
-			t.Errorf("render missing %q\n\n%s", want, html)
-		}
-	}
-	if got := strings.Count(html, `class="ui-virtual-row"`); got != 2 {
-		t.Errorf("rendered %d rows, want 2", got)
-	}
-}
-
 func TestVirtualListUpdate(t *testing.T) {
 	props := VirtualListProps{Items: virtualItems(100), Height: 72, RowHeight: 36}
 	m := NewVirtualListModel(props)
 	m, _ = m.Update(VirtualScrolled{Top: 360}, props)
 	if m.Start != 10 || m.Count != 2 || m.Top != 360 || m.Bottom != 3168 {
 		t.Fatalf("scrolled model = %+v", m)
+	}
+	if m.TopStyle != "height:360px" || m.BottomStyle != "height:3168px" {
+		t.Fatalf("scrolled styles = %+v", m)
 	}
 
 	small := VirtualListProps{Items: virtualItems(3), Height: 72, RowHeight: 36}

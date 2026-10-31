@@ -88,6 +88,7 @@ func TestGothicbook(t *testing.T) {
 		`mountCounter`,
 		`mountDisclosure`,
 		`createDisclosure`,
+		`mountuiVirtualList`,
 		`model.Visible`,
 		`SlotTextChanged`,
 		`IncrementClicked`,
@@ -110,12 +111,25 @@ func TestGothicbook(t *testing.T) {
 		`export function mountCounter`,
 		`export function mountDisclosure`,
 		`export function createDisclosure`,
-		`export function mountVirtualList`,
-		`export function createVirtualList`,
-		`virtualWindow(`,
 	} {
 		if !strings.Contains(string(uiJS), want) {
 			t.Errorf("UI JS missing %q", want)
+		}
+	}
+
+	res, err = http.Get(ts.URL + "/_gothic/modules/app_components_gothic.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	compJS, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	for _, want := range []string{
+		`export function mountuiVirtualList`,
+		`export function createuiVirtualList`,
+		`virtualWindow(`,
+	} {
+		if !strings.Contains(string(compJS), want) {
+			t.Errorf("component JS missing %q", want)
 		}
 	}
 

@@ -2204,7 +2204,7 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 
 		fmt.Fprintf(&b, "export function %s(id%s) {\n", comp.CreateFunc, propSig)
 		b.WriteString("  const wrapper = document.createElement('div');\n")
-		fmt.Fprintf(&b, "  wrapper.setAttribute('data-gothic-component', %s);\n", jsString(comp.Name))
+		fmt.Fprintf(&b, "  wrapper.setAttribute('data-gothic-component', %s);\n", jsString(comp.ComponentName()))
 		b.WriteString("  wrapper.setAttribute('data-gothic-component-id', id);\n")
 		if ctorCall != "" {
 			fmt.Fprintf(&b, "  const %s = %s;\n", modelName, ctorCall)

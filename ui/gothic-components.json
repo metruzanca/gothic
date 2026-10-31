@@ -83,7 +83,8 @@
           "type": "int"
         }
       ],
-      "listable": true
+      "listable": true,
+      "inline": true
     }
   ]
 }

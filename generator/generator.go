@@ -41,6 +41,7 @@ type Options struct {
 // Stateful is a stateful component rendered as an island.
 type Stateful struct {
 	Name                  string
+	DisplayName           string
 	ViewName              string
 	GoName                string
 	MountFunc             string
@@ -55,21 +56,46 @@ type Stateful struct {
 	App                   *goapp.App
 	Listable              bool
 	External              bool
+	Inline                bool
 	ImportAlias           string
 	ImportPath            string
 	ModuleURL             string
 }
 
+// ComponentName returns the unqualified name used in DOM attributes.
+func (c *Stateful) ComponentName() string {
+	if c.DisplayName != "" {
+		return c.DisplayName
+	}
+	return c.Name
+}
+
 // PropsGoType returns the Go type used for the component props, qualified for
-// external components.
+// external and inline components.
 func (c *Stateful) PropsGoType() string {
 	if c.PropsType == "" {
 		return ""
 	}
-	if c.External {
+	if c.External || c.Inline {
 		return c.ImportAlias + "." + c.PropsType
 	}
 	return c.PropsType
+}
+
+// GoModelType returns the Go type used for the component model.
+func (c *Stateful) GoModelType() string {
+	if c.Inline && c.ImportAlias != "" {
+		return c.ImportAlias + "." + c.ModelType
+	}
+	return c.ModelType
+}
+
+// GoConstructor returns the Go constructor name.
+func (c *Stateful) GoConstructor() string {
+	if c.Inline && c.ImportAlias != "" {
+		return c.ImportAlias + "." + c.Constructor
+	}
+	return c.Constructor
 }
 
 // ComponentsModuleFileName returns the generated JavaScript file name for app components.
@@ -155,7 +181,7 @@ func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error
 	viewSpecs := viewImports(usesHTML, usesFmt)
 	seenExternal := map[string]bool{}
 	for _, comp := range opts.Stateful {
-		if !comp.External {
+		if !comp.External && !comp.Inline {
 			continue
 		}
 		key := comp.ImportAlias + " " + comp.ImportPath
@@ -721,13 +747,13 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 		if comp.ConstructorTakesProps {
 			args = "props"
 		}
-		fmt.Fprintf(b, "\t\tmodel := %s(%s)\n", comp.Constructor, args)
+		fmt.Fprintf(b, "\t\tmodel := %s(%s)\n", comp.GoConstructor(), args)
 	} else {
-		fmt.Fprintf(b, "\t\tvar model %s\n", comp.ModelType)
+		fmt.Fprintf(b, "\t\tvar model %s\n", comp.GoModelType())
 	}
 	b.WriteString("\t\tstateJSON, err := json.Marshal(model)\n")
 	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
-	fmt.Fprintf(b, "\t\tif _, err := io.WriteString(w, %s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<div data-gothic-component=\""+comp.Name+"\" data-gothic-component-id=\""))
+	fmt.Fprintf(b, "\t\tif _, err := io.WriteString(w, %s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("<div data-gothic-component=\""+comp.ComponentName()+"\" data-gothic-component-id=\""))
 	b.WriteString("\t\tif _, err := io.WriteString(w, id); err != nil {\n\t\t\treturn err\n\t\t}\n")
 	b.WriteString("\t\tif _, err := io.WriteString(w, \"\\\"\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
 	b.WriteString("\t\tif key != \"\" {\n")

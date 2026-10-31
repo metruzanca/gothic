@@ -19,12 +19,16 @@ type VirtualListProps struct {
 }
 
 type VirtualListModel struct {
-	Start     int
-	Count     int
-	Top       int
-	Bottom    int
-	Height    int
-	RowHeight int
+	Start          int
+	Count          int
+	Top            int
+	Bottom         int
+	Height         int
+	RowHeight      int
+	HeightStyle    string
+	TopStyle       string
+	BottomStyle    string
+	RowHeightStyle string
 }
 
 type VirtualScrolled struct{ Top int }
@@ -42,6 +46,10 @@ func NewVirtualListModel(props VirtualListProps) VirtualListModel {
 	m.Count = win.Count
 	m.Top = win.Top
 	m.Bottom = win.Bottom
+	m.HeightStyle = "height:" + dom.Px(m.Height)
+	m.TopStyle = "height:" + dom.Px(m.Top)
+	m.BottomStyle = "height:" + dom.Px(m.Bottom)
+	m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	return m
 }
 
@@ -57,6 +65,8 @@ func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (Virtua
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
+		m.TopStyle = "height:" + dom.Px(m.Top)
+		m.BottomStyle = "height:" + dom.Px(m.Bottom)
 	case gothic.PropsChanged:
 		m.Height = 432
 		m.RowHeight = 36
@@ -71,19 +81,23 @@ func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (Virtua
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
+		m.HeightStyle = "height:" + dom.Px(m.Height)
+		m.TopStyle = "height:" + dom.Px(m.Top)
+		m.BottomStyle = "height:" + dom.Px(m.Bottom)
+		m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	}
 	return m, nil
 }
 
 view VirtualList(model VirtualListModel, props VirtualListProps) {
-	<div class="ui-virtual-list" style={ "height:" + dom.Px(model.Height) } onscroll={ VirtualScrolled{Top: event.target.scrollTop} }>
-		<div class="ui-virtual-spacer" style={ "height:" + dom.Px(model.Top) }></div>
+	<div class="ui-virtual-list" style={ model.HeightStyle } onscroll={ VirtualScrolled{Top: event.target.scrollTop} }>
+		<div class="ui-virtual-spacer" style={ model.TopStyle }></div>
 		for _, item := range props.Items[model.Start : model.Start+model.Count] {
-			<div class="ui-virtual-row" key={ item.ID } style={ "height:" + dom.Px(model.RowHeight) }>
+			<div class="ui-virtual-row" key={ item.ID } style={ model.RowHeightStyle }>
 				<span class="ui-virtual-title">{ item.Title }</span>
 				<span class="ui-virtual-detail">{ item.Detail }</span>
 			</div>
 		}
-		<div class="ui-virtual-spacer" style={ "height:" + dom.Px(model.Bottom) }></div>
+		<div class="ui-virtual-spacer" style={ model.BottomStyle }></div>
 	</div>
 }

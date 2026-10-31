@@ -176,12 +176,16 @@ type VirtualListProps struct {
 }
 
 type VirtualListModel struct {
-	Start     int
-	Count     int
-	Top       int
-	Bottom    int
-	Height    int
-	RowHeight int
+	Start          int
+	Count          int
+	Top            int
+	Bottom         int
+	Height         int
+	RowHeight      int
+	HeightStyle    string
+	TopStyle       string
+	BottomStyle    string
+	RowHeightStyle string
 }
 
 type VirtualScrolled struct{ Top int }
@@ -199,6 +203,10 @@ func NewVirtualListModel(props VirtualListProps) VirtualListModel {
 	m.Count = win.Count
 	m.Top = win.Top
 	m.Bottom = win.Bottom
+	m.HeightStyle = "height:" + dom.Px(m.Height)
+	m.TopStyle = "height:" + dom.Px(m.Top)
+	m.BottomStyle = "height:" + dom.Px(m.Bottom)
+	m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	return m
 }
 
@@ -214,6 +222,8 @@ func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (Virtua
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
+		m.TopStyle = "height:" + dom.Px(m.Top)
+		m.BottomStyle = "height:" + dom.Px(m.Bottom)
 	case gothic.PropsChanged:
 		m.Height = 432
 		m.RowHeight = 36
@@ -228,6 +238,10 @@ func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (Virtua
 		m.Count = win.Count
 		m.Top = win.Top
 		m.Bottom = win.Bottom
+		m.HeightStyle = "height:" + dom.Px(m.Height)
+		m.TopStyle = "height:" + dom.Px(m.Top)
+		m.BottomStyle = "height:" + dom.Px(m.Bottom)
+		m.RowHeightStyle = "height:" + dom.Px(m.RowHeight)
 	}
 	return m, nil
 }
@@ -867,230 +881,6 @@ func Tabs(id string, key string, props TabsProps) gothic.Component {
 			return err
 		}
 		if err := __gothicTabsView(model, props).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
-func __gothicVirtualListView(model VirtualListModel, props VirtualListProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<div data-gothic-attr-0=\"style\""); err != nil {
-			return err
-		}
-		if err := write(" style=\""); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Height)))); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(" data-gothic-on=\"0\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-virtual-list"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<div data-gothic-attr-1=\"style\""); err != nil {
-			return err
-		}
-		if err := write(" style=\""); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Top)))); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-virtual-spacer"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		if err := write("<!--g:each:0:open-->"); err != nil {
-			return err
-		}
-		for _, item := range props.Items[model.Start : model.Start+model.Count] {
-			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
-				return err
-			}
-			if err := write(" style=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.RowHeight)))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-virtual-row"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(item.ID))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<span"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-virtual-title"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("<span"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-virtual-detail"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Detail))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</span>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-		}
-		if err := write("<!--g:each:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("<div data-gothic-attr-3=\"style\""); err != nil {
-			return err
-		}
-		if err := write(" style=\""); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint("height:" + dom.Px(model.Bottom)))); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-virtual-spacer"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func VirtualList(id string, key string, props VirtualListProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		model := NewVirtualListModel(props)
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"VirtualList\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicVirtualListView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")
