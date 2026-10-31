@@ -656,6 +656,70 @@ client hydrates it and dispatches `LocationChanged` on load.
 `HashChanged` still works for hash-only apps. If an app defines both
 `LocationChanged` and `HashChanged`, `LocationChanged` takes precedence.
 
+#### Path parameters
+
+Use the `route` package to match patterns and capture segments:
+
+```go
+import "github.com/metruzanca/gothic/route"
+
+params := route.Params("/todos/:id", msg.Path)
+if params != nil {
+	m.ID = params["id"]
+}
+```
+
+`route.Params` returns a `map[string]string`, or `nil` when the path does not
+match. `route.Match(pattern, path)` returns only the boolean result.
+
+Patterns are slash-separated. A segment that starts with `:` captures one
+non-empty segment. The pattern and path must have the same number of segments.
+
+```go
+route.Params("/users/:name/posts/:post", "/users/ada/posts/7")
+// map[string]string{"name": "ada", "post": "7"}
+```
+
+`route.Params` works on the server and in `Update`. The prelude calls the real
+Go package. The generated JavaScript uses an equivalent runtime helper, so the
+same pattern matches the same paths on both sides. Captured segments are
+percent-decoded to match `r.URL.Path`.
+
+A typical app matches once in the server model factory and once in
+`LocationChanged`:
+
+```go
+func NewModel(path string) Model {
+	m := Model{Path: path}
+	m.Page, m.ID = pageFor(path)
+	return m
+}
+
+func (m Model) Update(msg gothic.Msg) (Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case LocationChanged:
+		params := route.Params("/todos/:id", msg.Path)
+		if params != nil {
+			m.Page = "todo"
+			m.ID = params["id"]
+		} else {
+			m.Page = "notfound"
+		}
+	}
+	return m, nil
+}
+```
+
+The router example uses `/hello/:name` and renders the captured name on the
+server and after client-side navigation.
+
+Limits:
+
+- no wildcard or optional segments,
+- no trailing-slash normalization,
+- duplicate parameter names keep the last segment,
+- query and hash are not part of the pattern.
+
 ### Browser interop
 
 The `js` package is a curated, client-only surface:
@@ -885,6 +949,7 @@ The proof of concept supports:
 - hash-based route changes through a `HashChanged` message,
 - path, query, and hash URL state through a `LocationChanged` message,
 - `route` links with pushState, replaceState, back, and popstate,
+- path pattern matching and parameters through the `route` package,
 - request-scoped app models and catch-all app mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,

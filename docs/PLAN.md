@@ -187,6 +187,7 @@ from the server and reconciled. There is no virtual DOM.
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, request-scoped app models, and module registry. |
 | `js/` | Curated client-only browser interop. |
+| `route/` | Path pattern matching shared by the server and client. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/pingpong/` | The proof-of-concept app. |
 | `examples/components/` | The pure-component demo. |
@@ -242,6 +243,7 @@ Supported now:
 - message-valued event bindings and event values,
 - hash routing through a `HashChanged` message,
 - path, query, and hash state through `LocationChanged`,
+- path pattern matching and parameters through the `route` package,
 - `route` links, pushState, replaceState, back, and popstate,
 - request-scoped app models and catch-all mounting for deep links,
 - curated browser interop through the `js` package,
@@ -285,7 +287,7 @@ These will be planned in detail after the proof of concept is evaluated:
 1. Nested stateful components.
 2. Children on stateful components, named slots, and fallback content if a
    real use case appears.
-3. Path parameters, nested routers, and route matching helpers.
+3. Nested routers and wildcard or optional route segments.
 4. `Batch` and `Sequence` commands.
 5. Typed procedure argument validation and the no-JS fallback.
 6. `go/packages` for type information and stronger validation.
