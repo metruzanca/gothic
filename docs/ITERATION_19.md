@@ -1,3 +1,6 @@
+> Historical note: the hardcoded `ui.VirtualItem` was replaced by
+> app-defined row views in [Iteration 20](ITERATION_20.md).
+
 # Iteration 19: virtual list package and component
 
 Status: complete. Virtualized lists are now a headless package and a UI kit

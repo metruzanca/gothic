@@ -7,11 +7,9 @@ It prioritizes simplicity and productivity.
 
 ## Goals
 
-- **Fullstack Go.** Go is the only language you write for the backend and the
-  frontend.
-- **No WebAssembly.** Go on the server, plain JavaScript on the client.
-- **Idiomatic Go, modern views.** Application logic reads like normal Go.
-  Views stay concise and declarative.
+- **Fullstack Go** Go is the only language you write
+- **Simplicity** Optimized for readability and understanding whats going on
+- **Opinionated** Fewer decisions to make, focus on building
 
 ## A taste
 
@@ -131,10 +129,6 @@ func main() {
 }
 ```
 
-Posting clears the draft and returns a command. The command calls the typed
-`Post` procedure, and the result comes back as a `Posted` message. The list is
-server-rendered, keyed, and updated in place. No JavaScript was written.
-
 The full example adds an in-memory store so messages survive reloads, plus
 tests: [examples/guestbook](examples/guestbook).
 
@@ -159,7 +153,7 @@ Current syntax and limits live in [SYNTAX.md](docs/SYNTAX.md) and
 
 ## Credits
 
-The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
+The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechild.me)
 ([X](https://x.com/mackenziechild)). See [CREDITS.md](CREDITS.md).
 
 ## Learn more
@@ -185,6 +179,7 @@ The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
 - [Nested stateful components](docs/ITERATION_17.md)
 - [Virtualized list](docs/ITERATION_18.md)
 - [Virtual list package and component](docs/ITERATION_19.md)
+- [App-defined row views](docs/ITERATION_20.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current

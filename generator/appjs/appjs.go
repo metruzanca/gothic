@@ -1506,6 +1506,11 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "append" {
 			return "", g.exprErr(ctx, "assign the append result to a field", "append is only supported in assignment")
 		}
+		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "gothic" && sel.Sel.Name == "AnySlice" && len(e.Args) == 1 {
+				return g.expr(e.Args[0], ctx)
+			}
+		}
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "len" && len(e.Args) == 1 {
 			x, err := g.expr(e.Args[0], ctx)
 			if err != nil {
@@ -1585,6 +1590,8 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		}
 		return e.Op.String() + x, nil
 	case *ast.StarExpr:
+		return g.expr(e.X, ctx)
+	case *ast.TypeAssertExpr:
 		return g.expr(e.X, ctx)
 	case *ast.ParenExpr:
 		x, err := g.expr(e.X, ctx)

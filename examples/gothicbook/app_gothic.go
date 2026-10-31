@@ -18,6 +18,11 @@ type CodeProps struct {
 	Code  string
 }
 
+type VirtualRowData struct {
+	Title  string
+	Detail string
+}
+
 type Model struct {
 	Tabs              []ui.Tab
 	ManyTabs          []ui.Tab
@@ -40,7 +45,7 @@ type Model struct {
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
-	VirtualItems      []ui.VirtualItem
+	VirtualRows       []VirtualRowData
 	VirtualCode       string
 }
 
@@ -78,11 +83,11 @@ func NewModel(count int) Model {
 				"Show the branch again and I start collapsed.",
 			},
 		},
-		PageOne:      sampleDisclosures(1, 10),
-		PageTwo:      sampleDisclosures(11, 10),
-		PageLabel:    "Showing 1-10 of 20",
-		VirtualItems: sampleVirtualItems(1000),
-		VirtualCode:  `<ui.VirtualList items={ model.VirtualItems } height={ 432 } rowheight={ 36 } />`,
+		PageOne:     sampleDisclosures(1, 10),
+		PageTwo:     sampleDisclosures(11, 10),
+		PageLabel:   "Showing 1-10 of 20",
+		VirtualRows: sampleVirtualRows(1000),
+		VirtualCode: `<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
@@ -91,17 +96,16 @@ func NewModel(count int) Model {
 	return m
 }
 
-func sampleVirtualItems(count int) []ui.VirtualItem {
-	items := make([]ui.VirtualItem, count)
-	for i := range items {
+func sampleVirtualRows(count int) []VirtualRowData {
+	rows := make([]VirtualRowData, count)
+	for i := range rows {
 		n := i + 1
-		items[i] = ui.VirtualItem{
-			ID:     n,
+		rows[i] = VirtualRowData{
 			Title:  fmt.Sprintf("Row %d", n),
 			Detail: fmt.Sprintf("Virtual item %d of %d", n, count),
 		}
 	}
-	return items
+	return rows
 }
 
 func sampleDisclosures(from, count int) []ui.DisclosureItem {
@@ -1359,7 +1363,7 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListComponent("c5", "", ui.VirtualListProps{Items: model.VirtualItems, Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+		if err := __gothicuiVirtualListComponent("c5", "", ui.VirtualListProps{Items: gothic.AnySlice(model.VirtualRows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("<div"); err != nil {
@@ -1649,7 +1653,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 		if err := write("<!--g:each:0:open-->"); err != nil {
 			return err
 		}
-		for _, item := range props.Items[model.Start : model.Start+model.Count] {
+		for i, item := range props.Items[model.Start : model.Start+model.Count] {
 			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
 				return err
 			}
@@ -1671,7 +1675,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write(" data-gothic-key=\""); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.ID))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -1680,7 +1684,19 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<span"); err != nil {
+			if err := write("<div"); err != nil {
+				return err
+			}
+			if err := write(" class=\"virtual-row-content"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<strong"); err != nil {
 				return err
 			}
 			if err := write(" class=\"ui-virtual-title"); err != nil {
@@ -1695,13 +1711,13 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write("<!--g:text:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((item.(VirtualRowData)).Title))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:0:close-->"); err != nil {
 				return err
 			}
-			if err := write("</span>"); err != nil {
+			if err := write("</strong>"); err != nil {
 				return err
 			}
 			if err := write("<span"); err != nil {
@@ -1719,13 +1735,16 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write("<!--g:text:1:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Detail))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((item.(VirtualRowData)).Detail))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:1:close-->"); err != nil {
 				return err
 			}
 			if err := write("</span>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {

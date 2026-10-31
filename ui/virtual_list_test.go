@@ -1,16 +1,15 @@
 package ui
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/metruzanca/gothic"
 )
 
-func virtualItems(n int) []VirtualItem {
-	items := make([]VirtualItem, n)
+func virtualItems(n int) []any {
+	items := make([]any, n)
 	for i := range items {
-		items[i] = VirtualItem{ID: i + 1, Title: fmt.Sprintf("Row %d", i+1), Detail: "detail"}
+		items[i] = i + 1
 	}
 	return items
 }

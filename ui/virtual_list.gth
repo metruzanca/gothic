@@ -6,14 +6,8 @@ import (
 	"github.com/metruzanca/gothic/virtual"
 )
 
-type VirtualItem struct {
-	ID     int
-	Title  string
-	Detail string
-}
-
 type VirtualListProps struct {
-	Items     []VirtualItem
+	Items     []any
 	Height    int
 	RowHeight int
 }
@@ -92,10 +86,9 @@ func (m VirtualListModel) Update(msg gothic.Msg, props VirtualListProps) (Virtua
 view VirtualList(model VirtualListModel, props VirtualListProps) {
 	<div class="ui-virtual-list" style={ model.HeightStyle } onscroll={ VirtualScrolled{Top: event.target.scrollTop} }>
 		<div class="ui-virtual-spacer" style={ model.TopStyle }></div>
-		for _, item := range props.Items[model.Start : model.Start+model.Count] {
-			<div class="ui-virtual-row" key={ item.ID } style={ model.RowHeightStyle }>
-				<span class="ui-virtual-title">{ item.Title }</span>
-				<span class="ui-virtual-detail">{ item.Detail }</span>
+		for i, item := range props.Items[model.Start : model.Start+model.Count] {
+			<div class="ui-virtual-row" key={ model.Start + i } style={ model.RowHeightStyle }>
+				<RowSlot item={ item } />
 			</div>
 		}
 		<div class="ui-virtual-spacer" style={ model.BottomStyle }></div>

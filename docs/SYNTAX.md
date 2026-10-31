@@ -559,15 +559,37 @@ their events.
 
 ### Virtualized lists
 
-The UI kit has a ready-made fixed-height virtual list:
+The UI kit has a ready-made fixed-height virtual list that takes an app-defined
+row view:
 
-```templ
-<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } />
+```go
+type RowData struct {
+	Title  string
+	Detail string
+}
 ```
 
-`ui.VirtualItem` has `ID`, `Title`, and `Detail` fields. The component owns its
+```templ
+view Row(row RowData) {
+	<div class="row-content">
+		<strong>{ row.Title }</strong>
+		<span>{ row.Detail }</span>
+	</div>
+}
+```
+
+```templ
+<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
+```
+
+The row view must be a pure component with one parameter. The component owns its
 scroll offset, seeds its initial window from props, and keeps only the visible
 rows in the DOM. Zero `height` or `rowheight` falls back to 432px and 36px.
+
+`VirtualList` ships as an inline library component, so the app generator bakes
+the row view into the component and compiles it with the app. The items slice is
+converted to `[]any` at the server boundary with `gothic.AnySlice`, and the row
+call casts it back to the app type. One row view per app is supported for now.
 
 For custom rows, use the headless `virtual` package:
 

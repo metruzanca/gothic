@@ -20,7 +20,7 @@ const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'),
 on(root, "5", "click", (event) => dispatch(({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Onclick));
 on(root, "6", "click", (event) => dispatch(({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Onclick));
 on(root, "7", "click", (event) => dispatch(({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Onclick));
-const c5 = mountuiVirtualList(root.querySelector('[data-gothic-component-id="c5"]'), {Items: model.VirtualItems, Height: 432, RowHeight: 36}, dispatch);
+const c5 = mountuiVirtualList(root.querySelector('[data-gothic-component-id="c5"]'), {Items: model.VirtualRows, Height: 432, RowHeight: 36}, dispatch);
 const c6 = mountCounter(root.querySelector('[data-gothic-component-id="c6"]'), {Label: "Increment on client"}, dispatch);
 on(root, "8", "click", (event) => dispatch(({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Onclick));
 
@@ -59,7 +59,7 @@ if (!gc4Inst) {
   c0.updateProps({Label: "Increment inside a slot"});
   c1.updateProps({Items: model.Tabs, Active: model.TabStart});
   c2.updateProps({Items: model.Accordion});
-  c5.updateProps({Items: model.VirtualItems, Height: 432, RowHeight: 36});
+  c5.updateProps({Items: model.VirtualRows, Height: 432, RowHeight: 36});
   c6.updateProps({Label: "Increment on client"});
   text(root, "0", ({Label: "Save changes", Primary: true, Onclick: null}).Label);
   text(root, "1", ({Label: "Cancel", Primary: false, Onclick: null}).Label);

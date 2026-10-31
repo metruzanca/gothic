@@ -28,3 +28,18 @@ h1 {
 .ui-virtual-list {
 	margin-top: 16px;
 }
+
+.row-content {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	height: 100%;
+}
+
+.title {
+	min-width: 64px;
+}
+
+.detail {
+	color: #78716c;
+}

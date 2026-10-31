@@ -45,32 +45,35 @@ export function mountuiVirtualList(root, props, __gothicParentDispatch) {
     attrLocal(root, "0", model.HeightStyle);
     attrLocal(root, "1", model.TopStyle);
     attrLocal(root, "3", model.BottomStyle);
-    const renderList0 = listLocal(root, "0", (item, __i0) => {
+    const renderList0 = listLocal(root, "0", (item, i) => {
     const e0 = document.createElement("div");
-    e0.setAttribute("data-gothic-key", String(item.ID));
+    e0.setAttribute("data-gothic-key", String(model.Start + i));
     e0.setAttribute("class", "ui-virtual-row");
     e0.setAttribute("data-gothic-attr-2", "style");
-    const e1 = document.createElement("span");
-    e1.setAttribute("class", "ui-virtual-title");
-    e1.appendChild(document.createComment("g:text:0:open"));
-    e1.appendChild(document.createTextNode(String(item.Title)));
-    e1.appendChild(document.createComment("g:text:0:close"));
+    const e1 = document.createElement("div");
+    e1.setAttribute("class", "row-content");
+    const e2 = document.createElement("strong");
+    e2.setAttribute("class", "title");
+    e2.appendChild(document.createComment("g:text:0:open"));
+    e2.appendChild(document.createTextNode(String((item).Title)));
+    e2.appendChild(document.createComment("g:text:0:close"));
+    e1.appendChild(e2);
+    const e3 = document.createElement("span");
+    e3.setAttribute("class", "detail");
+    e3.appendChild(document.createComment("g:text:1:open"));
+    e3.appendChild(document.createTextNode(String((item).Detail)));
+    e3.appendChild(document.createComment("g:text:1:close"));
+    e1.appendChild(e3);
     e0.appendChild(e1);
-    const e2 = document.createElement("span");
-    e2.setAttribute("class", "ui-virtual-detail");
-    e2.appendChild(document.createComment("g:text:1:open"));
-    e2.appendChild(document.createTextNode(String(item.Detail)));
-    e2.appendChild(document.createComment("g:text:1:close"));
-    e0.appendChild(e2);
     attrLocal(e0, "2", model.RowHeightStyle);
-    textLocal(e0, "0", item.Title);
-    textLocal(e0, "1", item.Detail);
+    textLocal(e0, "0", (item).Title);
+    textLocal(e0, "1", (item).Detail);
     return e0;
-  }, (node, item, __i0) => {
+  }, (node, item, i) => {
     attrLocal(node, "2", model.RowHeightStyle);
-    textLocal(node, "0", item.Title);
-    textLocal(node, "1", item.Detail);
-  }, (item, __i0) => String(item.ID));
+    textLocal(node, "0", (item).Title);
+    textLocal(node, "1", (item).Detail);
+  }, (item, i) => String(model.Start + i));
   renderList0(((props.Items) ?? []).slice(model.Start, model.Start + model.Count));
   }
 

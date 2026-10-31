@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"go/ast"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	viewparser "github.com/metruzanca/gothic/parser"
 )
 
 func TestGenerateReportsArtifacts(t *testing.T) {
@@ -418,5 +421,75 @@ view App(model Model) {
 		if !strings.Contains(string(appJS), want) {
 			t.Errorf("generated app JS missing %q\n\n%s", want, appJS)
 		}
+	}
+}
+
+func TestBakeInlineRow(t *testing.T) {
+	appFile, err := viewparser.Parse("app.gth", []byte(`package main
+
+view Row(row RowData) {
+	<span>{ row.Title }</span>
+}
+
+view App(model Model) {
+	<main>
+		<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
+	</main>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inline, err := viewparser.Parse("virtual.gth", []byte(`package ui
+
+view VirtualList(model VirtualListModel, props VirtualListProps) {
+	<div>
+		for i, item := range props.Items[0:1] {
+			<div key={ i }>
+				<RowSlot item={ item } />
+			</div>
+		}
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := viewparser.ComponentSet{"Row": appFile.Templates[0]}
+	if _, err := bakeInlineRow(appFile, "ui.VirtualList", inline.Templates[0], registry); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := collectComponentCalls(appFile.Templates[1].Children)
+	if len(calls) != 1 {
+		t.Fatalf("app calls = %d, want 1", len(calls))
+	}
+	call := calls[0]
+	for _, prop := range call.Props {
+		if prop.Name == "row" {
+			t.Fatal("row prop was not removed")
+		}
+		if prop.Name == "items" {
+			any, ok := prop.Value.(*ast.CallExpr)
+			if !ok {
+				t.Fatalf("items prop = %T, want *ast.CallExpr", prop.Value)
+			}
+			sel, ok := any.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "AnySlice" {
+				t.Fatalf("items prop was not wrapped in AnySlice")
+			}
+		}
+	}
+
+	rowCalls := collectComponentCalls(inline.Templates[0].Children)
+	if len(rowCalls) != 1 || rowCalls[0].Name != "Row" {
+		t.Fatalf("row calls = %+v", rowCalls)
+	}
+	assertion, ok := rowCalls[0].Props[0].Value.(*ast.TypeAssertExpr)
+	if !ok {
+		t.Fatalf("row arg = %T, want type assertion", rowCalls[0].Props[0].Value)
+	}
+	if id, ok := assertion.X.(*ast.Ident); !ok || id.Name != "item" {
+		t.Fatalf("row assertion source = %#v", assertion.X)
 	}
 }

@@ -163,14 +163,8 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 	return m, nil
 }
 
-type VirtualItem struct {
-	ID     int
-	Title  string
-	Detail string
-}
-
 type VirtualListProps struct {
-	Items     []VirtualItem
+	Items     []any
 	Height    int
 	RowHeight int
 }

@@ -269,7 +269,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		}
 	}
 
-	external, externalPure, externalProps, err := loadExternalComponents(appSource)
+	external, externalPure, externalProps, err := loadExternalComponents(appSource, registry)
 	if err != nil {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
@@ -663,6 +663,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	}
 
 	stateful := make([]*generator.Stateful, 0, len(statefulViews))
+	inlineSet := inlineComponents(cfg.Inline)
 	seenStateful := map[string]bool{}
 	for _, sv := range statefulViews {
 		t := sv.t
@@ -685,9 +686,12 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, err
 		}
-		expanded, err := viewparser.ExpandTemplateWithProps(t, pure, propsTypes)
-		if err != nil {
-			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
+		expanded := t
+		if !inlineSet[t.Name] {
+			expanded, err = viewparser.ExpandTemplateWithProps(t, pure, propsTypes)
+			if err != nil {
+				return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
+			}
 		}
 		if len(expanded.Children) != 1 {
 			return 0, 0, fmt.Errorf("library component %s must have one root element", t.Name)
@@ -697,7 +701,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		name := t.Name
 		constructor, constructorTakesProps := componentConstructor(sv.app.Commands, t.ParamList[0].Type)
-		inlineSet := inlineComponents(cfg.Inline)
 		stateful = append(stateful, &generator.Stateful{
 			Name:                  name,
 			GoName:                name,
@@ -776,7 +779,186 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	return n, len(paths), nil
 }
 
-func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.ComponentSet, viewparser.PropsTypes, error) {
+func findRowSlot(nodes []viewparser.Node) *viewparser.ComponentCall {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *viewparser.ComponentCall:
+			if n.Name == "RowSlot" {
+				return n
+			}
+		case *viewparser.Element:
+			if c := findRowSlot(n.Children); c != nil {
+				return c
+			}
+		case *viewparser.If:
+			if c := findRowSlot(n.Then); c != nil {
+				return c
+			}
+			if c := findRowSlot(n.Else); c != nil {
+				return c
+			}
+		case *viewparser.For:
+			if c := findRowSlot(n.Children); c != nil {
+				return c
+			}
+		}
+	}
+	return nil
+}
+
+func walkComponentCalls(nodes []viewparser.Node, fn func(*viewparser.ComponentCall)) {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *viewparser.ComponentCall:
+			fn(n)
+		case *viewparser.Element:
+			walkComponentCalls(n.Children, fn)
+		case *viewparser.If:
+			walkComponentCalls(n.Then, fn)
+			walkComponentCalls(n.Else, fn)
+		case *viewparser.For:
+			walkComponentCalls(n.Children, fn)
+		}
+	}
+}
+
+func anySliceExpr(e ast.Expr) ast.Expr {
+	return &ast.CallExpr{
+		Fun: &ast.SelectorExpr{
+			X:   &ast.Ident{Name: "gothic"},
+			Sel: &ast.Ident{Name: "AnySlice"},
+		},
+		Args: []ast.Expr{e},
+	}
+}
+
+func bakeRowNodes(nodes []viewparser.Node, rowName, rowParam, rowType string) (int, error) {
+	found := 0
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *viewparser.ComponentCall:
+			if n.Name != "RowSlot" {
+				continue
+			}
+			var itemExpr ast.Expr
+			for _, prop := range n.Props {
+				if prop.Name == "item" {
+					itemExpr = prop.Value
+				}
+			}
+			if itemExpr == nil {
+				return 0, fmt.Errorf("row placeholder must have an item prop")
+			}
+			typeExpr, err := parser.ParseExpr(rowType)
+			if err != nil {
+				return 0, fmt.Errorf("row component parameter type %s: %w", rowType, err)
+			}
+			n.Name = rowName
+			n.Props = []viewparser.Prop{{
+				Name: rowParam,
+				Value: &ast.TypeAssertExpr{
+					X:    itemExpr,
+					Type: typeExpr,
+				},
+			}}
+			found++
+		case *viewparser.Element:
+			n2, err := bakeRowNodes(n.Children, rowName, rowParam, rowType)
+			if err != nil {
+				return 0, err
+			}
+			found += n2
+		case *viewparser.If:
+			n2, err := bakeRowNodes(n.Then, rowName, rowParam, rowType)
+			if err != nil {
+				return 0, err
+			}
+			found += n2
+			n2, err = bakeRowNodes(n.Else, rowName, rowParam, rowType)
+			if err != nil {
+				return 0, err
+			}
+			found += n2
+		case *viewparser.For:
+			n2, err := bakeRowNodes(n.Children, rowName, rowParam, rowType)
+			if err != nil {
+				return 0, err
+			}
+			found += n2
+		}
+	}
+	return found, nil
+}
+
+func bakeInlineRow(appView *viewparser.File, inlineName string, tmpl *viewparser.Template, registry viewparser.ComponentSet) (string, error) {
+	var app *viewparser.Template
+	for _, t := range appView.Templates {
+		if t.Name == "App" {
+			app = t
+			break
+		}
+	}
+	if app == nil {
+		return "", fmt.Errorf("inline component %s: app has no App view", inlineName)
+	}
+	rowName := ""
+	for _, call := range collectComponentCalls(app.Children) {
+		if call.Name != inlineName {
+			continue
+		}
+		kept := make([]viewparser.Prop, 0, len(call.Props))
+		for _, prop := range call.Props {
+			switch prop.Name {
+			case "row":
+				id, ok := prop.Value.(*ast.Ident)
+				if !ok {
+					return "", fmt.Errorf("component %s: row must be a view name", inlineName)
+				}
+				if rowName != "" && rowName != id.Name {
+					return "", fmt.Errorf("component %s: use one row view per app", inlineName)
+				}
+				rowName = id.Name
+			case "items":
+				prop.Value = anySliceExpr(prop.Value)
+				kept = append(kept, prop)
+			default:
+				kept = append(kept, prop)
+			}
+		}
+		call.Props = kept
+	}
+	if rowName == "" {
+		return "", fmt.Errorf("component %s: add row={ RowView }", inlineName)
+	}
+	row, ok := registry[rowName]
+	if !ok {
+		return "", fmt.Errorf("component %s: unknown row view %s", inlineName, rowName)
+	}
+	if row.Stateful {
+		return "", fmt.Errorf("component %s: row view %s must be pure", inlineName, rowName)
+	}
+	if len(row.ParamList) != 1 {
+		return "", fmt.Errorf("component %s: row view %s must take one parameter", inlineName, rowName)
+	}
+	found, err := bakeRowNodes(tmpl.Children, rowName, row.ParamList[0].Name, row.ParamList[0].Type)
+	if err != nil {
+		return "", fmt.Errorf("component %s: %w", inlineName, err)
+	}
+	if found == 0 {
+		return "", fmt.Errorf("component %s: view has no row placeholder", inlineName)
+	}
+	return rowName, nil
+}
+
+func collectComponentCalls(nodes []viewparser.Node) []*viewparser.ComponentCall {
+	var calls []*viewparser.ComponentCall
+	walkComponentCalls(nodes, func(call *viewparser.ComponentCall) {
+		calls = append(calls, call)
+	})
+	return calls
+}
+
+func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*generator.Stateful, viewparser.ComponentSet, viewparser.PropsTypes, error) {
 	paths := componentDirectives(s.src)
 	var out []*generator.Stateful
 	pure := viewparser.ComponentSet{}
@@ -898,7 +1080,26 @@ func loadExternalComponents(s *source) ([]*generator.Stateful, viewparser.Compon
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
 			}
-			expanded, err := viewparser.ExpandTemplateWithProps(tmpl, localPure, pkgProps)
+			inlineName := manifest.Alias + "." + comp.Name
+			if findRowSlot(tmpl.Children) != nil {
+				rowName, err := bakeInlineRow(s.view, inlineName, tmpl, appRegistry)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				_ = rowName
+			}
+			inlineRegistry := viewparser.ComponentSet{}
+			for name, t := range localPure {
+				inlineRegistry[name] = t
+			}
+			for name, t := range appRegistry {
+				inlineRegistry[name] = t
+			}
+			inlineProps := propsTypesFromMessages(s.app.Messages)
+			for name, spec := range pkgProps {
+				inlineProps[name] = spec
+			}
+			expanded, err := viewparser.ExpandTemplateWithProps(tmpl, inlineRegistry, inlineProps)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
 			}

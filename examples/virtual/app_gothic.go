@@ -8,23 +8,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/ui"
+	ui "github.com/metruzanca/gothic/ui"
 	"html"
 	"io"
 )
 
 const totalRows = 5000
 
+type RowData struct {
+	Title  string
+	Detail string
+}
+
 type Model struct {
-	Rows []ui.VirtualItem
+	Rows []RowData
 }
 
 func NewModel() Model {
-	rows := make([]ui.VirtualItem, totalRows)
+	rows := make([]RowData, totalRows)
 	for i := range rows {
 		n := i + 1
-		rows[i] = ui.VirtualItem{
-			ID:     n,
+		rows[i] = RowData{
 			Title:  fmt.Sprintf("Row %d", n),
 			Detail: fmt.Sprintf("Virtual row %d of %d", n, totalRows),
 		}
@@ -101,7 +105,7 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListComponent("c0", "", ui.VirtualListProps{Items: model.Rows, Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+		if err := __gothicuiVirtualListComponent("c0", "", ui.VirtualListProps{Items: gothic.AnySlice(model.Rows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("</main>"); err != nil {
@@ -179,7 +183,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 		if err := write("<!--g:each:0:open-->"); err != nil {
 			return err
 		}
-		for _, item := range props.Items[model.Start : model.Start+model.Count] {
+		for i, item := range props.Items[model.Start : model.Start+model.Count] {
 			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
 				return err
 			}
@@ -201,7 +205,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write(" data-gothic-key=\""); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.ID))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -210,10 +214,22 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := write("<span"); err != nil {
+			if err := write("<div"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-virtual-title"); err != nil {
+			if err := write(" class=\"row-content"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<strong"); err != nil {
+				return err
+			}
+			if err := write(" class=\"title"); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -225,19 +241,19 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write("<!--g:text:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Title))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:0:close-->"); err != nil {
 				return err
 			}
-			if err := write("</span>"); err != nil {
+			if err := write("</strong>"); err != nil {
 				return err
 			}
 			if err := write("<span"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-virtual-detail"); err != nil {
+			if err := write(" class=\"detail"); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -249,13 +265,16 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 			if err := write("<!--g:text:1:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Detail))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint((item.(RowData)).Detail))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:1:close-->"); err != nil {
 				return err
 			}
 			if err := write("</span>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {

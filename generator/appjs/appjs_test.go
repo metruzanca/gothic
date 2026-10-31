@@ -2060,3 +2060,52 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestGenerateAnySliceAndTypeAssert(t *testing.T) {
+	view, err := parser.Parse("any.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Items []string
+	First string
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	items := gothic.AnySlice(m.Items)
+	m.First = items[0].(string)
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "any.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const items = m.Items;`,
+		`m.First = items[0];`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+	if strings.Contains(src, "gothic.AnySlice") {
+		t.Errorf("generated JS kept gothic.AnySlice\n\n%s", src)
+	}
+}
