@@ -301,6 +301,10 @@ export function routeMatch(pattern, path) {
   return routeParams(pattern, path) !== null;
 }
 
+export function px(value) {
+  return `${value}px`;
+}
+
 export function readState(id) {
   const el = document.querySelector(`script[data-gothic-state="${id}"]`);
   if (!el) return {};
