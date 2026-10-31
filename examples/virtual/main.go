@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/ui"
 )
 
 //go:embed style.css
@@ -25,13 +26,14 @@ func main() {
 
 func newServer() *gothic.Server {
 	s := gothic.NewServer()
+	ui.MountStyles(s)
 	s.Get("/style.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		_, _ = w.Write(pageCSS)
 	})
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		var page bytes.Buffer
-		page.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Virtualized list</title><link rel="stylesheet" href="/style.css"></head><body>`)
+		page.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Virtualized list</title><link rel="stylesheet" href="/gothic-ui.css"><link rel="stylesheet" href="/style.css"></head><body>`)
 		if err := gothic.NewApp(NewModel()).RenderTo(r.Context(), &page); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

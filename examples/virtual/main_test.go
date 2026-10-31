@@ -27,41 +27,59 @@ func TestVirtualListSSR(t *testing.T) {
 	html := string(body)
 	for _, want := range []string{
 		`data-gothic-root="app"`,
-		`class="viewport"`,
-		`data-gothic-on="0"`,
+		`data-gothic-component="VirtualList"`,
+		`class="ui-virtual-list"`,
+		`style="height:432px"`,
 		`style="height:0px"`,
 		`style="height:179568px"`,
-		`class="range"`,
-		`5000`,
 		`Row 1`,
 		`Row 12`,
+		`5,000 rows`,
+		`/gothic-ui.css`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
 	}
-	if got := strings.Count(html, `class="row"`); got != visibleCount {
-		t.Errorf("SSR rendered %d rows, want %d", got, visibleCount)
+	if got := strings.Count(html, `class="ui-virtual-row"`); got != 12 {
+		t.Errorf("SSR rendered %d rows, want 12", got)
 	}
 }
 
-func TestVirtualListModule(t *testing.T) {
+func TestVirtualListModules(t *testing.T) {
 	ts := testServer(t)
+
 	res, err := http.Get(ts.URL + "/_gothic/modules/app_gothic.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	js := string(body)
+	appJS := string(body)
 	for _, want := range []string{
-		`on(root, "0", "scroll", (event) => dispatch({tag: "Scrolled", Top: event.target.scrollTop}));`,
-		`attr(root, "0", "height:" + px(model.Window.Top));`,
-		`m.Window = virtualWindow(msg.Top, m.RowHeight, m.Height, len(m.Items));`,
-		`renderList0(((model.Items) ?? []).slice(model.Window.Start, model.Window.Start + model.Window.Count));`,
+		`from "/_gothic/modules/ui_gothic.js"`,
+		`mountVirtualList`,
+		`createVirtualList`,
 	} {
-		if !strings.Contains(js, want) {
-			t.Errorf("module JS missing %q\n\n%s", want, js)
+		if !strings.Contains(appJS, want) {
+			t.Errorf("app JS missing %q\n\n%s", want, appJS)
+		}
+	}
+
+	res, err = http.Get(ts.URL + "/_gothic/modules/ui_gothic.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	uiJS := string(body)
+	for _, want := range []string{
+		`export function mountVirtualList`,
+		`export function createVirtualList`,
+		`virtualWindow(`,
+	} {
+		if !strings.Contains(uiJS, want) {
+			t.Errorf("UI JS missing %q\n\n%s", want, uiJS)
 		}
 	}
 }

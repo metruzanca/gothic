@@ -37,7 +37,8 @@ The rules are shared by the server and client:
 
 Client `Update` calls lower to a `virtualWindow` runtime helper.
 
-`examples/virtual` now uses the helper instead of hand-written math.
+`examples/virtual` now uses the UI kit component, while the headless helper
+remains available for custom rows.
 
 ## UI component
 

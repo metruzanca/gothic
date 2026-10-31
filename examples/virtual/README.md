@@ -1,24 +1,16 @@
 # Virtualized list
 
-A 5,000 row list that keeps only the visible window in the DOM.
+A 5,000 row list built with the UI kit `ui.VirtualList` component. Only the
+visible window exists in the DOM.
 
-The scroll container is a fixed 432px tall with 36px rows, so 12 rows are
-visible. Scrolling dispatches `Scrolled` with `event.target.scrollTop`. Update
-calls `virtual.WindowFor` to snap the offset, slice the visible rows, and
-compute the top and bottom spacer heights.
+The app passes the rows and the fixed size:
 
-This example keeps custom row markup. The UI kit also ships
-`ui.VirtualList` with standard Title/Detail rows, and the headless `virtual`
-package is available at `github.com/metruzanca/gothic/virtual`.
+```templ
+<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } />
+```
 
-The view renders:
-
-- a top spacer sized with `dom.Px`,
-- the visible rows, keyed by row ID,
-- a bottom spacer.
-
-The total scroll height stays constant, but the DOM holds 12 rows instead of
-5,000.
+The component owns its scroll offset, renders a top and bottom spacer, and
+keeps 12 rows in the DOM for a 432px viewport with 36px rows.
 
 Run it:
 
@@ -26,12 +18,14 @@ Run it:
 go run .
 ```
 
-Then open <http://localhost:8080> and scroll. The range label should track the
-visible rows, and the row count in the DOM stays at 12.
+Then open <http://localhost:8080> and scroll inside the list.
+
+The headless `github.com/metruzanca/gothic/virtual` package is available when
+you need custom row markup instead of the standard Title/Detail rows.
 
 Limits:
 
-- rows have a fixed height,
-- the viewport height is fixed,
+- fixed row height,
+- fixed viewport height,
 - the full item list still lives in the client model,
 - rows outside the window are not kept alive.
