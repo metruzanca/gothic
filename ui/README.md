@@ -90,7 +90,7 @@ Pure components:
 
 - `Button` with `label`, `primary`, and `onclick gothic.Msg`
 - `Card` with `title` and `body`
-- `Field` with `label` and a default slot for the App's input
+- `Field` with `label`, accepting App children through `gothic.Children`
 
 Stateful components:
 
@@ -102,7 +102,8 @@ Stateful components:
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app. `Field` receives its
-children from the App view, so events and state stay in the App. `Tabs`,
+children from the App view through `gothic.Children`, so events and state stay
+in the App. `Tabs`,
 `Accordion`, `Disclosure`, and `VirtualList` react to prop changes through their
 component `Update`.
 

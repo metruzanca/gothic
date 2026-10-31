@@ -43,8 +43,9 @@ type Component struct {
 
 // Field is a struct field.
 type Field struct {
-	Name string
-	Type string
+	Name     string
+	Type     string
+	Embedded bool
 }
 
 // Procedure is a method declared on the procedure interface.
@@ -346,7 +347,7 @@ func fieldsOf(st *ast.StructType) []Field {
 	for _, f := range st.Fields.List {
 		typ := exprString(f.Type)
 		if len(f.Names) == 0 {
-			fields = append(fields, Field{Type: typ})
+			fields = append(fields, Field{Name: embeddedName(f.Type), Type: typ, Embedded: true})
 			continue
 		}
 		for _, name := range f.Names {
@@ -354,6 +355,18 @@ func fieldsOf(st *ast.StructType) []Field {
 		}
 	}
 	return fields
+}
+
+func embeddedName(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.SelectorExpr:
+		return t.Sel.Name
+	case *ast.StarExpr:
+		return embeddedName(t.X)
+	}
+	return ""
 }
 
 func receiverType(recv *ast.FieldList) string {

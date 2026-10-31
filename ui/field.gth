@@ -1,12 +1,15 @@
 package ui
 
+import "github.com/metruzanca/gothic"
+
 type FieldProps struct {
+	gothic.Children
 	Label string
 }
 
 view Field(props FieldProps) {
 	<div class="ui-field">
 		<span class="ui-field-label">{ props.Label }</span>
-		<slot />
+		{ props.Children }
 	</div>
 }

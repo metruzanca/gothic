@@ -114,7 +114,7 @@ The ping/pong proof of concept runs end to end.
 - The Go server renders the initial model with hydration markers and serialized state.
 - The client adopts the server list, hydrates list-item events, binds message-valued events, runs `Update`, and patches text and lists.
 - Pure components compose views with typed props, in the app file or separate files.
-- Pure components accept children through a default slot; slotted events and state stay in the App.
+- Pure components accept children through `gothic.Children`; child events and state stay in the App.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
 - Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions bubble to the App.
 - Components unmount when their branch or list item leaves, so state resets on remount.
@@ -131,8 +131,8 @@ The ping/pong proof of concept runs end to end.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Nested children can send local actions to their parent with `emitLocal`, and the parent can handle, transform, or bubble them with `gothic.Bubble`.
-- Inline stateful components can take one default slot, so containers keep state while the App owns the slotted content.
-- Gothicbook is a small design system demo for the UI kit, including slotted form fields, a server-backed action, and a scrollable, paginated list of expandable disclosures.
+- Inline stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
+- Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - A curated `js` package covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
 - `LocationChanged` and `route` links provide path-based URL state with pushState, back, and forward.

@@ -57,6 +57,7 @@ type Stateful struct {
 	Listable              bool
 	External              bool
 	Inline                bool
+	Children              bool
 	Slot                  bool
 	ImportAlias           string
 	ImportPath            string

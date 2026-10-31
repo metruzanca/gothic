@@ -113,6 +113,7 @@ func (m DisclosureModel) Update(msg gothic.Msg, props DisclosureProps) (Disclosu
 }
 
 type FieldProps struct {
+	gothic.Children
 	Label string
 }
 

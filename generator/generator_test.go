@@ -406,10 +406,10 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 func TestGenerateComponentSlot(t *testing.T) {
 	f, err := parser.Parse("slot.gth", []byte(`package app
 
-view Card(title string) {
+view Card(props CardProps) {
 	<section class="card">
-		<h2>{ title }</h2>
-		<slot />
+		<h2>{ props.Title }</h2>
+		{ props.Children }
 	</section>
 }
 
@@ -430,13 +430,23 @@ view App(model Model) {
 			components[tpl.Name] = tpl
 		}
 	}
-	expanded, err := parser.ExpandApp(f, components)
+	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
+		{Name: "Children", Type: "gothic.Children"},
+		{Name: "Title", Type: "string"},
+	}}}
+	expanded, err := parser.ExpandAppWithProps(f, components, props)
 	if err != nil {
 		t.Fatal(err)
 	}
 	app, err := goapp.ParseSource("app.go", []byte(`package app
 
+import "github.com/metruzanca/gothic"
+
 type Model struct{ Title string }
+type CardProps struct {
+	gothic.Children
+	Title string
+}
 
 func (m Model) Init() Cmd { return nil }
 func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
@@ -672,7 +682,7 @@ view App(model Model) {
 view Panel(model PanelModel, props PanelProps) {
 	<section>
 		<h2>{ props.Title }</h2>
-		<slot />
+		{ props.Children }
 	</section>
 }
 `))
@@ -681,8 +691,13 @@ view Panel(model PanelModel, props PanelProps) {
 	}
 	app, err := goapp.ParseSource("app.go", []byte(`package app
 
+import "github.com/metruzanca/gothic"
+
 type Model struct{ Title string }
-type PanelProps struct{ Title string }
+type PanelProps struct {
+	gothic.Children
+	Title string
+}
 type PanelModel struct{}
 func (m Model) Init() Cmd { return nil }
 func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
@@ -692,6 +707,9 @@ func (m PanelModel) Update(msg Msg) (PanelModel, Cmd) { return m, nil }
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := parser.MarkChildren(panelFile.Templates[0]); err != nil {
+		t.Fatal(err)
+	}
 	out, err := generator.GenerateSingle(appFile, app, generator.Options{
 		FileName:   "app.gth",
 		ModuleBase: "app",
@@ -699,7 +717,7 @@ func (m PanelModel) Update(msg Msg) (PanelModel, Cmd) { return m, nil }
 		Stateful: []*generator.Stateful{{
 			Name: "Panel", GoName: "__gothicPanelComponent", ViewName: "__gothicPanelView",
 			ModelType: "PanelModel", ModelJSON: `{}`, PropsType: "PanelProps",
-			Props: []parser.Param{{Name: "Title", Type: "string"}}, View: panelFile.Templates[0], Slot: true,
+			Props: []parser.Param{{Name: "Title", Type: "string"}}, View: panelFile.Templates[0], Children: true, Slot: true,
 		}},
 	})
 	if err != nil {

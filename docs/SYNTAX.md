@@ -210,24 +210,28 @@ Rules for pure components:
 - They are stateless. They cannot declare `state`.
 - They render exactly one root element.
 - They should reference only their props and package-level declarations.
-- They may declare one default `<slot />` to receive children.
+- They may embed `gothic.Children` in their props struct to receive children.
 - Components cannot be called from Go code yet.
 - Capitalized tags are always components, so camelCase SVG tags are not
   supported yet.
 
 #### Component children
 
-A pure component can receive children and place them with one `<slot />`:
+Children are a prop-gated capability. Add `gothic.Children` to the props struct
+and render `{ props.Children }` where the children belong:
 
 ```go
+import "github.com/metruzanca/gothic"
+
 type FieldProps struct {
+	gothic.Children
 	Label string
 }
 
 view Field(props FieldProps) {
 	<div class="ui-field">
 		<span class="ui-field-label">{ props.Label }</span>
-		<slot />
+		{ props.Children }
 	</div>
 }
 ```
@@ -240,19 +244,20 @@ view Field(props FieldProps) {
 
 Children are expanded in the caller's scope, so they can use the App model,
 loop variables, events, conditionals, loops, and stateful components. The
-component supplies layout only. A slot renders nothing when the component is
+component supplies layout only. Children render nothing when the component is
 called without children.
 
-Rules for children and slots:
+Rules:
 
-- one default slot per pure component,
-- `<slot />` cannot take attributes or children,
-- a slot cannot be the component root,
+- a component accepts children only when its props type declares
+  `gothic.Children`,
+- either an embedded `gothic.Children` or a named `Children gothic.Children`
+  field works,
+- the view must render `{ props.Children }` exactly once,
 - named slots and fallback content are not supported yet,
-- stateful components cannot accept children yet,
-- children on a component without a slot are an error,
-- a slot outside a pure component is an error,
-- `<slot />` is reserved and cannot be used as an HTML element.
+- `<slot />` is removed; children are placed with `{ props.Children }`,
+- precompiled stateful components cannot accept children; use an inline
+  stateful component or an App-local component.
 
 ### Stateful components
 
@@ -558,15 +563,20 @@ case gothic.ChildMessage:
 List children should include their own item identity in local messages, because
 `Source` is the component instance id.
 
-#### Slots on stateful components
+#### Children on stateful components
 
-Inline stateful components can declare one default slot:
+Inline stateful components use the same `gothic.Children` props field:
 
-```templ
+```go
+type PanelProps struct {
+	gothic.Children
+	Title string
+}
+
 view Panel(model PanelModel, props PanelProps) {
 	<section>
 		<h2>{ props.Title }</h2>
-		<slot />
+		{ props.Children }
 	</section>
 }
 ```
@@ -580,10 +590,11 @@ Use it in the App view:
 </Panel>
 ```
 
-- Slotted content keeps the App scope, so App state and events work.
-- The component owns its own state around the slot.
-- Stateful components inside slotted content are mounted by the App.
-- Slots on stateful components are supported in static App positions for now.
+- Children keep the App scope, so App state and events work.
+- The component owns its own state around the children.
+- Stateful components inside children are mounted by the App.
+- Children on stateful components are supported in static App positions for
+  now.
 - Named slots and fallback content are not supported yet.
 - Precompiled library stateful components cannot accept children; use an
   inline stateful component or an App-local component.
@@ -1225,8 +1236,8 @@ The proof of concept supports:
 - app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
-- children and a single default `<slot />` in pure components,
-- stateful components inside slotted content,
+- children through `gothic.Children` on pure and inline stateful components,
+- stateful components inside children,
 - `if`, `else if`, and `else` in views, including inside loops and pure
   components,
 - stateful components inside conditional branches, with unmount and state reset,
@@ -1265,7 +1276,8 @@ The proof of concept supports:
 - component-to-parent action messages through `emit`,
 - parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
   `gothic.Bubble`,
-- one default slot on inline stateful components in static App positions,
+- children on inline stateful components in static App positions through
+  `gothic.Children`,
 - App-owned procedures passed to components as action props,
 - procedure contracts through an interface embedding `gothic.RPCService`.
 
@@ -1276,7 +1288,7 @@ Not supported yet:
 - controlled components and function-valued props,
 - multiple app models,
 - children on stateful components,
-- named slots and fallback slot content,
+- named slots and fallback content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,

@@ -96,7 +96,10 @@ func (m CounterModel) Update(msg gothic.Msg, props CounterProps) (CounterModel, 
 	return m, nil
 }
 
-type PanelProps struct{ Title string }
+type PanelProps struct {
+	gothic.Children
+	Title string
+}
 type PanelModel struct{ Open bool }
 type PanelToggled struct{}
 
@@ -129,7 +132,7 @@ view Panel(model PanelModel, props PanelProps) {
 		<h2>{ props.Title }</h2>
 		<button class="panel-toggle" onclick={ PanelToggled{} }>Toggle panel</button>
 		<p class="panel-open">{ model.Open }</p>
-		<slot />
+		{ props.Children }
 	</section>
 }
 

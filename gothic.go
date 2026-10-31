@@ -77,6 +77,12 @@ func Sequence(cmds ...Cmd) Cmd {
 	return func() Msg { panic(commandOnly) }
 }
 
+// Children marks a props field that receives child content.
+//
+// Embed it in a props struct to let a component accept children, then render
+// the children with { props.Children } in the view.
+type Children struct{}
+
 // ChildMessage wraps an action sent from a nested component to its parent.
 type ChildMessage struct {
 	Source string

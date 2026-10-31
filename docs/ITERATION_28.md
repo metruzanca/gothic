@@ -1,3 +1,6 @@
+> Historical note: the `<slot />` API was replaced by the props-based
+> `gothic.Children` model in [Iteration 29](ITERATION_29.md).
+
 # Iteration 28: slots on stateful components
 
 Status: complete. Inline stateful components can take one default slot whose

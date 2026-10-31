@@ -426,10 +426,10 @@ view App(model Model) {
 func TestExpandComponentChildren(t *testing.T) {
 	src := `package views
 
-view Card(text string) {
+view Card(props CardProps) {
 	<section>
-		<h2>{ text }</h2>
-		<slot />
+		<h2>{ props.Text }</h2>
+		{ props.Children }
 	</section>
 }
 
@@ -445,7 +445,11 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
+		{Name: "Children", Type: "gothic.Children"},
+		{Name: "Text", Type: "string"},
+	}}}
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,8 +467,8 @@ view App(model Model) {
 func TestExpandNestedComponentChildren(t *testing.T) {
 	src := `package views
 
-view Box() {
-	<div class="box"><slot /></div>
+view Box(props BoxProps) {
+	<div class="box">{ props.Children }</div>
 }
 
 view App(model Model) {
@@ -479,7 +483,10 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
+		{Name: "Children", Type: "gothic.Children"},
+	}}}
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,11 +501,11 @@ view App(model Model) {
 	}
 }
 
-func TestExpandRejectsChildrenWithoutSlot(t *testing.T) {
+func TestExpandRejectsChildrenWithoutChildrenProp(t *testing.T) {
 	src := `package views
 
-view Card(text string) {
-	<p>{ text }</p>
+view Card(props CardProps) {
+	<p>{ props.Text }</p>
 }
 
 view App(model Model) {
@@ -509,16 +516,19 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := parser.ExpandApp(f, componentsOf(f)); err == nil || !strings.Contains(err.Error(), "does not accept children") {
+	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
+		{Name: "Text", Type: "string"},
+	}}}
+	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), props); err == nil || !strings.Contains(err.Error(), "does not accept children") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestExpandRejectsMultipleSlots(t *testing.T) {
+func TestExpandRejectsMultipleChildren(t *testing.T) {
 	src := `package views
 
-view Box() {
-	<div><slot /><slot /></div>
+view Box(props BoxProps) {
+	<div>{ props.Children }{ props.Children }</div>
 }
 
 view App(model Model) {
@@ -529,12 +539,15 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := parser.ExpandApp(f, componentsOf(f)); err == nil || !strings.Contains(err.Error(), "must declare one <slot />") {
+	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
+		{Name: "Children", Type: "gothic.Children"},
+	}}}
+	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), props); err == nil || !strings.Contains(err.Error(), "must render { props.Children } once") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestExpandRejectsStatefulChildren(t *testing.T) {
+func TestExpandRejectsStatefulChildrenWithoutChildrenProp(t *testing.T) {
 	src := `package views
 
 view Tabs() {
@@ -551,7 +564,8 @@ view App(model Model) {
 	}
 	components := componentsOf(f)
 	components["Tabs"].Stateful = true
-	if _, err := parser.ExpandApp(f, components); err == nil || !strings.Contains(err.Error(), "cannot accept children yet") {
+	components["Tabs"].Inline = true
+	if _, err := parser.ExpandApp(f, components); err == nil || !strings.Contains(err.Error(), "does not accept children") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -567,7 +581,30 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := parser.ExpandApp(f, map[string]*parser.Template{}); err == nil || !strings.Contains(err.Error(), "slot can only be used") {
+	if _, err := parser.ExpandApp(f, map[string]*parser.Template{}); err == nil || !strings.Contains(err.Error(), "children are placed with { props.Children }") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExpandRejectsUserSlotInComponent(t *testing.T) {
+	src := `package views
+
+view Box(props BoxProps) {
+	<div><slot /></div>
+}
+
+view App(model Model) {
+	<div><Box><p>x</p></Box></div>
+}
+`
+	f, err := parser.Parse("slot.gth", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
+		{Name: "Children", Type: "gothic.Children"},
+	}}}
+	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), props); err == nil || !strings.Contains(err.Error(), "remove <slot />") {
 		t.Fatalf("error = %v", err)
 	}
 }

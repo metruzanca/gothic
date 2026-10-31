@@ -185,6 +185,7 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - [Route tables](docs/ITERATION_26.md)
 - [Parent-local child messages](docs/ITERATION_27.md)
 - [Slots on stateful components](docs/ITERATION_28.md)
+- [Children as a prop](docs/ITERATION_29.md)
 - [Documents and social previews](docs/ITERATION_21.md)
 - [Gothicbook navigation and theme](docs/ITERATION_22.md)
 - [Pitch](docs/PITCH.md)

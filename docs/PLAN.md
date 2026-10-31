@@ -214,8 +214,8 @@ Supported now:
 - optional pointer props with nil and null semantics,
 - props in component Init and Update,
 - compile-time component expansion and nested pure components,
-- children and a single default `<slot />` in pure components,
-- stateful components inside slotted content,
+- children through `gothic.Children` in pure components,
+- stateful components inside children,
 - self-contained stateful components with their own model, Init, Update, and view,
 - stateful components in static positions, conditional branches, and keyed lists,
 - stateful components with internal loops and conditionals as list items,
@@ -263,7 +263,8 @@ Supported now:
 - component-to-parent action messages through `emit`,
 - parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
   `gothic.Bubble`,
-- one default slot on inline stateful components in static App positions,
+- children on inline stateful components in static App positions through
+  `gothic.Children`,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
@@ -277,8 +278,7 @@ Not supported yet:
 - address-of expressions in views,
 - controlled components and function-valued props,
 - multiple app models,
-- named slots or fallback content on stateful components,
-- named slots and fallback slot content,
+- named slots and fallback content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
@@ -315,10 +315,11 @@ These will be planned in detail after the proof of concept is evaluated:
   can add optional validation later.
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
-- Stateful component support is still narrow: no declared procedures and one
-  default slot only in static App positions. Prop change detection is
-  reference-based. Constructors must be deterministic and client-compilable.
-  Commands are guarded after unmount, but there is no general cancellation.
+- Stateful component support is still narrow: no declared procedures, and
+  children are supported only on inline components in static App positions.
+  Prop change detection is reference-based. Constructors must be deterministic
+  and client-compilable. Commands are guarded after unmount, but there is no
+  general cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

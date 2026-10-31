@@ -34,6 +34,8 @@ type Template struct {
 	Stateful bool
 	// Inline marks a library stateful component compiled into the app.
 	Inline bool
+	// AcceptsChildren is set when the props type declares gothic.Children.
+	AcceptsChildren bool
 }
 
 // StateDecl declares component state. Init is a real Go expression.
@@ -118,6 +120,7 @@ func (*If) node() {}
 // Slot marks where a pure component's children are inserted.
 type Slot struct {
 	NodePosition
+	Internal bool
 }
 
 func (*Slot) node() {}

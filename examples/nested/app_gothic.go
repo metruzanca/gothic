@@ -106,7 +106,10 @@ func (m CounterModel) Update(msg gothic.Msg, props CounterProps) (CounterModel, 
 	return m, nil
 }
 
-type PanelProps struct{ Title string }
+type PanelProps struct {
+	gothic.Children
+	Title string
+}
 type PanelModel struct{ Open bool }
 type PanelToggled struct{}
 
