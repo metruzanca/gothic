@@ -30,13 +30,34 @@ builds against this checkout. A consumer would use tagged module versions.
   procedure, and receives the new count as model state
 - slotted content that keeps its input event and state in the App
 - a scrollable list with 20 disclosures across two pages of 10
+- a grouped sidebar with one page per component and pattern
+- client-side routing with server-rendered deep links
+- a system-aware theme with a session-only manual toggle
 
 The client counter, Tabs, Accordion, and Disclosure stay purely client-side.
 The server action proves that the App owns procedures and components only emit
 action messages. Paging unmounts the old list items, so expanded disclosures
 reset when they return.
 
-No database, auth, routing, or interactive playground.
+No database, auth, or interactive playground.
+
+## Navigation and theme
+
+The sidebar links to flat, deep-linkable paths:
+
+- `/` overview
+- `/button`, `/card`, `/field`, `/tabs`, `/accordion`, `/disclosure`,
+  `/counter`, `/virtual-list`
+- `/slots`, `/conditionals`, `/stateful-lists`, `/server-state`
+
+`NewModelAt` maps the request path to the initial page on the server, and a
+`LocationChanged` handler does the same on the client. Links use the `route`
+attribute, and the active item is marked with `class:active`.
+
+The theme follows `prefers-color-scheme`. The sidebar toggle only sets a
+`data-theme` attribute for the current page load. It is not stored anywhere, so
+a reload returns to the system setting. The toggle is registered by a small
+script injected with `gothic.WithExtraHead`.
 
 ## Social preview
 

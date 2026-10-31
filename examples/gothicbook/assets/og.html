@@ -16,23 +16,30 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 32px;
+		gap: 44px;
 		background: #f7f7f5;
 		color: #1f2933;
 		font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 	}
 
-	img {
+	.brand {
+		display: flex;
+		align-items: baseline;
+		gap: 4px;
+		color: #956cf4;
+	}
+
+	.brand img {
 		display: block;
 		width: 520px;
 		height: auto;
 	}
 
-	h1 {
-		margin: 0;
-		font-size: 72px;
+	.brand span {
+		font-size: 132px;
 		font-weight: 700;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.045em;
+		line-height: 1;
 	}
 
 	p {
@@ -45,8 +52,10 @@
 </style>
 </head>
 <body>
-	<img src="gothic-wordmark.svg" alt="Gothic">
-	<h1>Gothicbook</h1>
+	<div class="brand">
+		<img src="gothic-wordmark.svg" alt="Gothic">
+		<span>book</span>
+	</div>
 	<p>A tiny design system demo for the installable gothic UI kit.</p>
 </body>
 </html>

@@ -26,6 +26,22 @@ var pageWordmark []byte
 //go:embed assets/og.png
 var pageOG []byte
 
+// themeScript flips the color theme for the current page load. The choice is
+// deliberately not stored, so a reload returns to the system setting.
+const themeScript = `<script>
+(() => {
+	const root = document.documentElement;
+	const media = window.matchMedia('(prefers-color-scheme: dark)');
+	document.addEventListener('click', (event) => {
+		if (!(event.target instanceof Element)) return;
+		const button = event.target.closest('[data-theme-toggle]');
+		if (!button) return;
+		const current = root.dataset.theme || (media.matches ? 'dark' : 'light');
+		root.dataset.theme = current === 'dark' ? 'light' : 'dark';
+	});
+})();
+</script>`
+
 type counterStore struct {
 	count atomic.Int64
 }
@@ -60,13 +76,14 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 	serveFile(s, "/gothic-wordmark.svg", "image/svg+xml", pageWordmark)
 	serveFile(s, "/og.png", "image/png", pageOG)
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
-		return NewModel(int(counter.count.Load()))
+		return NewModelAt(r.URL.Path, int(counter.count.Load()))
 	}),
 		gothic.WithTitle("Gothicbook"),
 		gothic.WithSiteName("Gothic"),
 		gothic.WithDescription("A tiny design system demo for the installable gothic UI kit."),
 		gothic.WithImage("/og.png"),
 		gothic.WithStyles("/gothic-ui.css", "/style.css"),
+		gothic.WithExtraHead(themeScript),
 	)
 }
 

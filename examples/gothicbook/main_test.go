@@ -13,56 +13,27 @@ import (
 	"github.com/metruzanca/gothic"
 )
 
-func TestGothicbook(t *testing.T) {
-	s := gothic.NewServer()
-	mountApp(s, &counterStore{})
-	ts := httptest.NewServer(s)
-	defer ts.Close()
-
-	res, err := http.Get(ts.URL + "/")
+func getPage(t *testing.T, url string) string {
+	t.Helper()
+	res, err := http.Get(url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	html := string(body)
-	for _, want := range []string{
-		"Gothicbook",
-		`class="ui-button`,
-		`class="ui-card`,
-		`class="ui-tabs`,
-		`class="ui-accordion`,
-		`data-gothic-component="Tabs"`,
-		`data-gothic-component="Counter"`,
-		`data-gothic-component="Disclosure"`,
-		`data-gothic-component="VirtualList"`,
-		`class="ui-virtual-list"`,
-		`Virtualized list`,
-		`{"Active":1}`,
-		`class="ui-disclosure-list"`,
-		`class="ui-field`,
-		`class="slot-input`,
-		`Your name`,
-		`Increment inside a slot`,
-		`data-gothic-key="1"`,
-		`Showing 1-10 of 20`,
-		`Design tokens`,
-		`Accessibility`,
-		`Increment on client`,
-		`Server count:`,
-		`/gothic-ui.css`,
-		`/style.css`,
-		`<pre><code>`,
-	} {
-		if !strings.Contains(html, want) {
-			t.Errorf("SSR missing %q\n\n%s", want, html)
-		}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET %s = %d", url, res.StatusCode)
 	}
+	return string(body)
+}
 
-	if got := strings.Count(html, `class="ui-virtual-row"`); got != 12 {
-		t.Errorf("SSR rendered %d virtual rows, want 12", got)
-	}
+func TestGothicbookDocument(t *testing.T) {
+	s := gothic.NewServer()
+	mountApp(s, &counterStore{})
+	ts := httptest.NewServer(s)
+	defer ts.Close()
 
+	html := getPage(t, ts.URL+"/")
 	for _, want := range []string{
 		"<!doctype html>",
 		`<title>Gothicbook</title>`,
@@ -76,30 +47,118 @@ func TestGothicbook(t *testing.T) {
 		`<link rel="apple-touch-icon" href="/_gothic/apple-touch-icon.png" type="image/png" sizes="180x180">`,
 		`<link rel="stylesheet" href="/gothic-ui.css">`,
 		`<link rel="stylesheet" href="/style.css">`,
+		`data-theme-toggle`,
+		`prefers-color-scheme: dark`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("document missing %q\n\n%s", want, html)
 		}
 	}
+}
+
+func TestGothicbookNavigation(t *testing.T) {
+	s := gothic.NewServer()
+	mountApp(s, &counterStore{})
+	ts := httptest.NewServer(s)
+	defer ts.Close()
+
+	overview := getPage(t, ts.URL+"/")
+	for _, want := range []string{
+		`class="brand"`,
+		`<span class="brand-book">book</span>`,
+		`class="nav-group"`,
+		`A small design system for gothic`,
+		`href="/button"`,
+		`href="/virtual-list"`,
+		`class="tile"`,
+	} {
+		if !strings.Contains(overview, want) {
+			t.Errorf("overview missing %q\n\n%s", want, overview)
+		}
+	}
+
+	pages := []struct {
+		path string
+		want string
+	}{
+		{"/button", `<h1>Button</h1>`},
+		{"/card", `<h1>Card</h1>`},
+		{"/field", `<h1>Field</h1>`},
+		{"/tabs", `<h1>Tabs</h1>`},
+		{"/accordion", `<h1>Accordion</h1>`},
+		{"/disclosure", `<h1>Disclosure</h1>`},
+		{"/counter", `<h1>Counter</h1>`},
+		{"/virtual-list", `<h1>Virtual list</h1>`},
+		{"/slots", `<h1>Slots</h1>`},
+		{"/conditionals", `<h1>Conditionals</h1>`},
+		{"/stateful-lists", `<h1>Stateful lists</h1>`},
+		{"/server-state", `<h1>Server state</h1>`},
+	}
+	for _, page := range pages {
+		html := getPage(t, ts.URL+page.path)
+		if !strings.Contains(html, page.want) {
+			t.Errorf("GET %s missing %q\n\n%s", page.path, page.want, html)
+		}
+		if !strings.Contains(html, `class="sidebar"`) {
+			t.Errorf("GET %s missing the sidebar", page.path)
+		}
+	}
+
+	button := getPage(t, ts.URL+"/button")
+	if !strings.Contains(button, `class="ui-button`) {
+		t.Errorf("button page missing the button demo\n\n%s", button)
+	}
+	field := getPage(t, ts.URL+"/field")
+	if !strings.Contains(field, "Your name") || !strings.Contains(field, "slot-input") {
+		t.Errorf("field page missing the field demo\n\n%s", field)
+	}
+	tabs := getPage(t, ts.URL+"/tabs")
+	if !strings.Contains(tabs, `class="ui-tabs`) || !strings.Contains(tabs, `{"Active":1}`) {
+		t.Errorf("tabs page missing the tabs demo\n\n%s", tabs)
+	}
+	if !strings.Contains(tabs, "nav-link active") {
+		t.Errorf("tabs nav item is not active\n\n%s", tabs)
+	}
+	slots := getPage(t, ts.URL+"/slots")
+	if !strings.Contains(slots, "Increment inside a slot") {
+		t.Errorf("slots page missing the stateful slot\n\n%s", slots)
+	}
+	lists := getPage(t, ts.URL+"/stateful-lists")
+	for _, want := range []string{
+		`data-gothic-key="1"`,
+		`Showing 1-10 of 20`,
+		`Design tokens`,
+		`Accessibility`,
+	} {
+		if !strings.Contains(lists, want) {
+			t.Errorf("stateful lists page missing %q\n\n%s", want, lists)
+		}
+	}
+
+	virtual := getPage(t, ts.URL+"/virtual-list")
+	if got := strings.Count(virtual, `class="ui-virtual-row"`); got != 12 {
+		t.Errorf("SSR rendered %d virtual rows, want 12", got)
+	}
+
+	notFound := getPage(t, ts.URL+"/does-not-exist")
+	if !strings.Contains(notFound, "Not found") || !strings.Contains(notFound, "No page matches") {
+		t.Errorf("missing not found page\n\n%s", notFound)
+	}
+}
+
+func TestGothicbookAssetsAndModules(t *testing.T) {
+	s := gothic.NewServer()
+	mountApp(s, &counterStore{})
+	ts := httptest.NewServer(s)
+	defer ts.Close()
 
 	for _, path := range []string{"/gothic-ui.css", "/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg", "/og.png"} {
-		res, err := http.Get(ts.URL + path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		css, _ := io.ReadAll(res.Body)
-		res.Body.Close()
-		if len(css) == 0 {
+		if getPage(t, ts.URL+path) == "" {
 			t.Fatalf("%s is empty", path)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/app_gothic.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	js, _ := io.ReadAll(res.Body)
-	res.Body.Close()
+	js := getPage(t, ts.URL+"/_gothic/modules/app_gothic.js")
 	for _, want := range []string{
 		`from "/_gothic/modules/ui_gothic.js"`,
 		`mountTabs`,
@@ -111,19 +170,15 @@ func TestGothicbook(t *testing.T) {
 		`model.Visible`,
 		`SlotTextChanged`,
 		`IncrementClicked`,
+		`LocationChanged`,
 		`dispatch`,
 	} {
-		if !strings.Contains(string(js), want) {
+		if !strings.Contains(js, want) {
 			t.Errorf("app JS missing %q\n\n%s", want, js)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/ui_gothic.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	uiJS, _ := io.ReadAll(res.Body)
-	res.Body.Close()
+	uiJS := getPage(t, ts.URL+"/_gothic/modules/ui_gothic.js")
 	for _, want := range []string{
 		`export function mountTabs`,
 		`export function mountAccordion`,
@@ -131,43 +186,40 @@ func TestGothicbook(t *testing.T) {
 		`export function mountDisclosure`,
 		`export function createDisclosure`,
 	} {
-		if !strings.Contains(string(uiJS), want) {
+		if !strings.Contains(uiJS, want) {
 			t.Errorf("UI JS missing %q", want)
 		}
 	}
 
-	res, err = http.Get(ts.URL + "/_gothic/modules/app_components_gothic.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	compJS, _ := io.ReadAll(res.Body)
-	res.Body.Close()
+	compJS := getPage(t, ts.URL+"/_gothic/modules/app_components_gothic.js")
 	for _, want := range []string{
 		`export function mountuiVirtualList`,
 		`export function createuiVirtualList`,
 		`virtualWindow(`,
 	} {
-		if !strings.Contains(string(compJS), want) {
+		if !strings.Contains(compJS, want) {
 			t.Errorf("component JS missing %q", want)
 		}
 	}
+}
+
+func TestGothicbookServerState(t *testing.T) {
+	s := gothic.NewServer()
+	mountApp(s, &counterStore{})
+	ts := httptest.NewServer(s)
+	defer ts.Close()
 
 	postRPC(t, ts.URL, "Increment", `[]`)
-	res, err = http.Get(ts.URL + "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	body, _ = io.ReadAll(res.Body)
-	res.Body.Close()
-	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(string(body), "")
+	page := getPage(t, ts.URL+"/server-state")
+	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(page, "")
 	if !strings.Contains(stripped, "Server count:1") {
 		t.Fatalf("server count did not update\n\n%s", stripped)
 	}
 }
 
 func TestGothicbookPaginationSSR(t *testing.T) {
-	model := NewModel(0)
-	model.Page = 1
+	model := NewModelAt("/stateful-lists", 0)
+	model.ListPage = 1
 	model.Visible = model.PageTwo
 	model.PageLabel = "Showing 11-20 of 20"
 

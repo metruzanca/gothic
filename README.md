@@ -180,6 +180,7 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - [Virtual list package and component](docs/ITERATION_19.md)
 - [App-defined row views](docs/ITERATION_20.md)
 - [Documents and social previews](docs/ITERATION_21.md)
+- [Gothicbook navigation and theme](docs/ITERATION_22.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current

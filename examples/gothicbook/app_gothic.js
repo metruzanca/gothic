@@ -9,106 +9,1033 @@ const Increment = (...args) => rpc("Increment", ...args);
 const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
-on(root, "0", "click", (event) => dispatch(({Label: "Save changes", Primary: true, Onclick: null}).Onclick));
-on(root, "1", "click", (event) => dispatch(({Label: "Cancel", Primary: false, Onclick: null}).Onclick));
-on(root, "2", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
-const c0 = mountCounter(root.querySelector('[data-gothic-component-id="c0"]'), {Label: "Increment inside a slot"}, dispatch);
-const c1 = mountTabs(root.querySelector('[data-gothic-component-id="c1"]'), {Items: model.Tabs, Active: model.TabStart}, dispatch);
-on(root, "3", "click", (event) => dispatch(({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Onclick));
-on(root, "4", "click", (event) => dispatch(({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Onclick));
-const c2 = mountAccordion(root.querySelector('[data-gothic-component-id="c2"]'), {Items: model.Accordion}, dispatch);
-on(root, "5", "click", (event) => dispatch(({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Onclick));
-on(root, "6", "click", (event) => dispatch(({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Onclick));
-on(root, "7", "click", (event) => dispatch(({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Onclick));
-const c5 = mountuiVirtualList(root.querySelector('[data-gothic-component-id="c5"]'), {Items: model.VirtualRows, Height: 432, RowHeight: 36}, dispatch);
-const c6 = mountCounter(root.querySelector('[data-gothic-component-id="c6"]'), {Label: "Increment on client"}, dispatch);
-on(root, "8", "click", (event) => dispatch(({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Onclick));
+on(root, "0", "click", routeClick);
+on(root, "1", "click", routeClick);
+on(root, "2", "click", routeClick);
+on(root, "3", "click", routeClick);
+on(root, "4", "click", routeClick);
+on(root, "5", "click", routeClick);
+on(root, "6", "click", routeClick);
+on(root, "7", "click", routeClick);
+on(root, "8", "click", routeClick);
+on(root, "9", "click", routeClick);
+on(root, "10", "click", routeClick);
+on(root, "11", "click", routeClick);
+on(root, "12", "click", routeClick);
+on(root, "13", "click", routeClick);
 
 function render(model) {
-  classToggle(root, "0", ({Label: "Save changes", Primary: true, Onclick: null}).Primary);
-  classToggle(root, "1", ({Label: "Cancel", Primary: false, Onclick: null}).Primary);
-  attr(root, "0", model.SlotText);
-  classToggle(root, "2", ({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Primary);
-  classToggle(root, "3", ({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Primary);
-  classToggle(root, "4", ({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Primary);
-  classToggle(root, "5", ({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Primary);
-  classToggle(root, "6", ({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Primary);
-  classToggle(root, "7", ({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Primary);
+  classToggle(root, "0", model.Page == "overview");
+  classToggle(root, "1", model.Page == "button");
+  classToggle(root, "2", model.Page == "card");
+  classToggle(root, "3", model.Page == "field");
+  classToggle(root, "4", model.Page == "tabs");
+  classToggle(root, "5", model.Page == "accordion");
+  classToggle(root, "6", model.Page == "disclosure");
+  classToggle(root, "7", model.Page == "counter");
+  classToggle(root, "8", model.Page == "virtual-list");
+  classToggle(root, "9", model.Page == "slots");
+  classToggle(root, "10", model.Page == "conditionals");
+  classToggle(root, "11", model.Page == "stateful-lists");
+  classToggle(root, "12", model.Page == "server-state");
   ifBlock(root, "0",
-    model.ShowExample,
+    model.Page == "overview",
     () => { const frag = document.createDocumentFragment();
-  const e0 = createDisclosure("c3", {Item: model.FeatureDisclosure});
+    const e0 = document.createElement("header");
+    e0.setAttribute("class", "hero");
+    const e1 = document.createElement("p");
+    e1.setAttribute("class", "eyebrow");
+    e1.appendChild(document.createTextNode("ui kit"));
+    e0.appendChild(e1);
+    const e2 = document.createElement("h1");
+    e2.appendChild(document.createTextNode("A small design system for gothic"));
+    e0.appendChild(e2);
+    const e3 = document.createElement("p");
+    e3.appendChild(document.createTextNode("Browse the components and patterns below. Every page has its own URL, so you can link straight to it."));
+    e0.appendChild(e3);
   frag.appendChild(e0);
+    const e4 = document.createElement("div");
+    e4.setAttribute("class", "tiles");
+    const e5 = document.createElement("a");
+    e5.setAttribute("class", "tile");
+    e5.setAttribute("href", "/button");
+    e5.setAttribute("data-gothic-on", "14");
+    const e6 = document.createElement("strong");
+    e6.appendChild(document.createTextNode("Button"));
+    e5.appendChild(e6);
+    const e7 = document.createElement("span");
+    e7.appendChild(document.createTextNode("Primary and secondary actions."));
+    e5.appendChild(e7);
+    e4.appendChild(e5);
+    const e8 = document.createElement("a");
+    e8.setAttribute("class", "tile");
+    e8.setAttribute("href", "/card");
+    e8.setAttribute("data-gothic-on", "15");
+    const e9 = document.createElement("strong");
+    e9.appendChild(document.createTextNode("Card"));
+    e8.appendChild(e9);
+    const e10 = document.createElement("span");
+    e10.appendChild(document.createTextNode("Group related content on a small surface."));
+    e8.appendChild(e10);
+    e4.appendChild(e8);
+    const e11 = document.createElement("a");
+    e11.setAttribute("class", "tile");
+    e11.setAttribute("href", "/field");
+    e11.setAttribute("data-gothic-on", "16");
+    const e12 = document.createElement("strong");
+    e12.appendChild(document.createTextNode("Field"));
+    e11.appendChild(e12);
+    const e13 = document.createElement("span");
+    e13.appendChild(document.createTextNode("A label and control wrapper for form rows."));
+    e11.appendChild(e13);
+    e4.appendChild(e11);
+    const e14 = document.createElement("a");
+    e14.setAttribute("class", "tile");
+    e14.setAttribute("href", "/tabs");
+    e14.setAttribute("data-gothic-on", "17");
+    const e15 = document.createElement("strong");
+    e15.appendChild(document.createTextNode("Tabs"));
+    e14.appendChild(e15);
+    const e16 = document.createElement("span");
+    e16.appendChild(document.createTextNode("Switch between panels in place."));
+    e14.appendChild(e16);
+    e4.appendChild(e14);
+    const e17 = document.createElement("a");
+    e17.setAttribute("class", "tile");
+    e17.setAttribute("href", "/accordion");
+    e17.setAttribute("data-gothic-on", "18");
+    const e18 = document.createElement("strong");
+    e18.appendChild(document.createTextNode("Accordion"));
+    e17.appendChild(e18);
+    const e19 = document.createElement("span");
+    e19.appendChild(document.createTextNode("Stack expandable sections."));
+    e17.appendChild(e19);
+    e4.appendChild(e17);
+    const e20 = document.createElement("a");
+    e20.setAttribute("class", "tile");
+    e20.setAttribute("href", "/disclosure");
+    e20.setAttribute("data-gothic-on", "19");
+    const e21 = document.createElement("strong");
+    e21.appendChild(document.createTextNode("Disclosure"));
+    e20.appendChild(e21);
+    const e22 = document.createElement("span");
+    e22.appendChild(document.createTextNode("Reveal details on demand."));
+    e20.appendChild(e22);
+    e4.appendChild(e20);
+    const e23 = document.createElement("a");
+    e23.setAttribute("class", "tile");
+    e23.setAttribute("href", "/counter");
+    e23.setAttribute("data-gothic-on", "20");
+    const e24 = document.createElement("strong");
+    e24.appendChild(document.createTextNode("Counter"));
+    e23.appendChild(e24);
+    const e25 = document.createElement("span");
+    e25.appendChild(document.createTextNode("Client-side state inside a component."));
+    e23.appendChild(e25);
+    e4.appendChild(e23);
+    const e26 = document.createElement("a");
+    e26.setAttribute("class", "tile");
+    e26.setAttribute("href", "/virtual-list");
+    e26.setAttribute("data-gothic-on", "21");
+    const e27 = document.createElement("strong");
+    e27.appendChild(document.createTextNode("Virtual list"));
+    e26.appendChild(e27);
+    const e28 = document.createElement("span");
+    e28.appendChild(document.createTextNode("Render only the visible window."));
+    e26.appendChild(e28);
+    e4.appendChild(e26);
+    const e29 = document.createElement("a");
+    e29.setAttribute("class", "tile");
+    e29.setAttribute("href", "/slots");
+    e29.setAttribute("data-gothic-on", "22");
+    const e30 = document.createElement("strong");
+    e30.appendChild(document.createTextNode("Slots"));
+    e29.appendChild(e30);
+    const e31 = document.createElement("span");
+    e31.appendChild(document.createTextNode("Pass app-owned content into a component."));
+    e29.appendChild(e31);
+    e4.appendChild(e29);
+    const e32 = document.createElement("a");
+    e32.setAttribute("class", "tile");
+    e32.setAttribute("href", "/conditionals");
+    e32.setAttribute("data-gothic-on", "23");
+    const e33 = document.createElement("strong");
+    e33.appendChild(document.createTextNode("Conditionals"));
+    e32.appendChild(e33);
+    const e34 = document.createElement("span");
+    e34.appendChild(document.createTextNode("Render one branch and remove the other."));
+    e32.appendChild(e34);
+    e4.appendChild(e32);
+    const e35 = document.createElement("a");
+    e35.setAttribute("class", "tile");
+    e35.setAttribute("href", "/stateful-lists");
+    e35.setAttribute("data-gothic-on", "24");
+    const e36 = document.createElement("strong");
+    e36.appendChild(document.createTextNode("Stateful lists"));
+    e35.appendChild(e36);
+    const e37 = document.createElement("span");
+    e37.appendChild(document.createTextNode("Keyed lists that reset state on unmount."));
+    e35.appendChild(e37);
+    e4.appendChild(e35);
+    const e38 = document.createElement("a");
+    e38.setAttribute("class", "tile");
+    e38.setAttribute("href", "/server-state");
+    e38.setAttribute("data-gothic-on", "25");
+    const e39 = document.createElement("strong");
+    e39.appendChild(document.createTextNode("Server state"));
+    e38.appendChild(e39);
+    const e40 = document.createElement("span");
+    e40.appendChild(document.createTextNode("Run a typed procedure from an action."));
+    e38.appendChild(e40);
+    e4.appendChild(e38);
+  frag.appendChild(e4);
   return frag; },
     () => { const frag = document.createDocumentFragment();
-    const e1 = document.createElement("p");
-    e1.setAttribute("class", "server-count");
-    e1.appendChild(document.createTextNode("The else branch is visible instead."));
-  frag.appendChild(e1);
+  return frag; },
+    (region) => {   on(region, "14", "click", routeClick);
+  on(region, "15", "click", routeClick);
+  on(region, "16", "click", routeClick);
+  on(region, "17", "click", routeClick);
+  on(region, "18", "click", routeClick);
+  on(region, "19", "click", routeClick);
+  on(region, "20", "click", routeClick);
+  on(region, "21", "click", routeClick);
+  on(region, "22", "click", routeClick);
+  on(region, "23", "click", routeClick);
+  on(region, "24", "click", routeClick);
+  on(region, "25", "click", routeClick);
+ },
+    (region) => {  });
+  ifBlock(root, "1",
+    model.Page == "button",
+    () => { const frag = document.createDocumentFragment();
+    const e41 = document.createElement("header");
+    e41.setAttribute("class", "page-head");
+    const e42 = document.createElement("p");
+    e42.setAttribute("class", "eyebrow");
+    e42.appendChild(document.createTextNode("component"));
+    e41.appendChild(e42);
+    const e43 = document.createElement("h1");
+    e43.appendChild(document.createTextNode("Button"));
+    e41.appendChild(e43);
+    const e44 = document.createElement("p");
+    e44.appendChild(document.createTextNode("Primary and secondary actions. The primary button carries the accent color."));
+    e41.appendChild(e44);
+  frag.appendChild(e41);
+    const e45 = document.createElement("div");
+    e45.setAttribute("class", "demo");
+    const e46 = document.createElement("div");
+    e46.setAttribute("class", "row");
+    const e47 = document.createElement("button");
+    e47.setAttribute("class", "ui-button");
+    e47.setAttribute("data-gothic-class-13", "ui-button-primary");
+    e47.setAttribute("data-gothic-on", "26");
+    e47.appendChild(document.createComment("g:text:0:open"));
+    e47.appendChild(document.createTextNode(String(({Label: "Save changes", Primary: true, Onclick: null}).Label)));
+    e47.appendChild(document.createComment("g:text:0:close"));
+    e46.appendChild(e47);
+    const e48 = document.createElement("button");
+    e48.setAttribute("class", "ui-button");
+    e48.setAttribute("data-gothic-class-14", "ui-button-primary");
+    e48.setAttribute("data-gothic-on", "27");
+    e48.appendChild(document.createComment("g:text:1:open"));
+    e48.appendChild(document.createTextNode(String(({Label: "Cancel", Primary: false, Onclick: null}).Label)));
+    e48.appendChild(document.createComment("g:text:1:close"));
+    e46.appendChild(e48);
+    e45.appendChild(e46);
+  frag.appendChild(e45);
+    const e49 = document.createElement("div");
+    e49.setAttribute("class", "code-block");
+    const e50 = document.createElement("h3");
+    e50.appendChild(document.createComment("g:text:2:open"));
+    e50.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.ButtonCode}).Title)));
+    e50.appendChild(document.createComment("g:text:2:close"));
+    e49.appendChild(e50);
+    const e51 = document.createElement("pre");
+    const e52 = document.createElement("code");
+    e52.appendChild(document.createComment("g:text:3:open"));
+    e52.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.ButtonCode}).Code)));
+    e52.appendChild(document.createComment("g:text:3:close"));
+    e51.appendChild(e52);
+    e49.appendChild(e51);
+  frag.appendChild(e49);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   classToggle(region, "13", ({Label: "Save changes", Primary: true, Onclick: null}).Primary);
+  on(region, "26", "click", (event) => dispatch(({Label: "Save changes", Primary: true, Onclick: null}).Onclick));
+  text(region, "0", ({Label: "Save changes", Primary: true, Onclick: null}).Label);
+  classToggle(region, "14", ({Label: "Cancel", Primary: false, Onclick: null}).Primary);
+  on(region, "27", "click", (event) => dispatch(({Label: "Cancel", Primary: false, Onclick: null}).Onclick));
+  text(region, "1", ({Label: "Cancel", Primary: false, Onclick: null}).Label);
+  text(region, "2", ({Title: "Usage", Code: model.ButtonCode}).Title);
+  text(region, "3", ({Title: "Usage", Code: model.ButtonCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "2",
+    model.Page == "card",
+    () => { const frag = document.createDocumentFragment();
+    const e53 = document.createElement("header");
+    e53.setAttribute("class", "page-head");
+    const e54 = document.createElement("p");
+    e54.setAttribute("class", "eyebrow");
+    e54.appendChild(document.createTextNode("component"));
+    e53.appendChild(e54);
+    const e55 = document.createElement("h1");
+    e55.appendChild(document.createTextNode("Card"));
+    e53.appendChild(e55);
+    const e56 = document.createElement("p");
+    e56.appendChild(document.createTextNode("Group related content on a small surface."));
+    e53.appendChild(e56);
+  frag.appendChild(e53);
+    const e57 = document.createElement("div");
+    e57.setAttribute("class", "demo");
+    const e58 = document.createElement("section");
+    e58.setAttribute("class", "ui-card");
+    const e59 = document.createElement("h2");
+    e59.appendChild(document.createComment("g:text:4:open"));
+    e59.appendChild(document.createTextNode(String(({Title: "A simple card", Body: "Cards group related content with a small surface."}).Title)));
+    e59.appendChild(document.createComment("g:text:4:close"));
+    e58.appendChild(e59);
+    const e60 = document.createElement("p");
+    e60.appendChild(document.createComment("g:text:5:open"));
+    e60.appendChild(document.createTextNode(String(({Title: "A simple card", Body: "Cards group related content with a small surface."}).Body)));
+    e60.appendChild(document.createComment("g:text:5:close"));
+    e58.appendChild(e60);
+    e57.appendChild(e58);
+  frag.appendChild(e57);
+    const e61 = document.createElement("div");
+    e61.setAttribute("class", "code-block");
+    const e62 = document.createElement("h3");
+    e62.appendChild(document.createComment("g:text:6:open"));
+    e62.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.CardCode}).Title)));
+    e62.appendChild(document.createComment("g:text:6:close"));
+    e61.appendChild(e62);
+    const e63 = document.createElement("pre");
+    const e64 = document.createElement("code");
+    e64.appendChild(document.createComment("g:text:7:open"));
+    e64.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.CardCode}).Code)));
+    e64.appendChild(document.createComment("g:text:7:close"));
+    e63.appendChild(e64);
+    e61.appendChild(e63);
+  frag.appendChild(e61);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   text(region, "4", ({Title: "A simple card", Body: "Cards group related content with a small surface."}).Title);
+  text(region, "5", ({Title: "A simple card", Body: "Cards group related content with a small surface."}).Body);
+  text(region, "6", ({Title: "Usage", Code: model.CardCode}).Title);
+  text(region, "7", ({Title: "Usage", Code: model.CardCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "3",
+    model.Page == "field",
+    () => { const frag = document.createDocumentFragment();
+    const e65 = document.createElement("header");
+    e65.setAttribute("class", "page-head");
+    const e66 = document.createElement("p");
+    e66.setAttribute("class", "eyebrow");
+    e66.appendChild(document.createTextNode("component"));
+    e65.appendChild(e66);
+    const e67 = document.createElement("h1");
+    e67.appendChild(document.createTextNode("Field"));
+    e65.appendChild(e67);
+    const e68 = document.createElement("p");
+    e68.appendChild(document.createTextNode("A label and control wrapper for form rows."));
+    e65.appendChild(e68);
+  frag.appendChild(e65);
+    const e69 = document.createElement("div");
+    e69.setAttribute("class", "demo");
+    const e70 = document.createElement("div");
+    e70.setAttribute("class", "ui-field");
+    const e71 = document.createElement("span");
+    e71.setAttribute("class", "ui-field-label");
+    e71.appendChild(document.createComment("g:text:8:open"));
+    e71.appendChild(document.createTextNode(String(({Label: "Your name"}).Label)));
+    e71.appendChild(document.createComment("g:text:8:close"));
+    e70.appendChild(e71);
+    const e72 = document.createElement("input");
+    e72.setAttribute("class", "slot-input");
+    e72.setAttribute("data-gothic-attr-0", "value");
+    e72.setAttribute("data-gothic-on", "28");
+    e70.appendChild(e72);
+    e69.appendChild(e70);
+    const e73 = document.createElement("p");
+    e73.setAttribute("class", "server-count");
+    e73.appendChild(document.createTextNode("Hello,"));
+    e73.appendChild(document.createComment("g:text:9:open"));
+    e73.appendChild(document.createTextNode(String(" ")));
+    e73.appendChild(document.createComment("g:text:9:close"));
+    e73.appendChild(document.createComment("g:text:10:open"));
+    e73.appendChild(document.createTextNode(String(model.SlotText)));
+    e73.appendChild(document.createComment("g:text:10:close"));
+    e73.appendChild(document.createTextNode("!"));
+    e69.appendChild(e73);
+  frag.appendChild(e69);
+    const e74 = document.createElement("div");
+    e74.setAttribute("class", "code-block");
+    const e75 = document.createElement("h3");
+    e75.appendChild(document.createComment("g:text:11:open"));
+    e75.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.FieldCode}).Title)));
+    e75.appendChild(document.createComment("g:text:11:close"));
+    e74.appendChild(e75);
+    const e76 = document.createElement("pre");
+    const e77 = document.createElement("code");
+    e77.appendChild(document.createComment("g:text:12:open"));
+    e77.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.FieldCode}).Code)));
+    e77.appendChild(document.createComment("g:text:12:close"));
+    e76.appendChild(e77);
+    e74.appendChild(e76);
+  frag.appendChild(e74);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   text(region, "8", ({Label: "Your name"}).Label);
+  attr(region, "0", model.SlotText);
+  on(region, "28", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
+  text(region, "9", " ");
+  text(region, "10", model.SlotText);
+  text(region, "11", ({Title: "Usage", Code: model.FieldCode}).Title);
+  text(region, "12", ({Title: "Usage", Code: model.FieldCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "4",
+    model.Page == "tabs",
+    () => { const frag = document.createDocumentFragment();
+    const e78 = document.createElement("header");
+    e78.setAttribute("class", "page-head");
+    const e79 = document.createElement("p");
+    e79.setAttribute("class", "eyebrow");
+    e79.appendChild(document.createTextNode("component"));
+    e78.appendChild(e79);
+    const e80 = document.createElement("h1");
+    e80.appendChild(document.createTextNode("Tabs"));
+    e78.appendChild(e80);
+    const e81 = document.createElement("p");
+    e81.appendChild(document.createTextNode("Select the third tab, then remove a tab. The component clamps its active index from the items prop."));
+    e78.appendChild(e81);
+  frag.appendChild(e78);
+    const e82 = document.createElement("div");
+    e82.setAttribute("class", "demo");
+    const e83 = createTabs("c0", {Items: model.Tabs, Active: model.TabStart});
+    e82.appendChild(e83);
+    const e84 = document.createElement("div");
+    e84.setAttribute("class", "row");
+    const e85 = document.createElement("button");
+    e85.setAttribute("class", "ui-button");
+    e85.setAttribute("data-gothic-class-15", "ui-button-primary");
+    e85.setAttribute("data-gothic-on", "29");
+    e85.appendChild(document.createComment("g:text:13:open"));
+    e85.appendChild(document.createTextNode(String(({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Label)));
+    e85.appendChild(document.createComment("g:text:13:close"));
+    e84.appendChild(e85);
+    const e86 = document.createElement("button");
+    e86.setAttribute("class", "ui-button");
+    e86.setAttribute("data-gothic-class-16", "ui-button-primary");
+    e86.setAttribute("data-gothic-on", "30");
+    e86.appendChild(document.createComment("g:text:14:open"));
+    e86.appendChild(document.createTextNode(String(({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Label)));
+    e86.appendChild(document.createComment("g:text:14:close"));
+    e84.appendChild(e86);
+    e82.appendChild(e84);
+  frag.appendChild(e82);
+    const e87 = document.createElement("div");
+    e87.setAttribute("class", "code-block");
+    const e88 = document.createElement("h3");
+    e88.appendChild(document.createComment("g:text:15:open"));
+    e88.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.TabsCode}).Title)));
+    e88.appendChild(document.createComment("g:text:15:close"));
+    e87.appendChild(e88);
+    const e89 = document.createElement("pre");
+    const e90 = document.createElement("code");
+    e90.appendChild(document.createComment("g:text:16:open"));
+    e90.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.TabsCode}).Code)));
+    e90.appendChild(document.createComment("g:text:16:close"));
+    e89.appendChild(e90);
+    e87.appendChild(e89);
+  frag.appendChild(e87);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const gc1Node = region.querySelector('[data-gothic-component-id="c0"]');
+let gc1Inst = gc1Node && gc1Node.__gothicInstances && gc1Node.__gothicInstances["c0"];
+if (!gc1Inst) {
+  gc1Inst = mountTabs(gc1Node, {Items: model.Tabs, Active: model.TabStart}, dispatch);
+  gc1Node.__gothicInstances = { "c0": gc1Inst };
+} else {
+  gc1Inst.updateProps({Items: model.Tabs, Active: model.TabStart});
+}
+  classToggle(region, "15", ({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Primary);
+  on(region, "29", "click", (event) => dispatch(({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Onclick));
+  text(region, "13", ({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Label);
+  classToggle(region, "16", ({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Primary);
+  on(region, "30", "click", (event) => dispatch(({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Onclick));
+  text(region, "14", ({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Label);
+  text(region, "15", ({Title: "Usage", Code: model.TabsCode}).Title);
+  text(region, "16", ({Title: "Usage", Code: model.TabsCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "5",
+    model.Page == "accordion",
+    () => { const frag = document.createDocumentFragment();
+    const e91 = document.createElement("header");
+    e91.setAttribute("class", "page-head");
+    const e92 = document.createElement("p");
+    e92.setAttribute("class", "eyebrow");
+    e92.appendChild(document.createTextNode("component"));
+    e91.appendChild(e92);
+    const e93 = document.createElement("h1");
+    e93.appendChild(document.createTextNode("Accordion"));
+    e91.appendChild(e93);
+    const e94 = document.createElement("p");
+    e94.appendChild(document.createTextNode("Stack expandable sections in a single surface."));
+    e91.appendChild(e94);
+  frag.appendChild(e91);
+    const e95 = document.createElement("div");
+    e95.setAttribute("class", "demo");
+    const e96 = createAccordion("c1", {Items: model.Accordion});
+    e95.appendChild(e96);
+  frag.appendChild(e95);
+    const e97 = document.createElement("div");
+    e97.setAttribute("class", "code-block");
+    const e98 = document.createElement("h3");
+    e98.appendChild(document.createComment("g:text:17:open"));
+    e98.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.AccordionCode}).Title)));
+    e98.appendChild(document.createComment("g:text:17:close"));
+    e97.appendChild(e98);
+    const e99 = document.createElement("pre");
+    const e100 = document.createElement("code");
+    e100.appendChild(document.createComment("g:text:18:open"));
+    e100.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.AccordionCode}).Code)));
+    e100.appendChild(document.createComment("g:text:18:close"));
+    e99.appendChild(e100);
+    e97.appendChild(e99);
+  frag.appendChild(e97);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const gc2Node = region.querySelector('[data-gothic-component-id="c1"]');
+let gc2Inst = gc2Node && gc2Node.__gothicInstances && gc2Node.__gothicInstances["c1"];
+if (!gc2Inst) {
+  gc2Inst = mountAccordion(gc2Node, {Items: model.Accordion}, dispatch);
+  gc2Node.__gothicInstances = { "c1": gc2Inst };
+} else {
+  gc2Inst.updateProps({Items: model.Accordion});
+}
+  text(region, "17", ({Title: "Usage", Code: model.AccordionCode}).Title);
+  text(region, "18", ({Title: "Usage", Code: model.AccordionCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "6",
+    model.Page == "disclosure",
+    () => { const frag = document.createDocumentFragment();
+    const e101 = document.createElement("header");
+    e101.setAttribute("class", "page-head");
+    const e102 = document.createElement("p");
+    e102.setAttribute("class", "eyebrow");
+    e102.appendChild(document.createTextNode("component"));
+    e101.appendChild(e102);
+    const e103 = document.createElement("h1");
+    e103.appendChild(document.createTextNode("Disclosure"));
+    e101.appendChild(e103);
+    const e104 = document.createElement("p");
+    e104.appendChild(document.createTextNode("Reveal details on demand."));
+    e101.appendChild(e104);
+  frag.appendChild(e101);
+    const e105 = document.createElement("div");
+    e105.setAttribute("class", "demo");
+    const e106 = createDisclosure("c2", {Item: model.FeatureDisclosure});
+    e105.appendChild(e106);
+  frag.appendChild(e105);
+    const e107 = document.createElement("div");
+    e107.setAttribute("class", "code-block");
+    const e108 = document.createElement("h3");
+    e108.appendChild(document.createComment("g:text:19:open"));
+    e108.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.DisclosureCode}).Title)));
+    e108.appendChild(document.createComment("g:text:19:close"));
+    e107.appendChild(e108);
+    const e109 = document.createElement("pre");
+    const e110 = document.createElement("code");
+    e110.appendChild(document.createComment("g:text:20:open"));
+    e110.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.DisclosureCode}).Code)));
+    e110.appendChild(document.createComment("g:text:20:close"));
+    e109.appendChild(e110);
+    e107.appendChild(e109);
+  frag.appendChild(e107);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const gc3Node = region.querySelector('[data-gothic-component-id="c2"]');
+let gc3Inst = gc3Node && gc3Node.__gothicInstances && gc3Node.__gothicInstances["c2"];
+if (!gc3Inst) {
+  gc3Inst = mountDisclosure(gc3Node, {Item: model.FeatureDisclosure}, dispatch);
+  gc3Node.__gothicInstances = { "c2": gc3Inst };
+} else {
+  gc3Inst.updateProps({Item: model.FeatureDisclosure});
+}
+  text(region, "19", ({Title: "Usage", Code: model.DisclosureCode}).Title);
+  text(region, "20", ({Title: "Usage", Code: model.DisclosureCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "7",
+    model.Page == "counter",
+    () => { const frag = document.createDocumentFragment();
+    const e111 = document.createElement("header");
+    e111.setAttribute("class", "page-head");
+    const e112 = document.createElement("p");
+    e112.setAttribute("class", "eyebrow");
+    e112.appendChild(document.createTextNode("component"));
+    e111.appendChild(e112);
+    const e113 = document.createElement("h1");
+    e113.appendChild(document.createTextNode("Counter"));
+    e111.appendChild(e113);
+    const e114 = document.createElement("p");
+    e114.appendChild(document.createTextNode("Client-side state inside a component. The value stays local to the component."));
+    e111.appendChild(e114);
+  frag.appendChild(e111);
+    const e115 = document.createElement("div");
+    e115.setAttribute("class", "demo");
+    const e116 = createCounter("c3", {Label: "Increment on client"});
+    e115.appendChild(e116);
+  frag.appendChild(e115);
+    const e117 = document.createElement("div");
+    e117.setAttribute("class", "code-block");
+    const e118 = document.createElement("h3");
+    e118.appendChild(document.createComment("g:text:21:open"));
+    e118.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.CounterCode}).Title)));
+    e118.appendChild(document.createComment("g:text:21:close"));
+    e117.appendChild(e118);
+    const e119 = document.createElement("pre");
+    const e120 = document.createElement("code");
+    e120.appendChild(document.createComment("g:text:22:open"));
+    e120.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.CounterCode}).Code)));
+    e120.appendChild(document.createComment("g:text:22:close"));
+    e119.appendChild(e120);
+    e117.appendChild(e119);
+  frag.appendChild(e117);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   const gc4Node = region.querySelector('[data-gothic-component-id="c3"]');
 let gc4Inst = gc4Node && gc4Node.__gothicInstances && gc4Node.__gothicInstances["c3"];
 if (!gc4Inst) {
-  gc4Inst = mountDisclosure(gc4Node, {Item: model.FeatureDisclosure}, dispatch);
+  gc4Inst = mountCounter(gc4Node, {Label: "Increment on client"}, dispatch);
   gc4Node.__gothicInstances = { "c3": gc4Inst };
 } else {
-  gc4Inst.updateProps({Item: model.FeatureDisclosure});
+  gc4Inst.updateProps({Label: "Increment on client"});
+}
+  text(region, "21", ({Title: "Usage", Code: model.CounterCode}).Title);
+  text(region, "22", ({Title: "Usage", Code: model.CounterCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "8",
+    model.Page == "virtual-list",
+    () => { const frag = document.createDocumentFragment();
+    const e121 = document.createElement("header");
+    e121.setAttribute("class", "page-head");
+    const e122 = document.createElement("p");
+    e122.setAttribute("class", "eyebrow");
+    e122.appendChild(document.createTextNode("component"));
+    e121.appendChild(e122);
+    const e123 = document.createElement("h1");
+    e123.appendChild(document.createTextNode("Virtual list"));
+    e121.appendChild(e123);
+    const e124 = document.createElement("p");
+    e124.appendChild(document.createTextNode("One thousand rows, with only the visible window in the DOM. Scroll inside the list to move the window."));
+    e121.appendChild(e124);
+  frag.appendChild(e121);
+    const e125 = document.createElement("div");
+    e125.setAttribute("class", "demo");
+    const e126 = createuiVirtualList("c4", {Items: model.VirtualRows, Height: 432, RowHeight: 36});
+    e125.appendChild(e126);
+  frag.appendChild(e125);
+    const e127 = document.createElement("div");
+    e127.setAttribute("class", "code-block");
+    const e128 = document.createElement("h3");
+    e128.appendChild(document.createComment("g:text:23:open"));
+    e128.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.VirtualCode}).Title)));
+    e128.appendChild(document.createComment("g:text:23:close"));
+    e127.appendChild(e128);
+    const e129 = document.createElement("pre");
+    const e130 = document.createElement("code");
+    e130.appendChild(document.createComment("g:text:24:open"));
+    e130.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.VirtualCode}).Code)));
+    e130.appendChild(document.createComment("g:text:24:close"));
+    e129.appendChild(e130);
+    e127.appendChild(e129);
+  frag.appendChild(e127);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const gc5Node = region.querySelector('[data-gothic-component-id="c4"]');
+let gc5Inst = gc5Node && gc5Node.__gothicInstances && gc5Node.__gothicInstances["c4"];
+if (!gc5Inst) {
+  gc5Inst = mountuiVirtualList(gc5Node, {Items: model.VirtualRows, Height: 432, RowHeight: 36}, dispatch);
+  gc5Node.__gothicInstances = { "c4": gc5Inst };
+} else {
+  gc5Inst.updateProps({Items: model.VirtualRows, Height: 432, RowHeight: 36});
+}
+  text(region, "23", ({Title: "Usage", Code: model.VirtualCode}).Title);
+  text(region, "24", ({Title: "Usage", Code: model.VirtualCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "9",
+    model.Page == "slots",
+    () => { const frag = document.createDocumentFragment();
+    const e131 = document.createElement("header");
+    e131.setAttribute("class", "page-head");
+    const e132 = document.createElement("p");
+    e132.setAttribute("class", "eyebrow");
+    e132.appendChild(document.createTextNode("pattern"));
+    e131.appendChild(e132);
+    const e133 = document.createElement("h1");
+    e133.appendChild(document.createTextNode("Slots"));
+    e131.appendChild(e133);
+    const e134 = document.createElement("p");
+    e134.appendChild(document.createTextNode("A pure component supplies layout while the App keeps state and events in the slotted content."));
+    e131.appendChild(e134);
+  frag.appendChild(e131);
+    const e135 = document.createElement("div");
+    e135.setAttribute("class", "demo");
+    const e136 = document.createElement("div");
+    e136.setAttribute("class", "ui-field");
+    const e137 = document.createElement("span");
+    e137.setAttribute("class", "ui-field-label");
+    e137.appendChild(document.createComment("g:text:25:open"));
+    e137.appendChild(document.createTextNode(String(({Label: "Your name"}).Label)));
+    e137.appendChild(document.createComment("g:text:25:close"));
+    e136.appendChild(e137);
+    const e138 = document.createElement("input");
+    e138.setAttribute("class", "slot-input");
+    e138.setAttribute("data-gothic-attr-1", "value");
+    e138.setAttribute("data-gothic-on", "31");
+    e136.appendChild(e138);
+    e135.appendChild(e136);
+    const e139 = document.createElement("p");
+    e139.setAttribute("class", "server-count");
+    e139.appendChild(document.createTextNode("Hello,"));
+    e139.appendChild(document.createComment("g:text:26:open"));
+    e139.appendChild(document.createTextNode(String(" ")));
+    e139.appendChild(document.createComment("g:text:26:close"));
+    e139.appendChild(document.createComment("g:text:27:open"));
+    e139.appendChild(document.createTextNode(String(model.SlotText)));
+    e139.appendChild(document.createComment("g:text:27:close"));
+    e139.appendChild(document.createTextNode("!"));
+    e135.appendChild(e139);
+    const e140 = document.createElement("div");
+    e140.setAttribute("class", "ui-field");
+    const e141 = document.createElement("span");
+    e141.setAttribute("class", "ui-field-label");
+    e141.appendChild(document.createComment("g:text:28:open"));
+    e141.appendChild(document.createTextNode(String(({Label: "A stateful child"}).Label)));
+    e141.appendChild(document.createComment("g:text:28:close"));
+    e140.appendChild(e141);
+    const e142 = createCounter("c5", {Label: "Increment inside a slot"});
+    e140.appendChild(e142);
+    e135.appendChild(e140);
+  frag.appendChild(e135);
+    const e143 = document.createElement("div");
+    e143.setAttribute("class", "code-block");
+    const e144 = document.createElement("h3");
+    e144.appendChild(document.createComment("g:text:29:open"));
+    e144.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.SlotCode}).Title)));
+    e144.appendChild(document.createComment("g:text:29:close"));
+    e143.appendChild(e144);
+    const e145 = document.createElement("pre");
+    const e146 = document.createElement("code");
+    e146.appendChild(document.createComment("g:text:30:open"));
+    e146.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.SlotCode}).Code)));
+    e146.appendChild(document.createComment("g:text:30:close"));
+    e145.appendChild(e146);
+    e143.appendChild(e145);
+  frag.appendChild(e143);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   text(region, "25", ({Label: "Your name"}).Label);
+  attr(region, "1", model.SlotText);
+  on(region, "31", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
+  text(region, "26", " ");
+  text(region, "27", model.SlotText);
+  text(region, "28", ({Label: "A stateful child"}).Label);
+  const gc6Node = region.querySelector('[data-gothic-component-id="c5"]');
+let gc6Inst = gc6Node && gc6Node.__gothicInstances && gc6Node.__gothicInstances["c5"];
+if (!gc6Inst) {
+  gc6Inst = mountCounter(gc6Node, {Label: "Increment inside a slot"}, dispatch);
+  gc6Node.__gothicInstances = { "c5": gc6Inst };
+} else {
+  gc6Inst.updateProps({Label: "Increment inside a slot"});
+}
+  text(region, "29", ({Title: "Usage", Code: model.SlotCode}).Title);
+  text(region, "30", ({Title: "Usage", Code: model.SlotCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "10",
+    model.Page == "conditionals",
+    () => { const frag = document.createDocumentFragment();
+    const e147 = document.createElement("header");
+    e147.setAttribute("class", "page-head");
+    const e148 = document.createElement("p");
+    e148.setAttribute("class", "eyebrow");
+    e148.appendChild(document.createTextNode("pattern"));
+    e147.appendChild(e148);
+    const e149 = document.createElement("h1");
+    e149.appendChild(document.createTextNode("Conditionals"));
+    e147.appendChild(e149);
+    const e150 = document.createElement("p");
+    e150.appendChild(document.createTextNode("An if branch renders one panel or the other. Toggling removes the unused branch from the DOM, so stateful components start fresh when the branch returns."));
+    e147.appendChild(e150);
+  frag.appendChild(e147);
+    const e151 = document.createElement("div");
+    e151.setAttribute("class", "demo");
+    const e152 = document.createElement("div");
+    e152.setAttribute("class", "row");
+    const e153 = document.createElement("button");
+    e153.setAttribute("class", "ui-button");
+    e153.setAttribute("data-gothic-class-17", "ui-button-primary");
+    e153.setAttribute("data-gothic-on", "32");
+    e153.appendChild(document.createComment("g:text:31:open"));
+    e153.appendChild(document.createTextNode(String(({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Label)));
+    e153.appendChild(document.createComment("g:text:31:close"));
+    e152.appendChild(e153);
+    e151.appendChild(e152);
+    e151.appendChild(document.createComment("g:if:11:open"));
+    e151.appendChild(document.createComment("g:if:11:close"));
+  frag.appendChild(e151);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   classToggle(region, "17", ({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Primary);
+  on(region, "32", "click", (event) => dispatch(({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Onclick));
+  text(region, "31", ({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Label);
+  ifBlock(region, "11",
+    model.ShowExample,
+    () => { const frag = document.createDocumentFragment();
+  const e154 = createDisclosure("c6", {Item: model.FeatureDisclosure});
+  frag.appendChild(e154);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+    const e155 = document.createElement("p");
+    e155.setAttribute("class", "server-count");
+    e155.appendChild(document.createTextNode("The else branch is visible instead."));
+  frag.appendChild(e155);
+  return frag; },
+    (region) => {   const gc7Node = region.querySelector('[data-gothic-component-id="c6"]');
+let gc7Inst = gc7Node && gc7Node.__gothicInstances && gc7Node.__gothicInstances["c6"];
+if (!gc7Inst) {
+  gc7Inst = mountDisclosure(gc7Node, {Item: model.FeatureDisclosure}, dispatch);
+  gc7Node.__gothicInstances = { "c6": gc7Inst };
+} else {
+  gc7Inst.updateProps({Item: model.FeatureDisclosure});
 }
  },
     (region) => {  });
-  c0.updateProps({Label: "Increment inside a slot"});
-  c1.updateProps({Items: model.Tabs, Active: model.TabStart});
-  c2.updateProps({Items: model.Accordion});
-  c5.updateProps({Items: model.VirtualRows, Height: 432, RowHeight: 36});
-  c6.updateProps({Label: "Increment on client"});
-  text(root, "0", ({Label: "Save changes", Primary: true, Onclick: null}).Label);
-  text(root, "1", ({Label: "Cancel", Primary: false, Onclick: null}).Label);
-  text(root, "2", ({Title: "Usage", Code: model.ButtonCode}).Title);
-  text(root, "3", ({Title: "Usage", Code: model.ButtonCode}).Code);
-  text(root, "4", ({Title: "A simple card", Body: "Cards group related content with a small surface."}).Title);
-  text(root, "5", ({Title: "A simple card", Body: "Cards group related content with a small surface."}).Body);
-  text(root, "6", ({Title: "Usage", Code: model.CardCode}).Title);
-  text(root, "7", ({Title: "Usage", Code: model.CardCode}).Code);
-  text(root, "8", ({Label: "Your name"}).Label);
-  text(root, "9", " ");
-  text(root, "10", model.SlotText);
-  text(root, "11", ({Label: "A stateful child"}).Label);
-  text(root, "12", ({Title: "Usage", Code: model.SlotCode}).Title);
-  text(root, "13", ({Title: "Usage", Code: model.SlotCode}).Code);
-  text(root, "14", ({Label: "Fewer tabs", Primary: false, Onclick: {tag: "FewerTabs"}}).Label);
-  text(root, "15", ({Label: "More tabs", Primary: false, Onclick: {tag: "MoreTabs"}}).Label);
-  text(root, "16", ({Title: "Usage", Code: model.TabsCode}).Title);
-  text(root, "17", ({Title: "Usage", Code: model.TabsCode}).Code);
-  text(root, "18", ({Title: "Usage", Code: model.AccordionCode}).Title);
-  text(root, "19", ({Title: "Usage", Code: model.AccordionCode}).Code);
-  text(root, "20", ({Label: "Toggle panel", Primary: true, Onclick: {tag: "ToggleExample"}}).Label);
-  text(root, "21", ({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Label);
-  text(root, "22", ({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Label);
-  text(root, "23", model.PageLabel);
-  text(root, "24", ({Title: "Usage", Code: model.DisclosureCode}).Title);
-  text(root, "25", ({Title: "Usage", Code: model.DisclosureCode}).Code);
-  text(root, "26", ({Title: "Usage", Code: model.VirtualCode}).Title);
-  text(root, "27", ({Title: "Usage", Code: model.VirtualCode}).Code);
-  text(root, "28", ({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Label);
-  text(root, "29", model.Count);
-  text(root, "30", ({Title: "Usage", Code: model.ServerCode}).Title);
-  text(root, "31", ({Title: "Usage", Code: model.ServerCode}).Code);
-  const renderList0 = list(root, "0", (item, __i0) => {
-  const node = createDisclosure("c4", {Item: item});
+ },
+    (region) => {  });
+  ifBlock(root, "12",
+    model.Page == "stateful-lists",
+    () => { const frag = document.createDocumentFragment();
+    const e156 = document.createElement("header");
+    e156.setAttribute("class", "page-head");
+    const e157 = document.createElement("p");
+    e157.setAttribute("class", "eyebrow");
+    e157.appendChild(document.createTextNode("pattern"));
+    e156.appendChild(e157);
+    const e158 = document.createElement("h1");
+    e158.appendChild(document.createTextNode("Stateful lists"));
+    e156.appendChild(e158);
+    const e159 = document.createElement("p");
+    e159.appendChild(document.createTextNode("Ten disclosures per page in a scrollable viewport. Paging removes the old items, so expanded rows start collapsed when they return."));
+    e156.appendChild(e159);
+  frag.appendChild(e156);
+    const e160 = document.createElement("div");
+    e160.setAttribute("class", "demo");
+    const e161 = document.createElement("div");
+    e161.setAttribute("class", "ui-disclosure-list");
+    e161.appendChild(document.createComment("g:each:0:open"));
+    e161.appendChild(document.createComment("g:each:0:close"));
+    e160.appendChild(e161);
+    const e162 = document.createElement("div");
+    e162.setAttribute("class", "row");
+    const e163 = document.createElement("button");
+    e163.setAttribute("class", "ui-button");
+    e163.setAttribute("data-gothic-class-18", "ui-button-primary");
+    e163.setAttribute("data-gothic-on", "33");
+    e163.appendChild(document.createComment("g:text:32:open"));
+    e163.appendChild(document.createTextNode(String(({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Label)));
+    e163.appendChild(document.createComment("g:text:32:close"));
+    e162.appendChild(e163);
+    const e164 = document.createElement("button");
+    e164.setAttribute("class", "ui-button");
+    e164.setAttribute("data-gothic-class-19", "ui-button-primary");
+    e164.setAttribute("data-gothic-on", "34");
+    e164.appendChild(document.createComment("g:text:33:open"));
+    e164.appendChild(document.createTextNode(String(({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Label)));
+    e164.appendChild(document.createComment("g:text:33:close"));
+    e162.appendChild(e164);
+    e160.appendChild(e162);
+    const e165 = document.createElement("p");
+    e165.setAttribute("class", "server-count");
+    e165.appendChild(document.createComment("g:text:34:open"));
+    e165.appendChild(document.createTextNode(String(model.PageLabel)));
+    e165.appendChild(document.createComment("g:text:34:close"));
+    e160.appendChild(e165);
+  frag.appendChild(e160);
+    const e166 = document.createElement("div");
+    e166.setAttribute("class", "code-block");
+    const e167 = document.createElement("h3");
+    e167.appendChild(document.createComment("g:text:35:open"));
+    e167.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.DisclosureCode}).Title)));
+    e167.appendChild(document.createComment("g:text:35:close"));
+    e166.appendChild(e167);
+    const e168 = document.createElement("pre");
+    const e169 = document.createElement("code");
+    e169.appendChild(document.createComment("g:text:36:open"));
+    e169.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.DisclosureCode}).Code)));
+    e169.appendChild(document.createComment("g:text:36:close"));
+    e168.appendChild(e169);
+    e166.appendChild(e168);
+  frag.appendChild(e166);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const renderList0 = list(region, "0", (item, __i0) => {
+  const node = createDisclosure("c7", {Item: item});
   node.setAttribute("data-gothic-key", String(item.ID));
   const inst = mountDisclosure(node, {Item: item}, dispatch);
-  node.__gothicInstances = { "c4": inst };
+  node.__gothicInstances = { "c7": inst };
   return node;
 }, (node, item, __i0) => {
-  let inst = node.__gothicInstances && node.__gothicInstances["c4"];
+  let inst = node.__gothicInstances && node.__gothicInstances["c7"];
   if (!inst) {
     inst = mountDisclosure(node, {Item: item}, dispatch);
-    node.__gothicInstances = { "c4": inst };
+    node.__gothicInstances = { "c7": inst };
   } else {
     inst.updateProps({Item: item});
   }
 }, (item, __i0) => String(item.ID));
 renderList0(model.Visible);
+  classToggle(region, "18", ({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Primary);
+  on(region, "33", "click", (event) => dispatch(({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Onclick));
+  text(region, "32", ({Label: "Previous page", Primary: false, Onclick: {tag: "PrevPage"}}).Label);
+  classToggle(region, "19", ({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Primary);
+  on(region, "34", "click", (event) => dispatch(({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Onclick));
+  text(region, "33", ({Label: "Next page", Primary: true, Onclick: {tag: "NextPage"}}).Label);
+  text(region, "34", model.PageLabel);
+  text(region, "35", ({Title: "Usage", Code: model.DisclosureCode}).Title);
+  text(region, "36", ({Title: "Usage", Code: model.DisclosureCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "13",
+    model.Page == "server-state",
+    () => { const frag = document.createDocumentFragment();
+    const e170 = document.createElement("header");
+    e170.setAttribute("class", "page-head");
+    const e171 = document.createElement("p");
+    e171.setAttribute("class", "eyebrow");
+    e171.appendChild(document.createTextNode("pattern"));
+    e170.appendChild(e171);
+    const e172 = document.createElement("h1");
+    e172.appendChild(document.createTextNode("Server state"));
+    e170.appendChild(e172);
+    const e173 = document.createElement("p");
+    e173.appendChild(document.createTextNode("Increment on client stays inside the component. Increment on server emits a message to the app, which runs a procedure."));
+    e170.appendChild(e173);
+  frag.appendChild(e170);
+    const e174 = document.createElement("div");
+    e174.setAttribute("class", "demo");
+    const e175 = document.createElement("div");
+    e175.setAttribute("class", "row");
+    const e176 = createCounter("c8", {Label: "Increment on client"});
+    e175.appendChild(e176);
+    const e177 = document.createElement("button");
+    e177.setAttribute("class", "ui-button");
+    e177.setAttribute("data-gothic-class-20", "ui-button-primary");
+    e177.setAttribute("data-gothic-on", "35");
+    e177.appendChild(document.createComment("g:text:37:open"));
+    e177.appendChild(document.createTextNode(String(({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Label)));
+    e177.appendChild(document.createComment("g:text:37:close"));
+    e175.appendChild(e177);
+    e174.appendChild(e175);
+    const e178 = document.createElement("p");
+    e178.setAttribute("class", "server-count");
+    e178.appendChild(document.createTextNode("Server count:"));
+    e178.appendChild(document.createComment("g:text:38:open"));
+    e178.appendChild(document.createTextNode(String(model.Count)));
+    e178.appendChild(document.createComment("g:text:38:close"));
+    e174.appendChild(e178);
+  frag.appendChild(e174);
+    const e179 = document.createElement("div");
+    e179.setAttribute("class", "code-block");
+    const e180 = document.createElement("h3");
+    e180.appendChild(document.createComment("g:text:39:open"));
+    e180.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.ServerCode}).Title)));
+    e180.appendChild(document.createComment("g:text:39:close"));
+    e179.appendChild(e180);
+    const e181 = document.createElement("pre");
+    const e182 = document.createElement("code");
+    e182.appendChild(document.createComment("g:text:40:open"));
+    e182.appendChild(document.createTextNode(String(({Title: "Usage", Code: model.ServerCode}).Code)));
+    e182.appendChild(document.createComment("g:text:40:close"));
+    e181.appendChild(e182);
+    e179.appendChild(e181);
+  frag.appendChild(e179);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   const gc9Node = region.querySelector('[data-gothic-component-id="c8"]');
+let gc9Inst = gc9Node && gc9Node.__gothicInstances && gc9Node.__gothicInstances["c8"];
+if (!gc9Inst) {
+  gc9Inst = mountCounter(gc9Node, {Label: "Increment on client"}, dispatch);
+  gc9Node.__gothicInstances = { "c8": gc9Inst };
+} else {
+  gc9Inst.updateProps({Label: "Increment on client"});
+}
+  classToggle(region, "20", ({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Primary);
+  on(region, "35", "click", (event) => dispatch(({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Onclick));
+  text(region, "37", ({Label: "Increment on server", Primary: true, Onclick: {tag: "IncrementClicked"}}).Label);
+  text(region, "38", model.Count);
+  text(region, "39", ({Title: "Usage", Code: model.ServerCode}).Title);
+  text(region, "40", ({Title: "Usage", Code: model.ServerCode}).Code);
+ },
+    (region) => {  });
+  ifBlock(root, "14",
+    model.Page == "notfound",
+    () => { const frag = document.createDocumentFragment();
+    const e183 = document.createElement("header");
+    e183.setAttribute("class", "page-head");
+    const e184 = document.createElement("p");
+    e184.setAttribute("class", "eyebrow");
+    e184.appendChild(document.createTextNode("404"));
+    e183.appendChild(e184);
+    const e185 = document.createElement("h1");
+    e185.appendChild(document.createTextNode("Not found"));
+    e183.appendChild(e185);
+    const e186 = document.createElement("p");
+    e186.appendChild(document.createTextNode("No page matches"));
+    e186.appendChild(document.createComment("g:text:41:open"));
+    e186.appendChild(document.createTextNode(String(" ")));
+    e186.appendChild(document.createComment("g:text:41:close"));
+    e186.appendChild(document.createComment("g:text:42:open"));
+    e186.appendChild(document.createTextNode(String(model.Path)));
+    e186.appendChild(document.createComment("g:text:42:close"));
+    e186.appendChild(document.createTextNode("."));
+    e183.appendChild(e186);
+  frag.appendChild(e183);
+    const e187 = document.createElement("a");
+    e187.setAttribute("class", "nav-link");
+    e187.setAttribute("href", "/");
+    e187.setAttribute("data-gothic-on", "36");
+    e187.appendChild(document.createTextNode("Back to the overview"));
+  frag.appendChild(e187);
+  return frag; },
+    () => { const frag = document.createDocumentFragment();
+  return frag; },
+    (region) => {   text(region, "41", " ");
+  text(region, "42", model.Path);
+  on(region, "36", "click", routeClick);
+ },
+    (region) => {  });
 }
 
 function dispatch(msg) {
@@ -132,6 +1059,55 @@ function init() {
 
 function update(m, msg) {
   switch (msg.tag) {
+  case "LocationChanged":
+  {
+    m.Path = msg.Path;
+    switch (msg.Path) {
+    case "/":
+      m.Page = "overview";
+      break;
+    case "/button":
+      m.Page = "button";
+      break;
+    case "/card":
+      m.Page = "card";
+      break;
+    case "/field":
+      m.Page = "field";
+      break;
+    case "/tabs":
+      m.Page = "tabs";
+      break;
+    case "/accordion":
+      m.Page = "accordion";
+      break;
+    case "/disclosure":
+      m.Page = "disclosure";
+      break;
+    case "/counter":
+      m.Page = "counter";
+      break;
+    case "/virtual-list":
+      m.Page = "virtual-list";
+      break;
+    case "/slots":
+      m.Page = "slots";
+      break;
+    case "/conditionals":
+      m.Page = "conditionals";
+      break;
+    case "/stateful-lists":
+      m.Page = "stateful-lists";
+      break;
+    case "/server-state":
+      m.Page = "server-state";
+      break;
+    default:
+      m.Page = "notfound";
+      break;
+    }
+    break;
+  }
   case "IncrementClicked":
   {
     return [m, async () => {
@@ -170,14 +1146,14 @@ function update(m, msg) {
   }
   case "NextPage":
   {
-    m.Page = 1;
+    m.ListPage = 1;
     m.Visible = m.PageTwo;
     m.PageLabel = "Showing 11-20 of 20";
     break;
   }
   case "PrevPage":
   {
-    m.Page = 0;
+    m.ListPage = 0;
     m.Visible = m.PageOne;
     m.PageLabel = "Showing 1-10 of 20";
     break;
@@ -193,3 +1169,31 @@ function update(m, msg) {
 
 render(model);
 run(init());
+function locationMessage() {
+  return {tag: "LocationChanged", Path: window.location.pathname, Query: window.location.search, Hash: window.location.hash};
+}
+
+function navigate(path) {
+  history.pushState(null, "", path);
+  dispatch(locationMessage());
+}
+
+function replaceLocation(path) {
+  history.replaceState(null, "", path);
+  dispatch(locationMessage());
+}
+
+function routeClick(event) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const el = event.currentTarget;
+  if (!el || !el.hasAttribute("href")) return;
+  if (el.hasAttribute("download")) return;
+  if (el.target && el.target !== "_self") return;
+  const url = new URL(el.href, location.href);
+  if (url.origin !== location.origin) return;
+  event.preventDefault();
+  navigate(url.pathname + url.search + url.hash);
+}
+
+window.addEventListener("popstate", () => dispatch(locationMessage()));
+dispatch(locationMessage());
