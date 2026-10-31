@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, focus, ifBlock, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, focus, ifBlock, len, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -238,7 +238,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`ifBlock(root, "0",`,
-		`((model.Items) ?? []).length > 0`,
+		`len(model.Items) > 0`,
 		`document.createComment("g:each:0:open")`,
 		`document.createDocumentFragment()`,
 		`return frag;`,
@@ -1283,6 +1283,135 @@ func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
 		MountFunc: "mountTabs", CreateFunc: "createTabs",
 	}}, appjs.Options{FileName: "tabs.gth"})
 	if err == nil || !strings.Contains(err.Error(), "constructor returns string, want TabsModel") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateCollectionExpressions(t *testing.T) {
+	view, err := parser.Parse("coll.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ model.Items[0] }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Items  []string
+	Counts map[string]int
+	Index  int
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Items[0] = m.Items[1]
+	m.Items = m.Items[:2]
+	m.Items = m.Items[1:]
+	m.Counts = map[string]int{"a": 1, "b": 2}
+	m.Counts["c"] = len(m.Items)
+	delete(m.Counts, "a")
+	m.Index += 1
+	m.Index *= 2
+	m.Index++
+	m.Index--
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "coll.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`m.Items[0] = m.Items[1];`,
+		`m.Items = ((m.Items) ?? []).slice(0, 2);`,
+		`m.Items = ((m.Items) ?? []).slice(1);`,
+		`m.Counts = {["a"]: 1, ["b"]: 2};`,
+		`m.Counts["c"] = len(m.Items);`,
+		`delete (m.Counts)["a"];`,
+		`m.Index += 1;`,
+		`m.Index *= 2;`,
+		`m.Index++;`,
+		`m.Index--;`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectThreeIndexSlice(t *testing.T) {
+	view, err := parser.Parse("coll.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Items []string }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Items = m.Items[0:1:2]
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName:   "coll.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err == nil || !strings.Contains(err.Error(), "three-index slices are not supported") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRejectUnsupportedCompoundAssign(t *testing.T) {
+	view, err := parser.Parse("coll.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Flags int }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Flags &^= 1
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName:   "coll.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err == nil || !strings.Contains(err.Error(), "unsupported assignment operator") {
 		t.Fatalf("error = %v", err)
 	}
 }

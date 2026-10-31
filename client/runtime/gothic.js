@@ -253,6 +253,13 @@ export async function rpc(name, ...args) {
   return data ? data.result : undefined;
 }
 
+export function len(value) {
+  if (value == null) return 0;
+  if (Array.isArray(value) || typeof value === "string") return value.length;
+  if (typeof value === "object") return Object.keys(value).length;
+  return 0;
+}
+
 export function readState(id) {
   const el = document.querySelector(`script[data-gothic-state="${id}"]`);
   if (!el) return {};
