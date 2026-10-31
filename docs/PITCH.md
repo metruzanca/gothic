@@ -121,6 +121,7 @@ The ping/pong proof of concept runs end to end.
 - Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
 - Components can seed their initial state from props with an optional `New<Model>(props)` constructor.
 - `Update` and commands support indexing, two-index slicing, map literals, `len`, `delete`, compound assignment, `++`/`--`, range loops, and non-type switch statements.
+- `gothic.Batch` and `gothic.Sequence` compose commands.
 - Path patterns and parameters work through the `route` package on the server and in the browser.
 - The virtualized list example keeps 12 rows in the DOM for a 5,000 row model using the headless `virtual` package and `dom.Px` spacers.
 - The UI kit ships `VirtualList`, a fixed-height virtual component that takes an app-defined one-parameter row view, with one variant per distinct row view.
@@ -147,11 +148,10 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 
 1. Children on stateful components and parent-local child message handling.
 2. Nested routers and wildcard or optional route segments.
-3. `Batch` and `Sequence` commands.
-4. Typed procedure argument validation and the no-JS form fallback.
-5. `go/packages` type information for stronger compiler checks.
-6. Manifest, content hashing, formatter, LSP, and source maps.
-7. Responsive and variable-height virtualized lists.
+3. Typed procedure argument validation and the no-JS form fallback.
+4. `go/packages` type information for stronger compiler checks.
+5. Manifest, content hashing, formatter, LSP, and source maps.
+6. Responsive and variable-height virtualized lists.
 
 ## Why this can work
 

@@ -946,6 +946,16 @@ func (g *gen) emitDispatch(b *strings.Builder) {
 
 async function run(cmd) {
   if (!cmd) return;
+  if (cmd.__gothicBatch) {
+    await Promise.all(cmd.__gothicBatch.map((sub) => run(sub)));
+    return;
+  }
+  if (cmd.__gothicSequence) {
+    for (const sub of cmd.__gothicSequence) {
+      await run(sub);
+    }
+    return;
+  }
   const msg = await cmd();
   if (msg) dispatch(msg);
 }
@@ -1507,8 +1517,27 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 			return "", g.exprErr(ctx, "assign the append result to a field", "append is only supported in assignment")
 		}
 		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
-			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "gothic" && sel.Sel.Name == "AnySlice" && len(e.Args) == 1 {
-				return g.expr(e.Args[0], ctx)
+			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "gothic" {
+				switch sel.Sel.Name {
+				case "AnySlice":
+					if len(e.Args) == 1 {
+						return g.expr(e.Args[0], ctx)
+					}
+				case "Batch", "Sequence":
+					args := make([]string, 0, len(e.Args))
+					for _, arg := range e.Args {
+						v, err := g.expr(arg, ctx)
+						if err != nil {
+							return "", err
+						}
+						args = append(args, v)
+					}
+					key := "__gothicBatch"
+					if sel.Sel.Name == "Sequence" {
+						key = "__gothicSequence"
+					}
+					return fmt.Sprintf("{ %s: [%s] }", key, strings.Join(args, ", ")), nil
+				}
 			}
 		}
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "len" && len(e.Args) == 1 {
@@ -2172,7 +2201,23 @@ func GenerateComponents(components []*generator.Stateful, opts Options) ([]byte,
 			dispatchArgs += ", props"
 		}
 		fmt.Fprintf(&b, "  function dispatch(msg) {\n    if (!alive) return;\n    const result = update(%s);\n    %s = result[0];\n    render(%s);\n    if (result[1]) run(result[1]);\n  }\n", dispatchArgs, modelName, modelName)
-		b.WriteString("  async function run(cmd) {\n    if (!cmd || !alive) return;\n    const msg = await cmd();\n    if (alive && msg) dispatch(msg);\n  }\n")
+		b.WriteString(`  async function run(cmd) {
+    if (!cmd || !alive) return;
+    if (cmd.__gothicBatch) {
+      await Promise.all(cmd.__gothicBatch.map((sub) => run(sub)));
+      return;
+    }
+    if (cmd.__gothicSequence) {
+      for (const sub of cmd.__gothicSequence) {
+        if (!alive) return;
+        await run(sub);
+      }
+      return;
+    }
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
+  }
+`)
 		fmt.Fprintf(&b, "  render(%s);\n", modelName)
 		if initFn != "" {
 			if initTakesProps {

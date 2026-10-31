@@ -1040,6 +1040,28 @@ The runtime renders the new model first, then runs the command. When the
 command returns a message, the runtime dispatches it. This keeps optimistic
 updates visible before the asynchronous work completes.
 
+### Batch and Sequence
+
+Compose commands with `gothic.Batch` or `gothic.Sequence`:
+
+```go
+return m, gothic.Batch(loadItems(), loadStats())
+
+return m, gothic.Sequence(
+	func() gothic.Msg { return FirstDone{} },
+	func() gothic.Msg { return SecondDone{} },
+)
+```
+
+- `Batch` starts commands concurrently.
+- `Sequence` runs them in order.
+- Each non-nil result is dispatched.
+- Nil commands are ignored.
+- Component commands stop after unmount.
+
+`gothic.Batch` and `gothic.Sequence` are client-only. The Go stubs exist so
+`Init`, `Update`, and commands compile.
+
 ## Rendering
 
 - The server renders the initial model and serializes it into the page.
@@ -1088,6 +1110,7 @@ The proof of concept supports:
 - `append` and assignments,
 - `if err != nil`,
 - commands with procedure calls and command closures,
+- `Batch` and `Sequence` command composition,
 - procedure arguments,
 - lists over a model field and keyed list reconciliation,
 - fixed-height virtualized lists with scroll events and `dom.Px` spacers,
@@ -1116,7 +1139,6 @@ Not supported yet:
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
-- `Batch` and `Sequence`,
 - typed procedure argument validation,
 - arbitrary browser globals outside the `js` package,
 - nested routers and wildcard or optional route segments,

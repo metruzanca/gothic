@@ -59,6 +59,24 @@ type Msg = any
 // Cmd is a command that performs work and returns a message.
 type Cmd func() Msg
 
+const commandOnly = "gothic: Batch and Sequence run in the browser"
+
+// Batch runs commands concurrently in the browser.
+//
+// The Go stub exists so Init and Update compile. The generated client code
+// recognizes the call and dispatches every non-nil result.
+func Batch(cmds ...Cmd) Cmd {
+	return func() Msg { panic(commandOnly) }
+}
+
+// Sequence runs commands in order in the browser.
+//
+// The Go stub exists so Init and Update compile. The generated client code
+// recognizes the call and dispatches every non-nil result in order.
+func Sequence(cmds ...Cmd) Cmd {
+	return func() Msg { panic(commandOnly) }
+}
+
 // PropsChanged is dispatched to a stateful component when its props change.
 // Components can handle it in Update to react to new prop values.
 type PropsChanged struct{}

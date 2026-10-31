@@ -2109,3 +2109,96 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		t.Errorf("generated JS kept gothic.AnySlice\n\n%s", src)
 	}
 }
+
+func TestGenerateBatchAndSequence(t *testing.T) {
+	view, err := parser.Parse("batch.gth", []byte(`package app
+
+view App(model Model) {
+	<div>{ model.Log }</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Log string }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	return m, gothic.Batch(
+		gothic.Sequence(func() Msg { return nil }),
+		func() Msg { return nil },
+	)
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "batch.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`{ __gothicSequence: [async () => {`,
+		`{ __gothicBatch: [{ __gothicSequence: [async () => {`,
+		`if (cmd.__gothicBatch) {`,
+		`await Promise.all(cmd.__gothicBatch.map((sub) => run(sub)));`,
+		`if (cmd.__gothicSequence) {`,
+		`for (const sub of cmd.__gothicSequence) {`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateComponentBatchAndSequence(t *testing.T) {
+	view, err := parser.Parse("box.gth", []byte(`package ui
+
+view Box(model BoxModel) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("box.go", []byte(`package ui
+
+type BoxModel struct{ Log string }
+
+func (m BoxModel) Init() Cmd { return nil }
+
+func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
+	return m, gothic.Batch(
+		func() Msg { return nil },
+		func() Msg { return nil },
+	)
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Box", View: view.Templates[0], App: app.ComponentApp("BoxModel"), ModelJSON: `{"Log":""}`, ModelType: "BoxModel",
+		MountFunc: "mountBox", CreateFunc: "createBox",
+	}}, appjs.Options{FileName: "box.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`if (cmd.__gothicBatch) {`,
+		`await Promise.all(cmd.__gothicBatch.map((sub) => run(sub)));`,
+		`if (!alive) return;`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated component JS missing %q\n\n%s", want, src)
+		}
+	}
+}

@@ -235,6 +235,7 @@ Supported now:
 - range loops over slices and maps with `break` and `continue`,
 - `append`, field access, assignments, `if err != nil`, and returns,
 - commands as functions or closures returning messages,
+- `gothic.Batch` and `gothic.Sequence` command composition,
 - procedure calls inside commands, awaited in JavaScript,
 - procedure arguments decoded from JSON,
 - direct procedure calls without an `api.` namespace,
@@ -275,7 +276,6 @@ Not supported yet:
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
-- `Batch` and `Sequence`,
 - message serialization or logging,
 - `go/packages` type information,
 - typed procedure argument validation,
@@ -296,13 +296,12 @@ These will be planned in detail after the proof of concept is evaluated:
    real use case appears.
 2. Parent-local child message handling.
 3. Nested routers and wildcard or optional route segments.
-4. `Batch` and `Sequence` commands.
-5. Typed procedure argument validation and the no-JS fallback.
-6. `go/packages` for type information and stronger validation.
-7. Manifest, content hashing, and production serving.
-8. Formatter, LSP, and source maps.
-9. Selective vendoring of templ's HTML and whitespace handling with tests.
-10. Responsive and variable-height virtualized lists.
+4. Typed procedure argument validation and the no-JS fallback.
+5. `go/packages` for type information and stronger validation.
+6. Manifest, content hashing, and production serving.
+7. Formatter, LSP, and source maps.
+8. Selective vendoring of templ's HTML and whitespace handling with tests.
+9. Responsive and variable-height virtualized lists.
 
 ## Risks
 
