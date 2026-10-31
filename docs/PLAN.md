@@ -188,6 +188,7 @@ from the server and reconciled. There is no virtual DOM.
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, request-scoped app models, and module registry. |
 | `js/` | Curated client-only browser interop. |
 | `route/` | Path pattern matching shared by the server and client. |
+| `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
@@ -195,6 +196,7 @@ from the server and reconciled. There is no virtual DOM.
 | `ui/` | Precompiled, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
 | `examples/router/` | Path-based URL state, route links, and browser interop. |
+| `examples/virtual/` | A fixed-height 5,000 row virtualized list. |
 
 The CLI detects an app file when the `.gth` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -237,6 +239,7 @@ Supported now:
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
+- fixed-height virtualized lists with scroll events and `dom.Px` spacers,
 - `if`, `else if`, and `else` in views, including inside loops and pure components,
 - `for` loops directly inside conditional branches when the body is one element,
 - `len` in conditions with null-safe client lowering,
@@ -261,7 +264,6 @@ Not supported yet:
 - component-declared procedures; procedures are App-only,
 - address-of expressions in views,
 - controlled components and function-valued props,
-- stateful components nested inside other stateful components,
 - multiple app models,
 - children on stateful components,
 - named slots and fallback slot content,
@@ -273,7 +275,7 @@ Not supported yet:
 - `go/packages` type information,
 - typed procedure argument validation,
 - arbitrary browser globals outside the `js` package,
-- path parameters, nested routers, and route matching helpers,
+- nested routers and wildcard or optional route segments,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps,
@@ -295,7 +297,7 @@ These will be planned in detail after the proof of concept is evaluated:
 7. Manifest, content hashing, and production serving.
 8. Formatter, LSP, and source maps.
 9. Selective vendoring of templ's HTML and whitespace handling with tests.
-10. A virtualized list example app.
+10. Responsive and variable-height virtualized lists.
 
 ## Risks
 
@@ -318,6 +320,9 @@ These will be planned in detail after the proof of concept is evaluated:
 - The `js` package is deliberately small. Any new browser API is a design
   decision, not an arbitrary escape hatch.
 - The model is serialized whole. Large models may need selective state later.
+  The virtualized list demonstrates this: the DOM stays small, but the full
+  list still travels in the state script.
+- Virtualized lists currently assume a fixed row height and viewport height.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
 - The client runtime and generated JavaScript are not yet minimized or hashed.

@@ -557,6 +557,31 @@ the end only. `key` is reserved and is not passed to components as a prop.
 The server renders the initial children. The client adopts them and hydrates
 their events.
 
+### Virtualized lists
+
+Render a window of a larger list with a scroll event and two spacers:
+
+```templ
+<div class="viewport" onscroll={ Scrolled{Top: event.target.scrollTop} }>
+	<div class="spacer" style={ "height:" + dom.Px(model.Top) }></div>
+	for _, item := range model.VisibleItems {
+		<div class="row" key={ item.ID }>{ item.Text }</div>
+	}
+	<div class="spacer" style={ "height:" + dom.Px(model.Bottom) }></div>
+</div>
+```
+
+Update slices the visible rows and computes the spacer heights. The top and
+bottom spacers keep the total scroll height constant, so only the visible rows
+exist in the DOM.
+
+`dom.Px(n)` formats an integer pixel length as a string on the server and
+lowers to a `px` runtime helper in the browser.
+
+The example uses a fixed row height and a fixed viewport height. See
+`examples/virtual`. Variable heights, responsive viewport measurement, and
+scroll throttling are not implemented yet.
+
 ### Conditionals
 
 ```templ
@@ -833,6 +858,7 @@ Tagless switches and switch init statements are supported.
 
 Keep these differences from server Go in mind:
 
+- `dom.Px(n)` formats pixel lengths for style attributes,
 - a missing map key reads as `undefined`, not the zero value,
 - map iteration uses JavaScript insertion order, and map keys arrive as strings,
 - `/=` is floating division,
@@ -979,6 +1005,7 @@ The proof of concept supports:
 - commands with procedure calls and command closures,
 - procedure arguments,
 - lists over a model field and keyed list reconciliation,
+- fixed-height virtualized lists with scroll events and `dom.Px` spacers,
 - reactive interpolated text and message-valued event bindings,
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,

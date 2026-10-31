@@ -17,8 +17,9 @@ It prioritizes simplicity and productivity.
 
 The syntax is under active development and subject to change. See the
 [guestbook](examples/guestbook), [TodoMVC](examples/todo),
-[Gothicbook](examples/gothicbook), [router](examples/router), and
-[nested components](examples/nested) examples for working code.
+[Gothicbook](examples/gothicbook), [router](examples/router),
+[nested components](examples/nested), and
+[virtualized list](examples/virtual) examples for working code.
 
 ```templ
 // app.gth
@@ -181,6 +182,7 @@ The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
 - [Broader client Go subset](docs/ITERATION_15.md)
 - [Path parameters](docs/ITERATION_16.md)
 - [Nested stateful components](docs/ITERATION_17.md)
+- [Virtualized list](docs/ITERATION_18.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current
