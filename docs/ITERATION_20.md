@@ -143,7 +143,8 @@ Browser checks:
 
 ## Limits
 
-- one row view per app for now,
+- one row view per app in this iteration; variants per call landed in
+  [Iteration 23](ITERATION_23.md),
 - the row view must be pure,
 - multiple virtual lists with different row views need generated variants,
 - row height is still fixed,

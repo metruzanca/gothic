@@ -2,15 +2,17 @@
 
 import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow } from "/_gothic/runtime.js";
 import { mountAccordion, createAccordion, mountCounter, createCounter, mountDisclosure, createDisclosure, mountTabs, createTabs } from "/_gothic/modules/ui_gothic.js";
-import { mountuiVirtualList, createuiVirtualList } from "/_gothic/modules/app_components_gothic.js";
+import { mountuiVirtualListRow, createuiVirtualListRow, mountuiVirtualListOtherRow, createuiVirtualListOtherRow } from "/_gothic/modules/app_components_gothic.js";
 
 const root = document.querySelector('[data-gothic-root="app"]');
 let model = readState("app");
 
-const c0 = mountuiVirtualList(root.querySelector('[data-gothic-component-id="c0"]'), {Items: model.Rows, Height: 432, RowHeight: 36}, dispatch);
+const c0 = mountuiVirtualListRow(root.querySelector('[data-gothic-component-id="c0"]'), {Items: model.Rows, Height: 432, RowHeight: 36}, dispatch);
+const c1 = mountuiVirtualListOtherRow(root.querySelector('[data-gothic-component-id="c1"]'), {Items: model.OtherRows, Height: 216, RowHeight: 36}, dispatch);
 
 function render(model) {
   c0.updateProps({Items: model.Rows, Height: 432, RowHeight: 36});
+  c1.updateProps({Items: model.OtherRows, Height: 216, RowHeight: 36});
 }
 
 function dispatch(msg) {

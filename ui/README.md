@@ -75,8 +75,8 @@ view Row(row RowData) {
 
 The row view must be a pure component with one parameter. The component owns
 its scroll offset and keeps only the visible rows in the DOM. A zero height or
-row height falls back to 432px and 36px. One row view per app is supported for
-now.
+row height falls back to 432px and 36px. Each list call can use a different row
+view; calls that share a row view share a generated variant.
 
 ## Components
 

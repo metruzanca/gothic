@@ -2,7 +2,7 @@
 
 import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualWindow } from "/_gothic/runtime.js";
 import { mountAccordion, createAccordion, mountCounter, createCounter, mountDisclosure, createDisclosure, mountTabs, createTabs } from "/_gothic/modules/ui_gothic.js";
-import { mountuiVirtualList, createuiVirtualList } from "/_gothic/modules/app_components_gothic.js";
+import { mountuiVirtualListVirtualRow, createuiVirtualListVirtualRow } from "/_gothic/modules/app_components_gothic.js";
 
 const Increment = (...args) => rpc("Increment", ...args);
 
@@ -564,7 +564,7 @@ if (!gc3Inst) {
   frag.appendChild(e105);
     const e109 = document.createElement("div");
     e109.setAttribute("class", "demo");
-    const e110 = createuiVirtualList("c3", {Items: model.VirtualRows, Height: 432, RowHeight: 36});
+    const e110 = createuiVirtualListVirtualRow("c3", {Items: model.VirtualRows, Height: 432, RowHeight: 36});
     e109.appendChild(e110);
   frag.appendChild(e109);
     const e111 = document.createElement("div");
@@ -588,7 +588,7 @@ if (!gc3Inst) {
     (region) => {   const gc4Node = region.querySelector('[data-gothic-component-id="c3"]');
 let gc4Inst = gc4Node && gc4Node.__gothicInstances && gc4Node.__gothicInstances["c3"];
 if (!gc4Inst) {
-  gc4Inst = mountuiVirtualList(gc4Node, {Items: model.VirtualRows, Height: 432, RowHeight: 36}, dispatch);
+  gc4Inst = mountuiVirtualListVirtualRow(gc4Node, {Items: model.VirtualRows, Height: 432, RowHeight: 36}, dispatch);
   gc4Node.__gothicInstances = { "c3": gc4Inst };
 } else {
   gc4Inst.updateProps({Items: model.VirtualRows, Height: 432, RowHeight: 36});

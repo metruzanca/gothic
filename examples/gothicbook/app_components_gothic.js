@@ -12,9 +12,9 @@ function readComponentState(root) {
   try { return JSON.parse(el.textContent || 'null'); } catch (_) { return null; }
 }
 
-const INITIAL_ui_VirtualList = {"Start":0,"Count":0,"Top":0,"Bottom":0,"Height":0,"RowHeight":0,"HeightStyle":"","TopStyle":"","BottomStyle":"","RowHeightStyle":""};
+const INITIAL_ui_VirtualList_VirtualRow = {"Start":0,"Count":0,"Top":0,"Bottom":0,"Height":0,"RowHeight":0,"HeightStyle":"","TopStyle":"","BottomStyle":"","RowHeightStyle":""};
 
-function newui_VirtualList(props) {
+function newui_VirtualList_VirtualRow(props) {
   const m = {tag: "VirtualListModel", Height: 432, RowHeight: 36};
   if (props.Height > 0) {
     m.Height = props.Height;
@@ -34,8 +34,8 @@ function newui_VirtualList(props) {
   return m;
 }
 
-export function mountuiVirtualList(root, props, __gothicParentDispatch) {
-  let model = readComponentState(root) || newui_VirtualList(props);
+export function mountuiVirtualListVirtualRow(root, props, __gothicParentDispatch) {
+  let model = readComponentState(root) || newui_VirtualList_VirtualRow(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
@@ -143,11 +143,11 @@ export function mountuiVirtualList(root, props, __gothicParentDispatch) {
   }, destroy() { alive = false; } };
 }
 
-export function createuiVirtualList(id, props) {
+export function createuiVirtualListVirtualRow(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "VirtualList");
   wrapper.setAttribute('data-gothic-component-id', id);
-  const model = newui_VirtualList(props);
+  const model = newui_VirtualList_VirtualRow(props);
     const e0 = document.createElement("div");
     e0.setAttribute("class", "ui-virtual-list");
     e0.setAttribute("data-gothic-attr-0", "style");

@@ -242,7 +242,8 @@ Supported now:
 - keyed list reconciliation by `key={ expr }`,
 - fixed-height virtualized lists with scroll events and `dom.Px` spacers,
 - the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
-- app-defined row views for `ui.VirtualList`,
+- app-defined row views for `ui.VirtualList`, with one variant per distinct row
+  view,
 - inline stateful components compiled into the consuming app,
 - `if`, `else if`, and `else` in views, including inside loops and pure components,
 - `for` loops directly inside conditional branches when the body is one element,
@@ -301,8 +302,7 @@ These will be planned in detail after the proof of concept is evaluated:
 7. Manifest, content hashing, and production serving.
 8. Formatter, LSP, and source maps.
 9. Selective vendoring of templ's HTML and whitespace handling with tests.
-10. Responsive and variable-height virtualized lists, and one row view per
-    list call.
+10. Responsive and variable-height virtualized lists.
 
 ## Risks
 
@@ -328,8 +328,8 @@ These will be planned in detail after the proof of concept is evaluated:
   The virtualized list demonstrates this: the DOM stays small, but the full
   list still travels in the state script.
 - Virtualized lists currently assume a fixed row height and viewport height.
-  `ui.VirtualList` accepts an app-defined row view, but one row view per app is
-  supported for now. Inline stateful components are compiled into each
+  `ui.VirtualList` accepts app-defined row views and generates one variant per
+  distinct row view. Inline stateful components are compiled into each
   consuming app.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.

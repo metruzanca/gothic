@@ -12,9 +12,9 @@ function readComponentState(root) {
   try { return JSON.parse(el.textContent || 'null'); } catch (_) { return null; }
 }
 
-const INITIAL_ui_VirtualList = {"Start":0,"Count":0,"Top":0,"Bottom":0,"Height":0,"RowHeight":0,"HeightStyle":"","TopStyle":"","BottomStyle":"","RowHeightStyle":""};
+const INITIAL_ui_VirtualList_Row = {"Start":0,"Count":0,"Top":0,"Bottom":0,"Height":0,"RowHeight":0,"HeightStyle":"","TopStyle":"","BottomStyle":"","RowHeightStyle":""};
 
-function newui_VirtualList(props) {
+function newui_VirtualList_Row(props) {
   const m = {tag: "VirtualListModel", Height: 432, RowHeight: 36};
   if (props.Height > 0) {
     m.Height = props.Height;
@@ -34,8 +34,8 @@ function newui_VirtualList(props) {
   return m;
 }
 
-export function mountuiVirtualList(root, props, __gothicParentDispatch) {
-  let model = readComponentState(root) || newui_VirtualList(props);
+export function mountuiVirtualListRow(root, props, __gothicParentDispatch) {
+  let model = readComponentState(root) || newui_VirtualList_Row(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
@@ -143,11 +143,163 @@ export function mountuiVirtualList(root, props, __gothicParentDispatch) {
   }, destroy() { alive = false; } };
 }
 
-export function createuiVirtualList(id, props) {
+export function createuiVirtualListRow(id, props) {
   const wrapper = document.createElement('div');
   wrapper.setAttribute('data-gothic-component', "VirtualList");
   wrapper.setAttribute('data-gothic-component-id', id);
-  const model = newui_VirtualList(props);
+  const model = newui_VirtualList_Row(props);
+    const e0 = document.createElement("div");
+    e0.setAttribute("class", "ui-virtual-list");
+    e0.setAttribute("data-gothic-attr-0", "style");
+    e0.setAttribute("data-gothic-on", "0");
+    const e1 = document.createElement("div");
+    e1.setAttribute("class", "ui-virtual-spacer");
+    e1.setAttribute("data-gothic-attr-1", "style");
+    e0.appendChild(e1);
+    e0.appendChild(document.createComment("g:each:0:open"));
+    e0.appendChild(document.createComment("g:each:0:close"));
+    const e2 = document.createElement("div");
+    e2.setAttribute("class", "ui-virtual-spacer");
+    e2.setAttribute("data-gothic-attr-3", "style");
+    e0.appendChild(e2);
+  wrapper.appendChild(e0);
+  return wrapper;
+}
+
+const INITIAL_ui_VirtualList_OtherRow = {"Start":0,"Count":0,"Top":0,"Bottom":0,"Height":0,"RowHeight":0,"HeightStyle":"","TopStyle":"","BottomStyle":"","RowHeightStyle":""};
+
+function newui_VirtualList_OtherRow(props) {
+  const m = {tag: "VirtualListModel", Height: 432, RowHeight: 36};
+  if (props.Height > 0) {
+    m.Height = props.Height;
+  }
+  if (props.RowHeight > 0) {
+    m.RowHeight = props.RowHeight;
+  }
+  const win = virtualWindow(0, m.RowHeight, m.Height, len(props.Items));
+  m.Start = win.Start;
+  m.Count = win.Count;
+  m.Top = win.Top;
+  m.Bottom = win.Bottom;
+  m.HeightStyle = "height:" + px(m.Height);
+  m.TopStyle = "height:" + px(m.Top);
+  m.BottomStyle = "height:" + px(m.Bottom);
+  m.RowHeightStyle = "height:" + px(m.RowHeight);
+  return m;
+}
+
+export function mountuiVirtualListOtherRow(root, props, __gothicParentDispatch) {
+  let model = readComponentState(root) || newui_VirtualList_OtherRow(props);
+  let alive = true;
+  function emit(msg) {
+    if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
+  }
+  onLocal(root, "0", "scroll", (event) => dispatch({tag: "VirtualScrolled", Top: event.target.scrollTop}));
+  function render(model) {
+    attrLocal(root, "0", model.HeightStyle);
+    attrLocal(root, "1", model.TopStyle);
+    attrLocal(root, "3", model.BottomStyle);
+    const renderList0 = listLocal(root, "0", (item, i) => {
+    const e0 = document.createElement("div");
+    e0.setAttribute("data-gothic-key", String(model.Start + i));
+    e0.setAttribute("class", "ui-virtual-row");
+    e0.setAttribute("data-gothic-attr-2", "style");
+    const e1 = document.createElement("div");
+    e1.setAttribute("class", "other-row");
+    const e2 = document.createElement("strong");
+    e2.appendChild(document.createComment("g:text:0:open"));
+    e2.appendChild(document.createTextNode(String((item).Name)));
+    e2.appendChild(document.createComment("g:text:0:close"));
+    e1.appendChild(e2);
+    const e3 = document.createElement("span");
+    e3.appendChild(document.createComment("g:text:1:open"));
+    e3.appendChild(document.createTextNode(String((item).Meta)));
+    e3.appendChild(document.createComment("g:text:1:close"));
+    e1.appendChild(e3);
+    e0.appendChild(e1);
+    attrLocal(e0, "2", model.RowHeightStyle);
+    textLocal(e0, "0", (item).Name);
+    textLocal(e0, "1", (item).Meta);
+    return e0;
+  }, (node, item, i) => {
+    attrLocal(node, "2", model.RowHeightStyle);
+    textLocal(node, "0", (item).Name);
+    textLocal(node, "1", (item).Meta);
+  }, (item, i) => String(model.Start + i));
+  renderList0(((props.Items) ?? []).slice(model.Start, model.Start + model.Count));
+  }
+
+  function update(m, msg, props) {
+    switch (msg.tag) {
+    case "VirtualScrolled":
+    {
+      const win = virtualWindow(msg.Top, m.RowHeight, m.Height, len(props.Items));
+      m.Start = win.Start;
+      m.Count = win.Count;
+      m.Top = win.Top;
+      m.Bottom = win.Bottom;
+      m.TopStyle = "height:" + px(m.Top);
+      m.BottomStyle = "height:" + px(m.Bottom);
+      break;
+    }
+    case "PropsChanged":
+    {
+      m.Height = 432;
+      m.RowHeight = 36;
+      if (props.Height > 0) {
+        m.Height = props.Height;
+      }
+      if (props.RowHeight > 0) {
+        m.RowHeight = props.RowHeight;
+      }
+      const win = virtualWindow(m.Top, m.RowHeight, m.Height, len(props.Items));
+      m.Start = win.Start;
+      m.Count = win.Count;
+      m.Top = win.Top;
+      m.Bottom = win.Bottom;
+      m.HeightStyle = "height:" + px(m.Height);
+      m.TopStyle = "height:" + px(m.Top);
+      m.BottomStyle = "height:" + px(m.Bottom);
+      m.RowHeightStyle = "height:" + px(m.RowHeight);
+      break;
+    }
+    }
+    return [m, null];
+  }
+
+  function init() {
+    return null;
+  }
+
+  function dispatch(msg) {
+    if (!alive) return;
+    const result = update(model, msg, props);
+    model = result[0];
+    render(model);
+    if (result[1]) run(result[1]);
+  }
+  async function run(cmd) {
+    if (!cmd || !alive) return;
+    const msg = await cmd();
+    if (alive && msg) dispatch(msg);
+  }
+  render(model);
+  run(init());
+  return { updateProps(nextProps) {
+    if (!alive) return;
+    let changed = false;
+    if (!Object.is(props.Items, nextProps.Items)) changed = true;
+    if (!Object.is(props.Height, nextProps.Height)) changed = true;
+    if (!Object.is(props.RowHeight, nextProps.RowHeight)) changed = true;
+    if (changed) { props = nextProps; dispatch({tag: "PropsChanged"}); } else { render(model); }
+  }, destroy() { alive = false; } };
+}
+
+export function createuiVirtualListOtherRow(id, props) {
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-gothic-component', "VirtualList");
+  wrapper.setAttribute('data-gothic-component-id', id);
+  const model = newui_VirtualList_OtherRow(props);
     const e0 = document.createElement("div");
     e0.setAttribute("class", "ui-virtual-list");
     e0.setAttribute("data-gothic-attr-0", "style");

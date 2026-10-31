@@ -424,23 +424,28 @@ view App(model Model) {
 	}
 }
 
-func TestBakeInlineRow(t *testing.T) {
+func TestBakeInlineRowVariants(t *testing.T) {
 	appFile, err := viewparser.Parse("app.gth", []byte(`package main
 
-view Row(row RowData) {
+view RowA(row RowA) {
 	<span>{ row.Title }</span>
+}
+
+view RowB(row RowB) {
+	<strong>{ row.Name }</strong>
 }
 
 view App(model Model) {
 	<main>
-		<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
+		<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ RowA } />
+		<ui.VirtualList items={ model.Other } height={ 300 } rowheight={ 30 } row={ RowB } />
 	</main>
 }
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	inline, err := viewparser.Parse("virtual.gth", []byte(`package ui
+	inlineSrc := `package ui
 
 view VirtualList(model VirtualListModel, props VirtualListProps) {
 	<div>
@@ -451,45 +456,66 @@ view VirtualList(model VirtualListModel, props VirtualListProps) {
 		}
 	</div>
 }
-`))
+`
+	registry := viewparser.ComponentSet{
+		"RowA": appFile.Templates[0],
+		"RowB": appFile.Templates[1],
+	}
+	calls := inlineCalls(appFile, "ui.VirtualList")
+	if len(calls) != 2 {
+		t.Fatalf("app calls = %d, want 2", len(calls))
+	}
+	groups, err := inlineRowGroups(calls, "ui.VirtualList")
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := viewparser.ComponentSet{"Row": appFile.Templates[0]}
-	if _, err := bakeInlineRow(appFile, "ui.VirtualList", inline.Templates[0], registry); err != nil {
-		t.Fatal(err)
+	if len(groups) != 2 || groups[0].Name != "RowA" || groups[1].Name != "RowB" {
+		t.Fatalf("groups = %+v", groups)
+	}
+	for _, group := range groups {
+		inline, err := viewparser.Parse("virtual.gth", []byte(inlineSrc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		row := registry[group.Name]
+		found, err := bakeRowNodes(inline.Templates[0].Children, group.Name, row.ParamList[0].Name, row.ParamList[0].Type)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if found != 1 {
+			t.Fatalf("baked %d row slots, want 1", found)
+		}
+		variant := inlineVariantName("ui.VirtualList", group.Name)
+		for _, call := range group.Calls {
+			rewriteInlineCall(call, variant)
+		}
+		rowCalls := collectComponentCalls(inline.Templates[0].Children)
+		if len(rowCalls) != 1 || rowCalls[0].Name != group.Name {
+			t.Fatalf("row calls = %+v", rowCalls)
+		}
+		if _, ok := rowCalls[0].Props[0].Value.(*ast.TypeAssertExpr); !ok {
+			t.Fatalf("row arg = %T, want type assertion", rowCalls[0].Props[0].Value)
+		}
 	}
 
-	calls := collectComponentCalls(appFile.Templates[1].Children)
-	if len(calls) != 1 {
-		t.Fatalf("app calls = %d, want 1", len(calls))
+	got := collectComponentCalls(appFile.Templates[2].Children)
+	wantNames := []string{"ui.VirtualList#RowA", "ui.VirtualList#RowB"}
+	if len(got) != 2 {
+		t.Fatalf("rewritten calls = %d, want 2", len(got))
 	}
-	call := calls[0]
-	for _, prop := range call.Props {
-		if prop.Name == "row" {
-			t.Fatal("row prop was not removed")
+	for i, call := range got {
+		if call.Name != wantNames[i] {
+			t.Errorf("call %d name = %q, want %q", i, call.Name, wantNames[i])
 		}
-		if prop.Name == "items" {
-			any, ok := prop.Value.(*ast.CallExpr)
-			if !ok {
-				t.Fatalf("items prop = %T, want *ast.CallExpr", prop.Value)
+		for _, prop := range call.Props {
+			if prop.Name == "row" {
+				t.Errorf("call %d still has row prop", i)
 			}
-			sel, ok := any.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "AnySlice" {
-				t.Fatalf("items prop was not wrapped in AnySlice")
+			if prop.Name == "items" {
+				if _, ok := prop.Value.(*ast.CallExpr); !ok {
+					t.Errorf("call %d items = %T, want AnySlice call", i, prop.Value)
+				}
 			}
 		}
-	}
-
-	rowCalls := collectComponentCalls(inline.Templates[0].Children)
-	if len(rowCalls) != 1 || rowCalls[0].Name != "Row" {
-		t.Fatalf("row calls = %+v", rowCalls)
-	}
-	assertion, ok := rowCalls[0].Props[0].Value.(*ast.TypeAssertExpr)
-	if !ok {
-		t.Fatalf("row arg = %T, want type assertion", rowCalls[0].Props[0].Value)
-	}
-	if id, ok := assertion.X.(*ast.Ident); !ok || id.Name != "item" {
-		t.Fatalf("row assertion source = %#v", assertion.X)
 	}
 }

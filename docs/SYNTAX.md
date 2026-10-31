@@ -589,7 +589,8 @@ rows in the DOM. Zero `height` or `rowheight` falls back to 432px and 36px.
 `VirtualList` ships as an inline library component, so the app generator bakes
 the row view into the component and compiles it with the app. The items slice is
 converted to `[]any` at the server boundary with `gothic.AnySlice`, and the row
-call casts it back to the app type. One row view per app is supported for now.
+call casts it back to the app type. Each list call can use a different row view;
+calls that share a row view share a generated variant.
 
 For custom rows, use the headless `virtual` package:
 

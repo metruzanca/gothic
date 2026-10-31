@@ -34,6 +34,8 @@ func TestVirtualListSSR(t *testing.T) {
 		`style="height:179568px"`,
 		`Row 1`,
 		`Row 12`,
+		`Item 1`,
+		`Second list row 1`,
 		`5,000 rows`,
 		`/gothic-ui.css`,
 	} {
@@ -41,8 +43,11 @@ func TestVirtualListSSR(t *testing.T) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
 		}
 	}
-	if got := strings.Count(html, `class="ui-virtual-row"`); got != 12 {
-		t.Errorf("SSR rendered %d rows, want 12", got)
+	if got := strings.Count(html, `class="ui-virtual-row"`); got != 18 {
+		t.Errorf("SSR rendered %d rows, want 18", got)
+	}
+	if got := strings.Count(html, `data-gothic-component="VirtualList"`); got != 2 {
+		t.Errorf("SSR rendered %d virtual lists, want 2", got)
 	}
 }
 
@@ -59,8 +64,10 @@ func TestVirtualListModules(t *testing.T) {
 	for _, want := range []string{
 		`from "/_gothic/modules/ui_gothic.js"`,
 		`from "/_gothic/modules/app_components_gothic.js"`,
-		`mountuiVirtualList`,
-		`createuiVirtualList`,
+		`mountuiVirtualListRow`,
+		`createuiVirtualListRow`,
+		`mountuiVirtualListOtherRow`,
+		`createuiVirtualListOtherRow`,
 	} {
 		if !strings.Contains(appJS, want) {
 			t.Errorf("app JS missing %q\n\n%s", want, appJS)
@@ -75,8 +82,10 @@ func TestVirtualListModules(t *testing.T) {
 	res.Body.Close()
 	compJS := string(body)
 	for _, want := range []string{
-		`export function mountuiVirtualList`,
-		`export function createuiVirtualList`,
+		`export function mountuiVirtualListRow`,
+		`export function createuiVirtualListRow`,
+		`export function mountuiVirtualListOtherRow`,
+		`export function createuiVirtualListOtherRow`,
 		`virtualWindow(`,
 	} {
 		if !strings.Contains(compJS, want) {

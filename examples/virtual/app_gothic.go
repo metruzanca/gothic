@@ -20,8 +20,14 @@ type RowData struct {
 	Detail string
 }
 
+type OtherRowData struct {
+	Name string
+	Meta string
+}
+
 type Model struct {
-	Rows []RowData
+	Rows      []RowData
+	OtherRows []OtherRowData
 }
 
 func NewModel() Model {
@@ -33,7 +39,15 @@ func NewModel() Model {
 			Detail: fmt.Sprintf("Virtual row %d of %d", n, totalRows),
 		}
 	}
-	return Model{Rows: rows}
+	other := make([]OtherRowData, 200)
+	for i := range other {
+		n := i + 1
+		other[i] = OtherRowData{
+			Name: fmt.Sprintf("Item %d", n),
+			Meta: fmt.Sprintf("Second list row %d", n),
+		}
+	}
+	return Model{Rows: rows, OtherRows: other}
 }
 
 func (m Model) Init() gothic.Cmd {
@@ -105,7 +119,37 @@ func App(model Model) gothic.Component {
 		if err := write("</p>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListComponent("c0", "", ui.VirtualListProps{Items: gothic.AnySlice(model.Rows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+		if err := __gothicuiVirtualListRowComponent("c0", "", ui.VirtualListProps{Items: gothic.AnySlice(model.Rows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := write("<h2>"); err != nil {
+			return err
+		}
+		if err := write("Second list, different row view"); err != nil {
+			return err
+		}
+		if err := write("</h2>"); err != nil {
+			return err
+		}
+		if err := write("<p"); err != nil {
+			return err
+		}
+		if err := write(" class=\"hint"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("Two lists in one app can use different row types and views."); err != nil {
+			return err
+		}
+		if err := write("</p>"); err != nil {
+			return err
+		}
+		if err := __gothicuiVirtualListOtherRowComponent("c1", "", ui.VirtualListProps{Items: gothic.AnySlice(model.OtherRows), Height: 216, RowHeight: 36}).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := write("</main>"); err != nil {
@@ -123,7 +167,7 @@ func (m Model) View() gothic.Component {
 	return App(m)
 }
 
-func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListProps) gothic.Component {
+func __gothicuiVirtualListRowView(model ui.VirtualListModel, props ui.VirtualListProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -315,7 +359,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 	})
 }
 
-func __gothicuiVirtualListComponent(id string, key string, props ui.VirtualListProps) gothic.Component {
+func __gothicuiVirtualListRowComponent(id string, key string, props ui.VirtualListProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		model := ui.NewVirtualListModel(props)
 		stateJSON, err := json.Marshal(model)
@@ -354,7 +398,228 @@ func __gothicuiVirtualListComponent(id string, key string, props ui.VirtualListP
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListView(model, props).Render(ctx, w); err != nil {
+		if err := __gothicuiVirtualListRowView(model, props).Render(ctx, w); err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, "</div>")
+		return err
+	})
+}
+
+func __gothicuiVirtualListOtherRowView(model ui.VirtualListModel, props ui.VirtualListProps) gothic.Component {
+	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		write := func(s string) error {
+			_, err := io.WriteString(w, s)
+			return err
+		}
+		if err := write("<div data-gothic-attr-0=\"style\""); err != nil {
+			return err
+		}
+		if err := write(" style=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.HeightStyle))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" data-gothic-on=\"0\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"ui-virtual-list"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("<div data-gothic-attr-1=\"style\""); err != nil {
+			return err
+		}
+		if err := write(" style=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.TopStyle))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"ui-virtual-spacer"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
+			return err
+		}
+		if err := write("<!--g:each:0:open-->"); err != nil {
+			return err
+		}
+		for i, item := range props.Items[model.Start : model.Start+model.Count] {
+			if err := write("<div data-gothic-attr-2=\"style\""); err != nil {
+				return err
+			}
+			if err := write(" style=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.RowHeightStyle))); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(" class=\"ui-virtual-row"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(" data-gothic-key=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.Start + i))); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<div"); err != nil {
+				return err
+			}
+			if err := write(" class=\"other-row"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<strong>"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Name))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:close-->"); err != nil {
+				return err
+			}
+			if err := write("</strong>"); err != nil {
+				return err
+			}
+			if err := write("<span>"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:1:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint((item.(OtherRowData)).Meta))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:1:close-->"); err != nil {
+				return err
+			}
+			if err := write("</span>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
+				return err
+			}
+		}
+		if err := write("<!--g:each:0:close-->"); err != nil {
+			return err
+		}
+		if err := write("<div data-gothic-attr-3=\"style\""); err != nil {
+			return err
+		}
+		if err := write(" style=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.BottomStyle))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" class=\"ui-virtual-spacer"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
+			return err
+		}
+		if err := write("</div>"); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func __gothicuiVirtualListOtherRowComponent(id string, key string, props ui.VirtualListProps) gothic.Component {
+	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		model := ui.NewVirtualListModel(props)
+		stateJSON, err := json.Marshal(model)
+		if err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "<div data-gothic-component=\"VirtualList\" data-gothic-component-id=\""); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, id); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\""); err != nil {
+			return err
+		}
+		if key != "" {
+			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, "\""); err != nil {
+				return err
+			}
+		}
+		if _, err := io.WriteString(w, ">"); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
+			return err
+		}
+		if _, err := w.Write(stateJSON); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "</script>"); err != nil {
+			return err
+		}
+		if err := __gothicuiVirtualListOtherRowView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")

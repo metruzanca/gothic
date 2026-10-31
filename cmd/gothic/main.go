@@ -779,20 +779,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	return n, len(paths), nil
 }
 
-func appUsesComponent(f *viewparser.File, name string) bool {
-	for _, t := range f.Templates {
-		if t.Name != "App" {
-			continue
-		}
-		for _, call := range collectComponentCalls(t.Children) {
-			if call.Name == name {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func findRowSlot(nodes []viewparser.Node) *viewparser.ComponentCall {
 	for _, node := range nodes {
 		switch n := node.(type) {
@@ -904,64 +890,100 @@ func bakeRowNodes(nodes []viewparser.Node, rowName, rowParam, rowType string) (i
 	return found, nil
 }
 
-func bakeInlineRow(appView *viewparser.File, inlineName string, tmpl *viewparser.Template, registry viewparser.ComponentSet) (string, error) {
-	var app *viewparser.Template
+type inlineRowGroup struct {
+	Name  string
+	Calls []*viewparser.ComponentCall
+}
+
+func inlineCalls(appView *viewparser.File, inlineName string) []*viewparser.ComponentCall {
+	var calls []*viewparser.ComponentCall
 	for _, t := range appView.Templates {
-		if t.Name == "App" {
-			app = t
-			break
-		}
-	}
-	if app == nil {
-		return "", fmt.Errorf("inline component %s: app has no App view", inlineName)
-	}
-	rowName := ""
-	for _, call := range collectComponentCalls(app.Children) {
-		if call.Name != inlineName {
+		if t.Name != "App" {
 			continue
 		}
-		kept := make([]viewparser.Prop, 0, len(call.Props))
-		for _, prop := range call.Props {
-			switch prop.Name {
-			case "row":
-				id, ok := prop.Value.(*ast.Ident)
-				if !ok {
-					return "", fmt.Errorf("component %s: row must be a view name", inlineName)
-				}
-				if rowName != "" && rowName != id.Name {
-					return "", fmt.Errorf("component %s: use one row view per app", inlineName)
-				}
-				rowName = id.Name
-			case "items":
-				prop.Value = anySliceExpr(prop.Value)
-				kept = append(kept, prop)
-			default:
-				kept = append(kept, prop)
+		for _, call := range collectComponentCalls(t.Children) {
+			if call.Name == inlineName {
+				calls = append(calls, call)
 			}
 		}
-		call.Props = kept
 	}
-	if rowName == "" {
-		return "", fmt.Errorf("component %s: add row={ RowView }", inlineName)
+	return calls
+}
+
+func inlineRowGroups(calls []*viewparser.ComponentCall, inlineName string) ([]inlineRowGroup, error) {
+	order := []string{}
+	byName := map[string][]*viewparser.ComponentCall{}
+	for _, call := range calls {
+		rowName := ""
+		for _, prop := range call.Props {
+			if prop.Name != "row" {
+				continue
+			}
+			id, ok := prop.Value.(*ast.Ident)
+			if !ok {
+				return nil, fmt.Errorf("component %s: row must be a view name", inlineName)
+			}
+			rowName = id.Name
+		}
+		if rowName == "" {
+			return nil, fmt.Errorf("component %s: add row={ RowView }", inlineName)
+		}
+		if _, ok := byName[rowName]; !ok {
+			order = append(order, rowName)
+		}
+		byName[rowName] = append(byName[rowName], call)
 	}
-	row, ok := registry[rowName]
-	if !ok {
-		return "", fmt.Errorf("component %s: unknown row view %s", inlineName, rowName)
+	groups := make([]inlineRowGroup, 0, len(order))
+	for _, name := range order {
+		groups = append(groups, inlineRowGroup{Name: name, Calls: byName[name]})
 	}
-	if row.Stateful {
-		return "", fmt.Errorf("component %s: row view %s must be pure", inlineName, rowName)
+	return groups, nil
+}
+
+func rewriteInlineCall(call *viewparser.ComponentCall, variantName string) {
+	call.Name = variantName
+	kept := make([]viewparser.Prop, 0, len(call.Props))
+	for _, prop := range call.Props {
+		switch prop.Name {
+		case "row":
+			continue
+		case "items":
+			prop.Value = anySliceExpr(prop.Value)
+		}
+		kept = append(kept, prop)
 	}
-	if len(row.ParamList) != 1 {
-		return "", fmt.Errorf("component %s: row view %s must take one parameter", inlineName, rowName)
-	}
-	found, err := bakeRowNodes(tmpl.Children, rowName, row.ParamList[0].Name, row.ParamList[0].Type)
+	call.Props = kept
+}
+
+func reparseInlineTemplate(path, name string) (*viewparser.Template, error) {
+	src, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("component %s: %w", inlineName, err)
+		return nil, err
 	}
-	if found == 0 {
-		return "", fmt.Errorf("component %s: view has no row placeholder", inlineName)
+	appFile, err := viewparser.ParseApp(path, src)
+	if err != nil {
+		return nil, err
 	}
-	return rowName, nil
+	for _, t := range appFile.View.Templates {
+		if t.Name == name {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("inline component %s has no view", name)
+}
+
+func inlineVariantName(inlineName, rowName string) string {
+	if rowName == "" {
+		return inlineName
+	}
+	return inlineName + "#" + viewparserName(rowName)
+}
+
+func inlinePrefix(alias, name, rowName string) string {
+	if rowName == "" {
+		return viewparserName(alias + name)
+	}
+	return viewparserName(alias + name + rowName)
 }
 
 func collectComponentCalls(nodes []viewparser.Node) []*viewparser.ComponentCall {
@@ -1071,17 +1093,20 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 		}
 		for _, comp := range inlineManifest {
 			inlineName := manifest.Alias + "." + comp.Name
-			if !appUsesComponent(s.view, inlineName) {
+			calls := inlineCalls(s.view, inlineName)
+			if len(calls) == 0 {
 				continue
 			}
 			var tmpl *viewparser.Template
 			var compApp *goapp.App
+			filePath := ""
 			for _, f := range pureFiles {
 				for _, t := range f.appFile.View.Templates {
 					if t.Name != comp.Name {
 						continue
 					}
 					tmpl = t
+					filePath = f.path
 					if len(t.ParamList) > 0 {
 						compApp = f.app.ComponentApp(t.ParamList[0].Type)
 					}
@@ -1098,12 +1123,10 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
 			}
-			if findRowSlot(tmpl.Children) != nil {
-				rowName, err := bakeInlineRow(s.view, inlineName, tmpl, appRegistry)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				_ = rowName
+			constructor, constructorTakesProps := componentConstructor(compApp.Commands, modelType)
+			props := make([]viewparser.Param, len(comp.Props))
+			for i, p := range comp.Props {
+				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
 			}
 			inlineRegistry := viewparser.ComponentSet{}
 			for name, t := range localPure {
@@ -1116,41 +1139,79 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 			for name, spec := range pkgProps {
 				inlineProps[name] = spec
 			}
-			expanded, err := viewparser.ExpandTemplateWithProps(tmpl, inlineRegistry, inlineProps)
+			addInline := func(variantName, rowName string, view *viewparser.Template) error {
+				expanded, err := viewparser.ExpandTemplateWithProps(view, inlineRegistry, inlineProps)
+				if err != nil {
+					return fmt.Errorf("inline component %s: %w", comp.Name, err)
+				}
+				for i := range expanded.ParamList {
+					expanded.ParamList[i].Type = manifest.Alias + "." + expanded.ParamList[i].Type
+				}
+				expanded.Params = paramsString(expanded.ParamList)
+				prefix := inlinePrefix(manifest.Alias, comp.Name, rowName)
+				out = append(out, &generator.Stateful{
+					Name:                  variantName,
+					DisplayName:           comp.Name,
+					GoName:                "__gothic" + prefix + "Component",
+					ViewName:              "__gothic" + prefix + "View",
+					MountFunc:             "mount" + prefix,
+					CreateFunc:            "create" + prefix,
+					ModelType:             modelType,
+					ModelJSON:             modelJSON,
+					Constructor:           constructor,
+					ConstructorTakesProps: constructorTakesProps,
+					PropsType:             comp.PropsType,
+					Props:                 props,
+					View:                  expanded,
+					App:                   compApp,
+					Listable:              comp.Listable,
+					Inline:                true,
+					ImportAlias:           manifest.Alias,
+					ImportPath:            manifest.Package,
+					ModuleURL:             generator.ComponentsModuleURL(s.base),
+				})
+				return nil
+			}
+			if findRowSlot(tmpl.Children) == nil {
+				if err := addInline(inlineName, "", tmpl); err != nil {
+					return nil, nil, nil, err
+				}
+				continue
+			}
+			groups, err := inlineRowGroups(calls, inlineName)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
+				return nil, nil, nil, err
 			}
-			for i := range expanded.ParamList {
-				expanded.ParamList[i].Type = manifest.Alias + "." + expanded.ParamList[i].Type
+			for _, group := range groups {
+				row, ok := appRegistry[group.Name]
+				if !ok {
+					return nil, nil, nil, fmt.Errorf("component %s: unknown row view %s", inlineName, group.Name)
+				}
+				if row.Stateful {
+					return nil, nil, nil, fmt.Errorf("component %s: row view %s must be pure", inlineName, group.Name)
+				}
+				if len(row.ParamList) != 1 {
+					return nil, nil, nil, fmt.Errorf("component %s: row view %s must take one parameter", inlineName, group.Name)
+				}
+				fresh, err := reparseInlineTemplate(filePath, comp.Name)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
+				}
+				found, err := bakeRowNodes(fresh.Children, group.Name, row.ParamList[0].Name, row.ParamList[0].Type)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("component %s: %w", inlineName, err)
+				}
+				if found == 0 {
+					return nil, nil, nil, fmt.Errorf("component %s: view has no row placeholder", inlineName)
+				}
+				variantName := inlineVariantName(inlineName, group.Name)
+				for _, call := range group.Calls {
+					rewriteInlineCall(call, variantName)
+				}
+				if err := addInline(variantName, group.Name, fresh); err != nil {
+					return nil, nil, nil, err
+				}
 			}
-			expanded.Params = paramsString(expanded.ParamList)
-			constructor, constructorTakesProps := componentConstructor(compApp.Commands, modelType)
-			props := make([]viewparser.Param, len(comp.Props))
-			for i, p := range comp.Props {
-				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
-			}
-			prefix := viewparserName(manifest.Alias + comp.Name)
-			out = append(out, &generator.Stateful{
-				Name:                  manifest.Alias + "." + comp.Name,
-				DisplayName:           comp.Name,
-				GoName:                "__gothic" + prefix + "Component",
-				ViewName:              "__gothic" + prefix + "View",
-				MountFunc:             "mount" + prefix,
-				CreateFunc:            "create" + prefix,
-				ModelType:             modelType,
-				ModelJSON:             modelJSON,
-				Constructor:           constructor,
-				ConstructorTakesProps: constructorTakesProps,
-				PropsType:             comp.PropsType,
-				Props:                 props,
-				View:                  expanded,
-				App:                   compApp,
-				Listable:              comp.Listable,
-				Inline:                true,
-				ImportAlias:           manifest.Alias,
-				ImportPath:            manifest.Package,
-				ModuleURL:             generator.ComponentsModuleURL(s.base),
-			})
 		}
 
 		for _, f := range pureFiles {

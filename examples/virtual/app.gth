@@ -15,8 +15,14 @@ type RowData struct {
 	Detail string
 }
 
+type OtherRowData struct {
+	Name string
+	Meta string
+}
+
 type Model struct {
-	Rows []RowData
+	Rows      []RowData
+	OtherRows []OtherRowData
 }
 
 func NewModel() Model {
@@ -28,7 +34,15 @@ func NewModel() Model {
 			Detail: fmt.Sprintf("Virtual row %d of %d", n, totalRows),
 		}
 	}
-	return Model{Rows: rows}
+	other := make([]OtherRowData, 200)
+	for i := range other {
+		n := i + 1
+		other[i] = OtherRowData{
+			Name: fmt.Sprintf("Item %d", n),
+			Meta: fmt.Sprintf("Second list row %d", n),
+		}
+	}
+	return Model{Rows: rows, OtherRows: other}
 }
 
 func (m Model) Init() gothic.Cmd {
@@ -46,10 +60,21 @@ view Row(row RowData) {
 	</div>
 }
 
+view OtherRow(row OtherRowData) {
+	<div class="other-row">
+		<strong>{ row.Name }</strong>
+		<span>{ row.Meta }</span>
+	</div>
+}
+
 view App(model Model) {
 	<main class="app">
 		<h1>Virtualized list</h1>
 		<p class="hint">5,000 rows with only the visible window in the DOM. Scroll inside the list.</p>
 		<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
+
+		<h2>Second list, different row view</h2>
+		<p class="hint">Two lists in one app can use different row types and views.</p>
+		<ui.VirtualList items={ model.OtherRows } height={ 216 } rowheight={ 36 } row={ OtherRow } />
 	</main>
 }

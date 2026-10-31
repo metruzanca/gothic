@@ -2540,7 +2540,7 @@ func App(model Model) gothic.Component {
 			if err := write(">"); err != nil {
 				return err
 			}
-			if err := __gothicuiVirtualListComponent("c3", "", ui.VirtualListProps{Items: gothic.AnySlice(model.VirtualRows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
+			if err := __gothicuiVirtualListVirtualRowComponent("c3", "", ui.VirtualListProps{Items: gothic.AnySlice(model.VirtualRows), Height: 432, RowHeight: 36}).Render(ctx, w); err != nil {
 				return err
 			}
 			if err := write("</div>"); err != nil {
@@ -3416,7 +3416,7 @@ func (m Model) View() gothic.Component {
 	return App(m)
 }
 
-func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListProps) gothic.Component {
+func __gothicuiVirtualListVirtualRowView(model ui.VirtualListModel, props ui.VirtualListProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -3608,7 +3608,7 @@ func __gothicuiVirtualListView(model ui.VirtualListModel, props ui.VirtualListPr
 	})
 }
 
-func __gothicuiVirtualListComponent(id string, key string, props ui.VirtualListProps) gothic.Component {
+func __gothicuiVirtualListVirtualRowComponent(id string, key string, props ui.VirtualListProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		model := ui.NewVirtualListModel(props)
 		stateJSON, err := json.Marshal(model)
@@ -3647,7 +3647,7 @@ func __gothicuiVirtualListComponent(id string, key string, props ui.VirtualListP
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicuiVirtualListView(model, props).Render(ctx, w); err != nil {
+		if err := __gothicuiVirtualListVirtualRowView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")
