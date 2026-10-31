@@ -2,6 +2,7 @@
 package gothic
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -95,16 +96,40 @@ func (a *App) RenderTo(ctx context.Context, w io.Writer) error {
 	return a.initial.View().Render(ctx, w)
 }
 
-// Render writes the application view for the request to the response.
-func (a *App) Render(w http.ResponseWriter, r *http.Request) error {
+func (a *App) view(r *http.Request) (Component, error) {
 	model := a.initial
 	if a.model != nil {
 		model = a.model(r)
 	}
 	if model == nil {
-		return fmt.Errorf("gothic: app model is nil")
+		return nil, fmt.Errorf("gothic: app model is nil")
 	}
-	return model.View().Render(r.Context(), w)
+	return model.View(), nil
+}
+
+// Render writes the application view for the request to the response.
+func (a *App) Render(w http.ResponseWriter, r *http.Request) error {
+	view, err := a.view(r)
+	if err != nil {
+		return err
+	}
+	return view.Render(r.Context(), w)
+}
+
+// RenderDocument writes a full HTML document around the application view.
+// MountApp uses it with the server and mount document configuration.
+func (a *App) RenderDocument(w http.ResponseWriter, r *http.Request, doc Document) error {
+	view, err := a.view(r)
+	if err != nil {
+		return err
+	}
+	var page bytes.Buffer
+	if err := WriteDocument(&page, r, doc, view); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, err = w.Write(page.Bytes())
+	return err
 }
 
 var (

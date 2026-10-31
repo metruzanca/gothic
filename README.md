@@ -18,7 +18,6 @@ The syntax is under active development and subject to change. See the
 [Gothicbook](examples/gothicbook), [router](examples/router),
 [nested components](examples/nested), and
 [virtualized list](examples/virtual) examples for working code.
-
 ```templ
 // app.gth
 package main
@@ -147,9 +146,9 @@ It includes a `VirtualList` component for fixed-height virtualized lists.
 
 Early, working proof of concept. Every example above runs end to end: server
 rendering, hydration, the update loop, typed procedures, pure and stateful
-components, conditionals, keyed lists, routing, and an installable UI kit.
-Current syntax and limits live in [SYNTAX.md](docs/SYNTAX.md) and
-[PLAN.md](docs/PLAN.md).
+components, conditionals, keyed lists, routing, an installable UI kit, and
+server-rendered documents with OpenGraph metadata. Current syntax and limits
+live in [SYNTAX.md](docs/SYNTAX.md) and [PLAN.md](docs/PLAN.md).
 
 ## Credits
 
@@ -180,6 +179,7 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 - [Virtualized list](docs/ITERATION_18.md)
 - [Virtual list package and component](docs/ITERATION_19.md)
 - [App-defined row views](docs/ITERATION_20.md)
+- [Documents and social previews](docs/ITERATION_21.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current

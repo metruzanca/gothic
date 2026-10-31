@@ -3,7 +3,7 @@ module github.com/metruzanca/gothic/examples/virtual
 go 1.26.0
 
 require (
-	github.com/metruzanca/gothic v0.2.0
+	github.com/metruzanca/gothic v0.3.0
 	github.com/metruzanca/gothic/ui v0.0.0
 )
 

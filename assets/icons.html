@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gothic icon source</title>
+<style>
+	html,
+	body {
+		width: 100%;
+		height: 100%;
+		margin: 0;
+	}
+
+	body {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+	}
+
+	body.opaque {
+		background: #f7f7f5;
+	}
+
+	img {
+		display: block;
+		width: 62%;
+		height: auto;
+	}
+</style>
+</head>
+<body>
+	<img src="gothic-mark.svg" alt="Gothic">
+	<script>
+		if (new URLSearchParams(location.search).get("background") === "opaque") {
+			document.body.classList.add("opaque");
+		}
+	</script>
+</body>
+</html>

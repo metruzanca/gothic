@@ -63,7 +63,26 @@ func TestGothicbook(t *testing.T) {
 		t.Errorf("SSR rendered %d virtual rows, want 12", got)
 	}
 
-	for _, path := range []string{"/gothic-ui.css", "/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg"} {
+	for _, want := range []string{
+		"<!doctype html>",
+		`<title>Gothicbook</title>`,
+		`<meta name="description" content="A tiny design system demo for the installable gothic UI kit.">`,
+		`<meta property="og:title" content="Gothicbook">`,
+		`<meta property="og:site_name" content="Gothic">`,
+		`<meta property="og:description" content="A tiny design system demo for the installable gothic UI kit.">`,
+		`<meta property="og:image" content="` + ts.URL + `/og.png">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+		`<link rel="icon" href="/_gothic/icon.svg" type="image/svg+xml">`,
+		`<link rel="apple-touch-icon" href="/_gothic/apple-touch-icon.png" type="image/png" sizes="180x180">`,
+		`<link rel="stylesheet" href="/gothic-ui.css">`,
+		`<link rel="stylesheet" href="/style.css">`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("document missing %q\n\n%s", want, html)
+		}
+	}
+
+	for _, path := range []string{"/gothic-ui.css", "/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg", "/og.png"} {
 		res, err := http.Get(ts.URL + path)
 		if err != nil {
 			t.Fatal(err)

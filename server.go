@@ -23,6 +23,9 @@ type Server struct {
 	mux        *chi.Mux
 	mu         sync.RWMutex
 	procedures map[string]ProcedureFunc
+
+	docMu sync.RWMutex
+	doc   Document
 }
 
 // NewServer returns a Server with a chi router.
@@ -30,7 +33,22 @@ func NewServer() *Server {
 	return &Server{
 		mux:        chi.NewRouter(),
 		procedures: map[string]ProcedureFunc{},
+		doc:        DefaultDocument(),
 	}
+}
+
+// SetDocument replaces the server-wide document defaults. Apps mounted with
+// MountApp start from these values and can override them per mount.
+func (s *Server) SetDocument(doc Document) {
+	s.docMu.Lock()
+	defer s.docMu.Unlock()
+	s.doc = doc
+}
+
+func (s *Server) document() Document {
+	s.docMu.RLock()
+	defer s.docMu.RUnlock()
+	return s.doc
 }
 
 // Get registers a GET route.
@@ -53,13 +71,18 @@ func (s *Server) Use(middlewares ...func(http.Handler) http.Handler) {
 	s.mux.Use(middlewares...)
 }
 
-// MountApp mounts an application at pattern. It also mounts a catch-all below
-// the pattern so client-side paths and deep links reach the app. Use a
-// request-scoped model with NewAppFunc to render the right state for a URL.
-func (s *Server) MountApp(pattern string, app *App) {
+// MountApp mounts an application at pattern. It renders a full HTML document
+// around the app view and also mounts a catch-all below the pattern so
+// client-side paths and deep links reach the app. Use a request-scoped model
+// with NewAppFunc to render the right state for a URL. Options override the
+// server document defaults for this mount.
+func (s *Server) MountApp(pattern string, app *App, opts ...AppOption) {
+	doc := s.document()
+	for _, opt := range opts {
+		opt(&doc)
+	}
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := app.Render(w, r); err != nil {
+		if err := app.RenderDocument(w, r, doc); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
@@ -104,6 +127,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/_gothic/runtime.js":
 		serveJS(w, runtimeclient.RuntimeJS)
+	case r.URL.Path == DefaultIconPath:
+		serveAsset(w, "image/svg+xml", defaultIconSVG)
+	case r.URL.Path == DefaultIconPNGPath:
+		serveAsset(w, "image/png", defaultIconPNG)
+	case r.URL.Path == DefaultTouchPath:
+		serveAsset(w, "image/png", defaultAppleTouchIcon)
+	case r.URL.Path == DefaultImagePath:
+		serveAsset(w, "image/png", defaultOGImage)
 	case strings.HasPrefix(r.URL.Path, "/_gothic/modules/"):
 		data, ok := lookupModule(r.URL.Path)
 		if !ok {
@@ -156,5 +187,11 @@ func writeRPCError(w http.ResponseWriter, status int, message string) {
 
 func serveJS(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	_, _ = w.Write(data)
+}
+
+func serveAsset(w http.ResponseWriter, contentType string, data []byte) {
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=3600")
 	_, _ = w.Write(data)
 }

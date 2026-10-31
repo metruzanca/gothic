@@ -759,6 +759,46 @@ client hydrates it and dispatches `LocationChanged` on load.
 `HashChanged` still works for hash-only apps. If an app defines both
 `LocationChanged` and `HashChanged`, `LocationChanged` takes precedence.
 
+#### Documents and social previews
+
+`MountApp` renders a full HTML document: doctype, `lang`, charset, viewport,
+title, description, icons, stylesheets, and OpenGraph tags. The defaults are
+usable without configuration. They include a title of `Gothic App` and a
+framework social card at `/_gothic/og.png`.
+
+```go
+s := gothic.NewServer()
+s.SetDocument(gothic.Document{SiteName: "Gothic"})
+s.MountApp("/", gothic.NewApp(NewModel()),
+	gothic.WithTitle("Gothicbook"),
+	gothic.WithDescription("A tiny design system demo."),
+	gothic.WithImage("/og.png"),
+	gothic.WithStyles("/gothic-ui.css", "/style.css"),
+)
+```
+
+- `s.SetDocument` changes the defaults for every mount on that server.
+- Mount options override the server defaults.
+- `WithDocumentFunc(func(*http.Request) Document)` merges a document chosen
+  from the request, which is how per-route titles work. Non-zero fields win.
+- `WithIcon` replaces the default icon set. `WithImage("")` or `WithNoImage()`
+  removes `og:image` and falls back to a compact `summary` card.
+- Relative `og:image` and `og:url` values become absolute using the request
+  host and forwarding headers.
+- `gothic.WriteDocument(w, r, doc, body)` renders the same shell around any
+  component, without a Model.
+
+The `/_gothic/` prefix is reserved for the framework assets:
+
+- `/_gothic/icon.svg`
+- `/_gothic/icon-512.png`
+- `/_gothic/apple-touch-icon.png`
+- `/_gothic/og.png`
+
+A custom social card is served from an app path and selected with
+`WithImage`. The full set of options is in
+[ITERATION_21.md](ITERATION_21.md).
+
 #### Path parameters
 
 Use the `route` package to match patterns and capture segments:

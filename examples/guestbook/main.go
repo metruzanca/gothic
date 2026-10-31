@@ -49,6 +49,9 @@ func main() {
 	RegisterProcedures(s, g)
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		return NewModel(g.Messages())
-	}))
+	}),
+		gothic.WithTitle("Gothic guestbook"),
+		gothic.WithDescription("A tiny guestbook with typed server procedures in gothic."),
+	)
 	log.Fatal(s.ListenAndServe(addr))
 }

@@ -15,6 +15,9 @@ func main() {
 		addr = ":" + port
 	}
 	s := gothic.NewServer()
-	s.MountApp("/", gothic.NewApp(NewModel()))
+	s.MountApp("/", gothic.NewApp(NewModel()),
+		gothic.WithTitle("Nested stateful components"),
+		gothic.WithDescription("Nested stateful components with local and shared state in gothic."),
+	)
 	log.Fatal(s.ListenAndServe(addr))
 }

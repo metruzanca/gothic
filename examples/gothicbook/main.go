@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"log"
@@ -23,6 +22,9 @@ var pageMark []byte
 
 //go:embed assets/gothic-wordmark.svg
 var pageWordmark []byte
+
+//go:embed assets/og.png
+var pageOG []byte
 
 type counterStore struct {
 	count atomic.Int64
@@ -53,27 +55,24 @@ func main() {
 func mountApp(s *gothic.Server, counter *counterStore) {
 	RegisterProcedures(s, procedures{counter: counter})
 	ui.MountStyles(s)
-	s.Get("/style.css", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		_, _ = w.Write(pageCSS)
-	})
-	s.Get("/gothic-mark.svg", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/svg+xml")
-		_, _ = w.Write(pageMark)
-	})
-	s.Get("/gothic-wordmark.svg", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/svg+xml")
-		_, _ = w.Write(pageWordmark)
-	})
-	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		var page bytes.Buffer
-		page.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gothicbook</title><link rel="stylesheet" href="/gothic-ui.css"><link rel="stylesheet" href="/style.css"></head><body>`)
-		if err := gothic.NewApp(NewModel(int(counter.count.Load()))).RenderTo(r.Context(), &page); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		page.WriteString(`</body></html>`)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(page.Bytes())
+	serveFile(s, "/style.css", "text/css; charset=utf-8", pageCSS)
+	serveFile(s, "/gothic-mark.svg", "image/svg+xml", pageMark)
+	serveFile(s, "/gothic-wordmark.svg", "image/svg+xml", pageWordmark)
+	serveFile(s, "/og.png", "image/png", pageOG)
+	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
+		return NewModel(int(counter.count.Load()))
+	}),
+		gothic.WithTitle("Gothicbook"),
+		gothic.WithSiteName("Gothic"),
+		gothic.WithDescription("A tiny design system demo for the installable gothic UI kit."),
+		gothic.WithImage("/og.png"),
+		gothic.WithStyles("/gothic-ui.css", "/style.css"),
+	)
+}
+
+func serveFile(s *gothic.Server, pattern, contentType string, data []byte) {
+	s.Get(pattern, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write(data)
 	})
 }
