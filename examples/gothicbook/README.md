@@ -60,11 +60,12 @@ Railway deploys this folder as the `Gothic UI` service:
 - builder RAILPACK
 - no dashboard build or start command
 
-`railpack.json` owns the build. It installs `git`, drops the local replaces
-from `go.mod`, and fetches `github.com/metruzanca/gothic` and
+`railpack.json` owns the build. It installs `git`, then the build step drops
+the local replaces from `go.mod` and fetches `github.com/metruzanca/gothic` and
 `github.com/metruzanca/gothic/ui` at the deployed commit
-(`RAILWAY_GIT_COMMIT_SHA`, falling back to `main`). The rest of the Go build is
-Railpack's default.
+(`RAILWAY_GIT_COMMIT_SHA`, falling back to `main`). The module edits run in the
+build step because the install step only receives `go.mod` and `go.sum`, while
+the build step has the full source. The install step is intentionally a no-op.
 
 This means the demo runs the in-repo core rather than the released modules, so
 a push that changes the core, the UI, or this example redeploys it. Published

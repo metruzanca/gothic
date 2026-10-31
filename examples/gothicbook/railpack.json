@@ -1,11 +1,15 @@
 {
   "$schema": "https://schema.railpack.com",
-  "buildAptPackages": ["git"],
+  "buildAptPackages": ["...", "git"],
   "steps": {
     "install": {
+      "commands": ["true"]
+    },
+    "build": {
       "commands": [
         "go mod edit -dropreplace=github.com/metruzanca/gothic -dropreplace=github.com/metruzanca/gothic/ui",
-        "SHA=\"${RAILWAY_GIT_COMMIT_SHA:-main}\" && GOFLAGS=-mod=mod GOPROXY=direct go get github.com/metruzanca/gothic@$SHA github.com/metruzanca/gothic/ui@$SHA"
+        "SHA=\"${RAILWAY_GIT_COMMIT_SHA:-main}\" && GOFLAGS=-mod=mod GOPROXY=direct go get github.com/metruzanca/gothic@$SHA github.com/metruzanca/gothic/ui@$SHA",
+        "go build -ldflags=\"-w -s\" -o out ."
       ]
     }
   }

@@ -162,7 +162,8 @@ s.MountApp("/", gothic.NewAppFunc(...),
 `assets/og.html` with the same headless Chrome flow. The example's `go.mod`
 uses local replaces so `go test` runs against this checkout. The Railway build
 drops them and fetches the core and UI modules at the deployed commit through
-`examples/gothicbook/railpack.json`.
+`examples/gothicbook/railpack.json`. The module edits run in the build step,
+because the install step only receives `go.mod` and `go.sum`.
 
 ## Tests
 
