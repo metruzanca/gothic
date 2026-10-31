@@ -1,0 +1,83 @@
+package main
+
+import (
+	"context"
+
+	"github.com/metruzanca/gothic"
+)
+
+type Message struct {
+	Text string
+}
+
+type EntryProps struct {
+	Item Message
+}
+
+type Model struct {
+	Draft    string
+	Messages []Message
+}
+
+func NewModel(messages []Message) Model {
+	return Model{Messages: messages}
+}
+
+type DraftChanged struct{ Text string }
+type PostClicked struct{}
+type Posted struct{ Message Message }
+type PostFailed struct{ Message string }
+
+type Procedures interface {
+	gothic.RPCService
+	Post(ctx context.Context, text string) (Message, error)
+}
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case DraftChanged:
+		m.Draft = msg.Text
+	case PostClicked:
+		text := m.Draft
+		if text == "" {
+			return m, nil
+		}
+		m.Draft = ""
+		return m, func() gothic.Msg {
+			posted, err := Post(text)
+			if err != nil {
+				return PostFailed{Message: err.Error()}
+			}
+			return Posted{Message: posted}
+		}
+	case Posted:
+		m.Messages = append(m.Messages, msg.Message)
+	case PostFailed:
+		m.Messages = append(m.Messages, Message{Text: msg.Message})
+	}
+	return m, nil
+}
+
+view Entry(props EntryProps) {
+	<li>{ props.Item.Text }</li>
+}
+
+view App(model Model) {
+	<div class="app">
+		<input value={ model.Draft } oninput={ DraftChanged{Text: event.target.value} } onenter={ PostClicked{} } placeholder="Leave a message" />
+		<button onclick={ PostClicked{} }>Post</button>
+		if len(model.Messages) == 0 {
+			<p>No messages yet.</p>
+		} else {
+			<ul>
+				for i, message := range model.Messages {
+					<Entry key={ i } item={ message } />
+				}
+			</ul>
+		}
+	</div>
+}
