@@ -9,8 +9,8 @@ on(root, "0", "click", routeClick);
 on(root, "1", "click", routeClick);
 on(root, "2", "click", routeClick);
 on(root, "3", "click", routeClick);
-on(root, "4", "click", (event) => dispatch({tag: "GoSettings"}));
-on(root, "5", "click", (event) => dispatch({tag: "GoBack"}));
+on(root, "6", "click", (event) => dispatch({tag: "GoSettings"}));
+on(root, "7", "click", (event) => dispatch({tag: "GoBack"}));
 
 function render(model) {
   classToggle(root, "0", model.Page == "home");
@@ -81,32 +81,52 @@ function render(model) {
     const e11 = document.createElement("p");
     e11.appendChild(document.createTextNode("The name came from the /hello/:name path parameter."));
     e9.appendChild(e11);
+    const e12 = document.createElement("div");
+    e12.setAttribute("class", "say-hello");
+    const e13 = document.createElement("label");
+    e13.setAttribute("for", "hello-name");
+    e13.appendChild(document.createTextNode("Say hello to"));
+    e12.appendChild(e13);
+    const e14 = document.createElement("input");
+    e14.setAttribute("id", "hello-name");
+    e14.setAttribute("data-gothic-attr-0", "value");
+    e14.setAttribute("placeholder", "A name");
+    e14.setAttribute("data-gothic-on", "4");
+    e12.appendChild(e14);
+    const e15 = document.createElement("button");
+    e15.setAttribute("data-gothic-on", "5");
+    e15.appendChild(document.createTextNode("Say hello"));
+    e12.appendChild(e15);
+    e9.appendChild(e12);
   frag.appendChild(e9);
   return frag; },
     () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   text(region, "0", " ");
   text(region, "1", model.Name);
+  attr(region, "0", model.Draft);
+  on(region, "4", "input", (event) => dispatch({tag: "NameChanged", Name: event.target.value}));
+  on(region, "5", "click", (event) => dispatch({tag: "SayHello"}));
  },
     (region) => {  });
   ifBlock(root, "4",
     model.Page == "notfound",
     () => { const frag = document.createDocumentFragment();
-    const e12 = document.createElement("section");
-    const e13 = document.createElement("h1");
-    e13.appendChild(document.createTextNode("Not found"));
-    e12.appendChild(e13);
-    const e14 = document.createElement("p");
-    e14.appendChild(document.createTextNode("No route for"));
-    e14.appendChild(document.createComment("g:text:2:open"));
-    e14.appendChild(document.createTextNode(String(" ")));
-    e14.appendChild(document.createComment("g:text:2:close"));
-    e14.appendChild(document.createComment("g:text:3:open"));
-    e14.appendChild(document.createTextNode(String(model.Path)));
-    e14.appendChild(document.createComment("g:text:3:close"));
-    e14.appendChild(document.createTextNode("."));
-    e12.appendChild(e14);
-  frag.appendChild(e12);
+    const e16 = document.createElement("section");
+    const e17 = document.createElement("h1");
+    e17.appendChild(document.createTextNode("Not found"));
+    e16.appendChild(e17);
+    const e18 = document.createElement("p");
+    e18.appendChild(document.createTextNode("No route for"));
+    e18.appendChild(document.createComment("g:text:2:open"));
+    e18.appendChild(document.createTextNode(String(" ")));
+    e18.appendChild(document.createComment("g:text:2:close"));
+    e18.appendChild(document.createComment("g:text:3:open"));
+    e18.appendChild(document.createTextNode(String(model.Path)));
+    e18.appendChild(document.createComment("g:text:3:close"));
+    e18.appendChild(document.createTextNode("."));
+    e16.appendChild(e18);
+  frag.appendChild(e16);
   return frag; },
     () => { const frag = document.createDocumentFragment();
   return frag; },
@@ -162,6 +182,7 @@ function update(m, msg) {
       if (params != null) {
         m.Page = "hello";
         m.Name = params["name"];
+        m.Draft = m.Name;
       } else {
         m.Page = "notfound";
       }
@@ -184,6 +205,23 @@ function update(m, msg) {
   {
     return [m, async () => {
   history.back();
+  return null;
+}];
+    break;
+  }
+  case "NameChanged":
+  {
+    m.Draft = msg.Name;
+    break;
+  }
+  case "SayHello":
+  {
+    const name = m.Draft;
+    if (name == "") {
+      return [m, null];
+    }
+    return [m, async () => {
+  navigate("/hello/" + name);
   return null;
 }];
     break;

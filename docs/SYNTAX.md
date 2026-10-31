@@ -711,7 +711,8 @@ func (m Model) Update(msg gothic.Msg) (Model, gothic.Cmd) {
 ```
 
 The router example uses `/hello/:name` and renders the captured name on the
-server and after client-side navigation.
+server and after client-side navigation. Its input and Say hello button build a
+new path in a command with `js.Navigate("/hello/" + name)`.
 
 Limits:
 

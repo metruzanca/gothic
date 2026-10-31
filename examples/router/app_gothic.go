@@ -18,6 +18,7 @@ type Model struct {
 	Path     string
 	Page     string
 	Name     string
+	Draft    string
 	LastPath string
 }
 
@@ -35,6 +36,7 @@ func NewModel(path string) Model {
 		if params != nil {
 			m.Page = "hello"
 			m.Name = params["name"]
+			m.Draft = m.Name
 		} else {
 			m.Page = "notfound"
 		}
@@ -50,6 +52,12 @@ type LocationChanged struct {
 
 type GoSettings struct{}
 type GoBack struct{}
+
+type NameChanged struct {
+	Name string
+}
+
+type SayHello struct{}
 
 func (m Model) Init() gothic.Cmd {
 	return nil
@@ -72,6 +80,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			if params != nil {
 				m.Page = "hello"
 				m.Name = params["name"]
+				m.Draft = m.Name
 			} else {
 				m.Page = "notfound"
 			}
@@ -87,6 +96,17 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case GoBack:
 		return m, func() gothic.Msg {
 			js.Back()
+			return nil
+		}
+	case NameChanged:
+		m.Draft = msg.Name
+	case SayHello:
+		name := m.Draft
+		if name == "" {
+			return m, nil
+		}
+		return m, func() gothic.Msg {
+			js.Navigate("/hello/" + name)
 			return nil
 		}
 	}
@@ -397,6 +417,54 @@ func App(model Model) gothic.Component {
 			if err := write("</p>"); err != nil {
 				return err
 			}
+			if err := write("<div"); err != nil {
+				return err
+			}
+			if err := write(" class=\"say-hello"); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+			if err := write("<label for=\"hello-name\">"); err != nil {
+				return err
+			}
+			if err := write("Say hello to"); err != nil {
+				return err
+			}
+			if err := write("</label>"); err != nil {
+				return err
+			}
+			if err := write("<input id=\"hello-name\" data-gothic-attr-0=\"value\""); err != nil {
+				return err
+			}
+			if err := write(" value=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.Draft))); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(" placeholder=\"A name\" data-gothic-on=\"4\">"); err != nil {
+				return err
+			}
+			if err := write("<button data-gothic-on=\"5\">"); err != nil {
+				return err
+			}
+			if err := write("Say hello"); err != nil {
+				return err
+			}
+			if err := write("</button>"); err != nil {
+				return err
+			}
+			if err := write("</div>"); err != nil {
+				return err
+			}
 			if err := write("</section>"); err != nil {
 				return err
 			}
@@ -480,7 +548,7 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-on=\"4\">"); err != nil {
+		if err := write("<button data-gothic-on=\"6\">"); err != nil {
 			return err
 		}
 		if err := write("Open settings"); err != nil {
@@ -489,7 +557,7 @@ func App(model Model) gothic.Component {
 		if err := write("</button>"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-on=\"5\">"); err != nil {
+		if err := write("<button data-gothic-on=\"7\">"); err != nil {
 			return err
 		}
 		if err := write("Back"); err != nil {

@@ -10,6 +10,7 @@ type Model struct {
 	Path     string
 	Page     string
 	Name     string
+	Draft    string
 	LastPath string
 }
 
@@ -27,6 +28,7 @@ func NewModel(path string) Model {
 		if params != nil {
 			m.Page = "hello"
 			m.Name = params["name"]
+			m.Draft = m.Name
 		} else {
 			m.Page = "notfound"
 		}
@@ -42,6 +44,12 @@ type LocationChanged struct {
 
 type GoSettings struct{}
 type GoBack struct{}
+
+type NameChanged struct {
+	Name string
+}
+
+type SayHello struct{}
 
 func (m Model) Init() gothic.Cmd {
 	return nil
@@ -64,6 +72,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			if params != nil {
 				m.Page = "hello"
 				m.Name = params["name"]
+				m.Draft = m.Name
 			} else {
 				m.Page = "notfound"
 			}
@@ -79,6 +88,17 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case GoBack:
 		return m, func() gothic.Msg {
 			js.Back()
+			return nil
+		}
+	case NameChanged:
+		m.Draft = msg.Name
+	case SayHello:
+		name := m.Draft
+		if name == "" {
+			return m, nil
+		}
+		return m, func() gothic.Msg {
+			js.Navigate("/hello/" + name)
 			return nil
 		}
 	}
@@ -116,6 +136,11 @@ view App(model Model) {
 			<section>
 				<h1>Hello,{ " " }{ model.Name }</h1>
 				<p>The name came from the /hello/:name path parameter.</p>
+				<div class="say-hello">
+					<label for="hello-name">Say hello to</label>
+					<input id="hello-name" value={ model.Draft } placeholder="A name" oninput={ NameChanged{Name: event.target.value} } />
+					<button onclick={ SayHello{} }>Say hello</button>
+				</div>
 			</section>
 		}
 		if model.Page == "notfound" {

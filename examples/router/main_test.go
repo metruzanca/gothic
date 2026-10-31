@@ -55,6 +55,9 @@ func TestRouterDeepLinks(t *testing.T) {
 	if !strings.Contains(hello, "Hello, Ada") {
 		t.Errorf("hello page did not extract the path parameter\n\n%s", hello)
 	}
+	if !strings.Contains(hello, `value="Ada"`) {
+		t.Errorf("hello page did not seed the name input\n\n%s", hello)
+	}
 
 	res, err = http.Get(ts.URL + "/missing")
 	if err != nil {
@@ -90,6 +93,8 @@ func TestRouterModule(t *testing.T) {
 		`localStorage.setItem("lastPath", msg.Path)`,
 		`document.title`,
 		`routeParams("/hello/:name", msg.Path)`,
+		`navigate("/hello/" + name)`,
+		`{tag: "NameChanged", Name: event.target.value}`,
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("app JS missing %q\n\n%s", want, js)

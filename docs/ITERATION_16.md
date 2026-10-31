@@ -72,6 +72,9 @@ generated JavaScript.
 - `NewModel` matches the path on the server,
 - `Update` matches the path after client navigation,
 - the view renders the captured name,
+- an input and a Say hello button navigate to another name,
+- the input is seeded from the current path parameter,
+- the navigation runs as a command that calls `js.Navigate`,
 - `/hello/` still falls through to the not-found page.
 
 ## Verification
@@ -92,6 +95,10 @@ Browser checks:
 
 - the Hello nav link navigates to `/hello/Ada` without a reload,
 - the heading reads `Hello, Ada`,
+- the name input is seeded with `Ada`,
+- typing `Grace` and clicking Say hello navigates to `/hello/Grace`,
+- the heading reads `Hello, Grace` and the input shows `Grace`,
+- an empty name does not navigate,
 - the Hello link becomes active,
 - no not-found branch appears.
 
