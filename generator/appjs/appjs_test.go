@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, readState, rpc, routeMatch, routeParams, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1584,5 +1584,139 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "fallthrough is not supported") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateRouteParams(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Page   string
+	ID     string
+	Edited bool
+}
+
+type LocationChanged struct{ Path string; Query string; Hash string }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch msg := msg.(type) {
+	case LocationChanged:
+		params := route.Params("/todos/:id", msg.Path)
+		if params != nil {
+			m.ID = params["id"]
+		}
+		m.Edited = route.Match("/todos/:id/edit", msg.Path)
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "routes.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const params = routeParams("/todos/:id", msg.Path);`,
+		`if (params != null) {`,
+		`m.ID = params["id"];`,
+		`m.Edited = routeMatch("/todos/:id/edit", msg.Path);`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectUnknownRouteFunction(t *testing.T) {
+	view, err := parser.Parse("routes.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Path string }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Path = route.Build("/todos/:id", msg.Path)
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName:   "routes.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown route function Build") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateIfInit(t *testing.T) {
+	view, err := parser.Parse("ifinit.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Path string; ID string }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	if params := route.Params("/todos/:id", m.Path); params != nil {
+		m.ID = params["id"]
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "ifinit.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const params = routeParams("/todos/:id", m.Path);`,
+		`if (params != null) {`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
 	}
 }

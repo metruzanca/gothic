@@ -24,6 +24,8 @@ func TestRouterDeepLinks(t *testing.T) {
 		{"/", "<h1>Home</h1>"},
 		{"/about", "<h1>About</h1>"},
 		{"/settings", "<h1>Settings</h1>"},
+		{"/hello/Ada", "<h1>Hello,"},
+		{"/hello/", "<h1>Not found</h1>"},
 		{"/missing", "<h1>Not found</h1>"},
 	} {
 		res, err := http.Get(ts.URL + tc.path)
@@ -43,11 +45,22 @@ func TestRouterDeepLinks(t *testing.T) {
 		}
 	}
 
-	res, err := http.Get(ts.URL + "/missing")
+	res, err := http.Get(ts.URL + "/hello/Ada")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	hello := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(string(body), "")
+	if !strings.Contains(hello, "Hello, Ada") {
+		t.Errorf("hello page did not extract the path parameter\n\n%s", hello)
+	}
+
+	res, err = http.Get(ts.URL + "/missing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
 	res.Body.Close()
 	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(string(body), "")
 	if !strings.Contains(stripped, "No route for /missing.") {
@@ -76,6 +89,7 @@ func TestRouterModule(t *testing.T) {
 		`localStorage.getItem("lastPath")`,
 		`localStorage.setItem("lastPath", msg.Path)`,
 		`document.title`,
+		`routeParams("/hello/:name", msg.Path)`,
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("app JS missing %q\n\n%s", want, js)

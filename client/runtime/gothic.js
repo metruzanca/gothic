@@ -267,6 +267,40 @@ export function entries(value) {
   return [];
 }
 
+function decodeRouteSegment(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (_) {
+    return value;
+  }
+}
+
+function routeSegments(value) {
+  return String(value ?? "").split("/").map(decodeRouteSegment);
+}
+
+export function routeParams(pattern, path) {
+  const patternParts = routeSegments(pattern);
+  const pathParts = routeSegments(path);
+  if (patternParts.length !== pathParts.length) return null;
+  const params = {};
+  for (let i = 0; i < patternParts.length; i++) {
+    const part = patternParts[i];
+    if (part.startsWith(":")) {
+      const name = part.slice(1);
+      if (name === "" || pathParts[i] === "") return null;
+      params[name] = pathParts[i];
+      continue;
+    }
+    if (part !== pathParts[i]) return null;
+  }
+  return params;
+}
+
+export function routeMatch(pattern, path) {
+  return routeParams(pattern, path) !== null;
+}
+
 export function readState(id) {
   const el = document.querySelector(`script[data-gothic-state="${id}"]`);
   if (!el) return {};

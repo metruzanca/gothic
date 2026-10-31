@@ -3,11 +3,13 @@ package main
 import (
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/js"
+	"github.com/metruzanca/gothic/route"
 )
 
 type Model struct {
 	Path     string
 	Page     string
+	Name     string
 	LastPath string
 }
 
@@ -21,7 +23,13 @@ func NewModel(path string) Model {
 	case "/settings":
 		m.Page = "settings"
 	default:
-		m.Page = "notfound"
+		params := route.Params("/hello/:name", path)
+		if params != nil {
+			m.Page = "hello"
+			m.Name = params["name"]
+		} else {
+			m.Page = "notfound"
+		}
 	}
 	return m
 }
@@ -43,6 +51,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case LocationChanged:
 		m.Path = msg.Path
+		m.Name = ""
 		switch msg.Path {
 		case "/":
 			m.Page = "home"
@@ -51,7 +60,13 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		case "/settings":
 			m.Page = "settings"
 		default:
-			m.Page = "notfound"
+			params := route.Params("/hello/:name", msg.Path)
+			if params != nil {
+				m.Page = "hello"
+				m.Name = params["name"]
+			} else {
+				m.Page = "notfound"
+			}
 		}
 		m.LastPath = js.GetItem("lastPath")
 		js.SetItem("lastPath", msg.Path)
@@ -76,6 +91,7 @@ view App(model Model) {
 			<a href="/" route class:active={ model.Page == "home" }>Home</a>
 			<a href="/about" route class:active={ model.Page == "about" }>About</a>
 			<a href="/settings" route class:active={ model.Page == "settings" }>Settings</a>
+			<a href="/hello/Ada" route class:active={ model.Page == "hello" }>Hello</a>
 		</nav>
 
 		if model.Page == "home" {
@@ -96,6 +112,12 @@ view App(model Model) {
 				<p>This page was reached through a command that called js.Navigate.</p>
 			</section>
 		}
+		if model.Page == "hello" {
+			<section>
+				<h1>Hello,{ " " }{ model.Name }</h1>
+				<p>The name came from the /hello/:name path parameter.</p>
+			</section>
+		}
 		if model.Page == "notfound" {
 			<section>
 				<h1>Not found</h1>
@@ -109,6 +131,7 @@ view App(model Model) {
 		</div>
 
 		<p class="meta">Current path:{ " " }{ model.Path }</p>
+		<p class="meta">Name:{ " " }{ model.Name }</p>
 		<p class="meta">Last path:{ " " }{ model.LastPath }</p>
 	</main>
 }

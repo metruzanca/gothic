@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/js"
+	"github.com/metruzanca/gothic/route"
 	"html"
 	"io"
 )
@@ -16,6 +17,7 @@ import (
 type Model struct {
 	Path     string
 	Page     string
+	Name     string
 	LastPath string
 }
 
@@ -29,7 +31,13 @@ func NewModel(path string) Model {
 	case "/settings":
 		m.Page = "settings"
 	default:
-		m.Page = "notfound"
+		params := route.Params("/hello/:name", path)
+		if params != nil {
+			m.Page = "hello"
+			m.Name = params["name"]
+		} else {
+			m.Page = "notfound"
+		}
 	}
 	return m
 }
@@ -51,6 +59,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case LocationChanged:
 		m.Path = msg.Path
+		m.Name = ""
 		switch msg.Path {
 		case "/":
 			m.Page = "home"
@@ -59,7 +68,13 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		case "/settings":
 			m.Page = "settings"
 		default:
-			m.Page = "notfound"
+			params := route.Params("/hello/:name", msg.Path)
+			if params != nil {
+				m.Page = "hello"
+				m.Name = params["name"]
+			} else {
+				m.Page = "notfound"
+			}
 		}
 		m.LastPath = js.GetItem("lastPath")
 		js.SetItem("lastPath", msg.Path)
@@ -193,6 +208,29 @@ func App(model Model) gothic.Component {
 		if err := write("</a>"); err != nil {
 			return err
 		}
+		if err := write("<a href=\"/hello/Ada\" data-gothic-class-3=\"active\" data-gothic-on=\"3\""); err != nil {
+			return err
+		}
+		if err := write(" class=\""); err != nil {
+			return err
+		}
+		if model.Page == "hello" {
+			if err := write(" active"); err != nil {
+				return err
+			}
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("Hello"); err != nil {
+			return err
+		}
+		if err := write("</a>"); err != nil {
+			return err
+		}
 		if err := write("</nav>"); err != nil {
 			return err
 		}
@@ -316,8 +354,65 @@ func App(model Model) gothic.Component {
 		if err := write("<!--g:if:3:open-->"); err != nil {
 			return err
 		}
-		if model.Page == "notfound" {
+		if model.Page == "hello" {
 			if err := write("<!--g:if:3:then-->"); err != nil {
+				return err
+			}
+			if err := write("<section>"); err != nil {
+				return err
+			}
+			if err := write("<h1>"); err != nil {
+				return err
+			}
+			if err := write("Hello,"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:0:close-->"); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:1:open-->"); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.Name))); err != nil {
+				return err
+			}
+			if err := write("<!--g:text:1:close-->"); err != nil {
+				return err
+			}
+			if err := write("</h1>"); err != nil {
+				return err
+			}
+			if err := write("<p>"); err != nil {
+				return err
+			}
+			if err := write("The name came from the /hello/:name path parameter."); err != nil {
+				return err
+			}
+			if err := write("</p>"); err != nil {
+				return err
+			}
+			if err := write("</section>"); err != nil {
+				return err
+			}
+		} else {
+			if err := write("<!--g:if:3:else-->"); err != nil {
+				return err
+			}
+		}
+		if err := write("<!--g:if:3:close-->"); err != nil {
+			return err
+		}
+		if err := write("<!--g:if:4:open-->"); err != nil {
+			return err
+		}
+		if model.Page == "notfound" {
+			if err := write("<!--g:if:4:then-->"); err != nil {
 				return err
 			}
 			if err := write("<section>"); err != nil {
@@ -338,22 +433,22 @@ func App(model Model) gothic.Component {
 			if err := write("No route for"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:0:open-->"); err != nil {
+			if err := write("<!--g:text:2:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:0:close-->"); err != nil {
+			if err := write("<!--g:text:2:close-->"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
+			if err := write("<!--g:text:3:open-->"); err != nil {
 				return err
 			}
 			if err := write(html.EscapeString(fmt.Sprint(model.Path))); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
+			if err := write("<!--g:text:3:close-->"); err != nil {
 				return err
 			}
 			if err := write("."); err != nil {
@@ -366,11 +461,11 @@ func App(model Model) gothic.Component {
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:3:else-->"); err != nil {
+			if err := write("<!--g:if:4:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:3:close-->"); err != nil {
+		if err := write("<!--g:if:4:close-->"); err != nil {
 			return err
 		}
 		if err := write("<div"); err != nil {
@@ -385,7 +480,7 @@ func App(model Model) gothic.Component {
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-on=\"3\">"); err != nil {
+		if err := write("<button data-gothic-on=\"4\">"); err != nil {
 			return err
 		}
 		if err := write("Open settings"); err != nil {
@@ -394,7 +489,7 @@ func App(model Model) gothic.Component {
 		if err := write("</button>"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-on=\"4\">"); err != nil {
+		if err := write("<button data-gothic-on=\"5\">"); err != nil {
 			return err
 		}
 		if err := write("Back"); err != nil {
@@ -421,22 +516,58 @@ func App(model Model) gothic.Component {
 		if err := write("Current path:"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:2:open-->"); err != nil {
+		if err := write("<!--g:text:4:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:2:close-->"); err != nil {
+		if err := write("<!--g:text:4:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:3:open-->"); err != nil {
+		if err := write("<!--g:text:5:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint(model.Path))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:3:close-->"); err != nil {
+		if err := write("<!--g:text:5:close-->"); err != nil {
+			return err
+		}
+		if err := write("</p>"); err != nil {
+			return err
+		}
+		if err := write("<p"); err != nil {
+			return err
+		}
+		if err := write(" class=\"meta"); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(">"); err != nil {
+			return err
+		}
+		if err := write("Name:"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:6:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:6:close-->"); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:7:open-->"); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.Name))); err != nil {
+			return err
+		}
+		if err := write("<!--g:text:7:close-->"); err != nil {
 			return err
 		}
 		if err := write("</p>"); err != nil {
@@ -457,22 +588,22 @@ func App(model Model) gothic.Component {
 		if err := write("Last path:"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:4:open-->"); err != nil {
+		if err := write("<!--g:text:8:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint(" "))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:4:close-->"); err != nil {
+		if err := write("<!--g:text:8:close-->"); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:5:open-->"); err != nil {
+		if err := write("<!--g:text:9:open-->"); err != nil {
 			return err
 		}
 		if err := write(html.EscapeString(fmt.Sprint(model.LastPath))); err != nil {
 			return err
 		}
-		if err := write("<!--g:text:5:close-->"); err != nil {
+		if err := write("<!--g:text:9:close-->"); err != nil {
 			return err
 		}
 		if err := write("</p>"); err != nil {
