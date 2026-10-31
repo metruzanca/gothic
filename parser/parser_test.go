@@ -11,32 +11,20 @@ import (
 
 const demo = `package views
 
-view PingPong() {
-	state messages = []string{"ready"}
-
+view PingPong(model Model) {
 	<div class="app">
-		<button onclick={ func() {
-			messages = append(messages, "ping")
-			pong, err := Ping()
-			if err != nil {
-				messages = append(messages, err.Error())
-				return
-			}
-			messages = append(messages, pong)
-		} }>Ping</button>
+		<button onclick={ PingClicked{} }>Ping</button>
 		<ul>
-			for _, m := range messages {
+			for _, m := range model.Messages {
 				<li>{ m }</li>
 			}
 		</ul>
 	</div>
 }
-
-rpc Ping() string
 `
 
-func TestParseDemo(t *testing.T) {
-	f, err := parser.Parse("demo.gth", []byte(demo))
+func TestParseViews(t *testing.T) {
+	f, err := parser.ParseViews("demo.gth", []byte(demo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,15 +38,8 @@ func TestParseDemo(t *testing.T) {
 	if tpl.Name != "PingPong" {
 		t.Fatalf("template name = %q", tpl.Name)
 	}
-	if len(tpl.State) != 1 {
-		t.Fatalf("state count = %d", len(tpl.State))
-	}
-	sd := tpl.State[0]
-	if sd.Name != "messages" {
-		t.Fatalf("state name = %q", sd.Name)
-	}
-	if _, ok := sd.Init.(*ast.CompositeLit); !ok {
-		t.Fatalf("state init = %T", sd.Init)
+	if len(tpl.ParamList) != 1 || tpl.ParamList[0].Name != "model" {
+		t.Fatalf("params = %#v", tpl.ParamList)
 	}
 
 	root, ok := tpl.Children[0].(*parser.Element)
@@ -74,18 +55,8 @@ func TestParseDemo(t *testing.T) {
 	if !ok || ev.Name != "onclick" {
 		t.Fatalf("event attr = %#v", button.Attributes[0])
 	}
-	fn, ok := ev.Expr.(*ast.FuncLit)
-	if !ok {
+	if call, ok := ev.Expr.(*ast.CompositeLit); !ok || call.Type.(*ast.Ident).Name != "PingClicked" {
 		t.Fatalf("event expression = %T", ev.Expr)
-	}
-	if len(fn.Body.List) != 4 {
-		t.Fatalf("handler statements = %d", len(fn.Body.List))
-	}
-	if as, ok := fn.Body.List[0].(*ast.AssignStmt); !ok || as.Tok.String() != "=" {
-		t.Fatalf("first statement = %T", fn.Body.List[0])
-	}
-	if _, ok := fn.Body.List[2].(*ast.IfStmt); !ok {
-		t.Fatalf("third statement = %T", fn.Body.List[2])
 	}
 
 	ul := findElement(root, "ul")
@@ -102,7 +73,7 @@ func TestParseDemo(t *testing.T) {
 	if loop.Key != "_" || loop.Value != "m" {
 		t.Fatalf("for vars = %q %q", loop.Key, loop.Value)
 	}
-	if id, ok := loop.X.(*ast.Ident); !ok || id.Name != "messages" {
+	if sel, ok := loop.X.(*ast.SelectorExpr); !ok || sel.Sel.Name != "Messages" {
 		t.Fatalf("for X = %T", loop.X)
 	}
 	li := findElementIn(loop.Children, "li")
@@ -115,27 +86,6 @@ func TestParseDemo(t *testing.T) {
 	}
 	if id, ok := interp.Expr.(*ast.Ident); !ok || id.Name != "m" {
 		t.Fatalf("interpolation = %T", interp.Expr)
-	}
-
-	if len(f.Procedures) != 1 {
-		t.Fatalf("procedures = %d", len(f.Procedures))
-	}
-	if p := f.Procedures[0]; p.Name != "Ping" || p.ResultType != "string" {
-		t.Fatalf("procedure = %#v", p)
-	}
-}
-
-func TestRejectsAwait(t *testing.T) {
-	src := `package views
-view Bad() {
-	<button onclick={ func() {
-		pong := await Ping()
-		_ = pong
-	} }>x</button>
-}
-`
-	if _, err := parser.Parse("bad.gth", []byte(src)); err == nil {
-		t.Fatal("expected a parse error for await")
 	}
 }
 
@@ -177,7 +127,7 @@ view App(model Model) {
 `
 
 func TestParseConditionals(t *testing.T) {
-	f, err := parser.Parse("cond.gth", []byte(conditionalView))
+	f, err := parser.ParseViews("cond.gth", []byte(conditionalView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +177,7 @@ view App(model Model) {
 	</div>
 }
 `
-	if _, err := parser.Parse("bad.gth", []byte(src)); err == nil {
+	if _, err := parser.ParseViews("bad.gth", []byte(src)); err == nil {
 		t.Fatal("expected an error for an empty if condition")
 	}
 }
@@ -239,7 +189,7 @@ view App(model Model) {
 	<div><a href="/about" route>About</a></div>
 }
 `
-	f, err := parser.Parse("route.gth", []byte(src))
+	f, err := parser.ParseViews("route.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +213,7 @@ view App(model Model) {
 	<div><a href="/about" route="yes">About</a></div>
 }
 `
-	if _, err := parser.Parse("route.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "route does not take a value") {
+	if _, err := parser.ParseViews("route.gth", []byte(src)); err == nil || !strings.Contains(err.Error(), "route does not take a value") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -278,7 +228,7 @@ view App(model Model) {
 	</div>
 }
 `
-	_, err := parser.Parse("bad.gth", []byte(src))
+	_, err := parser.ParseViews("bad.gth", []byte(src))
 	if err == nil {
 		t.Fatal("expected a parse error")
 	}
@@ -316,7 +266,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("pos.gth", []byte(src))
+	f, err := parser.ParseViews("pos.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,7 +19,6 @@ import (
 
 	"github.com/metruzanca/gothic/generator"
 	"github.com/metruzanca/gothic/generator/appjs"
-	"github.com/metruzanca/gothic/generator/jsgen"
 	"github.com/metruzanca/gothic/goapp"
 	viewparser "github.com/metruzanca/gothic/parser"
 )
@@ -143,26 +142,17 @@ func loadSource(path string) (*source, error) {
 		base: strings.TrimSuffix(filepath.Base(path), ".gth"),
 		src:  src,
 	}
-	appFile, appErr := viewparser.ParseApp(path, src)
-	if appErr == nil {
-		s.appFile = appFile
-		s.view = appFile.View
-		if app, err := goapp.ParseSource(path, appFile.GoSource); err == nil {
-			s.app = app
-		} else if hasAppView(s.view) {
-			return nil, err
-		}
-		return s, nil
+	appFile, err := viewparser.ParseApp(path, src)
+	if err != nil {
+		return nil, err
 	}
-	f, legacyErr := viewparser.Parse(path, src)
-	if legacyErr != nil {
-		var pe *viewparser.Error
-		if errors.As(appErr, &pe) {
-			return nil, appErr
-		}
-		return nil, legacyErr
+	s.appFile = appFile
+	s.view = appFile.View
+	if app, err := goapp.ParseSource(path, appFile.GoSource); err == nil {
+		s.app = app
+	} else if hasAppView(s.view) {
+		return nil, err
 	}
-	s.view = f
 	return s, nil
 }
 
@@ -225,15 +215,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, fmt.Errorf("%s: multiple app files found in one directory", dir)
 	}
 	if len(apps) == 0 {
-		written := 0
-		for _, s := range sources {
-			n, err := generateLegacy(s, out)
-			if err != nil {
-				return 0, 0, err
-			}
-			written += n
-		}
-		return written, len(sources), nil
+		return 0, 0, fmt.Errorf("%s: no app file found", dir)
 	}
 
 	appSource := apps[0]
@@ -248,19 +230,8 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		if s == appSource {
 			continue
 		}
-		if s.appFile == nil {
-			return 0, 0, fmt.Errorf("%s: cannot mix legacy views and an app in one directory", s.path)
-		}
 		if s.appFile.Package != appSource.appFile.Package {
 			return 0, 0, fmt.Errorf("%s: package %q does not match app package %q", s.path, s.appFile.Package, appSource.appFile.Package)
-		}
-		if hasLegacySyntax(s.view) {
-			n, err := generateLegacy(s, out)
-			if err != nil {
-				return 0, 0, err
-			}
-			written += n
-			continue
 		}
 		if err := packageOnly(s.appFile.GoSource); err != nil {
 			return 0, 0, fmt.Errorf("%s: component files may only contain a package clause and views: %w", s.path, err)
@@ -367,9 +338,6 @@ func addComponent(registry viewparser.ComponentSet, t *viewparser.Template) erro
 	if _, exists := registry[t.Name]; exists {
 		return fmt.Errorf("duplicate component %q", t.Name)
 	}
-	if len(t.State) > 0 {
-		return fmt.Errorf("component %s cannot declare state", t.Name)
-	}
 	if t.Name == "" || t.Name[0] < 'A' || t.Name[0] > 'Z' {
 		return fmt.Errorf("component name %q must start with an uppercase letter", t.Name)
 	}
@@ -422,9 +390,6 @@ func validateApp(f *viewparser.File) error {
 	app := f.Templates[0]
 	if len(app.ParamList) != 1 {
 		return viewparser.PosError(app.NodePosition, "declare exactly one model parameter: view App(model Model)", "App must have exactly one model parameter")
-	}
-	if len(app.State) > 0 {
-		return viewparser.PosError(app.NodePosition, "move state into the model", "App cannot declare state")
 	}
 	if len(app.Children) != 1 {
 		return viewparser.PosError(app.NodePosition, "wrap the App view in one root element", "App must have exactly one root element")
@@ -1364,39 +1329,6 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 		_ = os.Remove(legacy)
 	}
 	return writeArtifacts(out, s.path, artifacts)
-}
-
-func generateLegacy(s *source, out io.Writer) (int, error) {
-	goSrc, err := generator.Generate(s.view, generator.Options{
-		FileName:   s.path,
-		ModuleBase: s.base,
-	})
-	if err != nil {
-		return 0, err
-	}
-	jsSrc, err := jsgen.Generate(s.view, jsgen.Options{
-		FileName:   s.path,
-		RuntimeURL: "/_gothic/runtime.js",
-	})
-	if err != nil {
-		return 0, err
-	}
-	return writeArtifacts(out, s.path, []artifact{
-		{filepath.Join(s.dir, s.base+"_gothic.go"), goSrc},
-		{filepath.Join(s.dir, s.base+"_gothic.js"), jsSrc},
-	})
-}
-
-func hasLegacySyntax(f *viewparser.File) bool {
-	if len(f.Procedures) > 0 {
-		return true
-	}
-	for _, t := range f.Templates {
-		if len(t.State) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func packageOnly(src []byte) error {

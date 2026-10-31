@@ -182,7 +182,6 @@ from the server and reconciled. There is no virtual DOM.
 | `goapp/` | Extracts `Model`, messages, `Init`, `Update`, commands, and the procedure interface from the Go prelude. |
 | `generator/` | Emits Go SSR code, the generated `View` method, registrars, and client stubs. |
 | `generator/appjs/` | Compiles the supported Go app subset and the view into a JavaScript module. |
-| `generator/jsgen/` | Legacy state-view JavaScript backend. Not the current direction. |
 | `client/runtime/` | Embedded runtime helpers: `list`, `ifBlock`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, request-scoped app models, and module registry. |
@@ -290,9 +289,6 @@ Not supported yet:
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps,
-
-The earlier `state` and imperative `func()` handler syntax still exists in the
-compiler as a legacy path. It is not the direction of the project.
 
 ## Next steps
 

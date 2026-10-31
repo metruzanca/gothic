@@ -10,68 +10,26 @@ import (
 	"github.com/metruzanca/gothic/parser"
 )
 
-const demo = `package views
+func testApp(t *testing.T) *goapp.App {
+	t.Helper()
+	app, err := goapp.ParseSource("app.gth", []byte(`package app
 
-view PingPong() {
-	state messages = []string{"ready"}
-
-	<div class="app">
-		<button onclick={ func() {
-			messages = append(messages, "ping")
-			pong, err := Ping()
-			if err != nil {
-				messages = append(messages, err.Error())
-				return
-			}
-			messages = append(messages, pong)
-		} }>Ping</button>
-		<ul>
-			for _, m := range messages {
-				<li>{ m }</li>
-			}
-		</ul>
-	</div>
+type Model struct {
+	Messages []string
+	Status   string
+	Items    []string
+	Loading  bool
+	Done     bool
 }
 
-rpc Ping() string
-`
+func (m Model) Init() Cmd { return nil }
 
-func TestGenerate(t *testing.T) {
-	f, err := parser.Parse("pingpong.gth", []byte(demo))
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := generator.Generate(f, generator.Options{
-		FileName:   "pingpong.gth",
-		ModuleBase: "pingpong",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`package views`,
-		`func PingPong() gothic.Component`,
-		`messages := []string{"ready"}`,
-		`data-gothic-root=\"pingpong\"`,
-		`data-gothic-state=\"pingpong\"`,
-		`data-gothic-on=\"0\"`,
-		`<!--g:each:0:open-->`,
-		`<!--g:each:0:close-->`,
-		`for _, m := range messages {`,
-		`html.EscapeString(fmt.Sprint(m))`,
-		`//go:embed pingpong_gothic.js`,
-		`type PingPongProcedures interface`,
-		`func RegisterPingPong(s *gothic.Server, impl PingPongProcedures)`,
-		`/_gothic/modules/pingpong_gothic.js`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated Go missing %q\n\n%s", want, src)
-		}
-	}
-	if strings.Contains(src, "await") {
-		t.Errorf("generated Go must not contain await\n\n%s", src)
-	}
+	return app
 }
 
 const appView = `package app
@@ -108,7 +66,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 `
 
 func TestGenerateAppView(t *testing.T) {
-	f, err := parser.Parse("app.gth", []byte(appView))
+	f, err := parser.ParseViews("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +129,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 `
 
 func TestGenerateProcedureArgs(t *testing.T) {
-	f, err := parser.Parse("app.gth", []byte(appView))
+	f, err := parser.ParseViews("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +176,7 @@ view App(model Model) {
 `
 
 func TestGenerateAppExpandsComponents(t *testing.T) {
-	f, err := parser.Parse("app.gth", []byte(componentView))
+	f, err := parser.ParseViews("app.gth", []byte(componentView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +233,7 @@ func (m Model) Init() g.Cmd { return nil }
 
 func (m Model) Update(msg g.Msg) (g.Model, g.Cmd) { return m, nil }
 `
-	f, err := parser.Parse("app.gth", []byte(appView))
+	f, err := parser.ParseViews("app.gth", []byte(appView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,11 +253,12 @@ view Bad() {
 	<div></div>
 }
 `
-	f, err := parser.Parse("bad.gth", []byte(src))
+	f, err := parser.ParseViews("bad.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := generator.Generate(f, generator.Options{FileName: "bad.gth", ModuleBase: "bad"}); err == nil {
+	app := testApp(t)
+	if _, err := generator.GenerateSingle(f, app, generator.Options{FileName: "bad.gth", ModuleBase: "bad", App: app}); err == nil {
 		t.Fatal("expected an error for multiple root elements")
 	}
 }
@@ -324,13 +283,15 @@ view App(model Model) {
 `
 
 func TestGenerateConditionals(t *testing.T) {
-	f, err := parser.Parse("cond.gth", []byte(conditionalView))
+	f, err := parser.ParseViews("cond.gth", []byte(conditionalView))
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := generator.Generate(f, generator.Options{
+	app := testApp(t)
+	out, err := generator.GenerateSingle(f, app, generator.Options{
 		FileName:   "cond.gth",
 		ModuleBase: "cond",
+		App:        app,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -354,7 +315,7 @@ func TestGenerateConditionals(t *testing.T) {
 }
 
 func TestGenerateConditionalStatefulComponent(t *testing.T) {
-	f, err := parser.Parse("cond.gth", []byte(`package app
+	f, err := parser.ParseViews("cond.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
@@ -404,7 +365,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateComponentSlot(t *testing.T) {
-	f, err := parser.Parse("slot.gth", []byte(`package app
+	f, err := parser.ParseViews("slot.gth", []byte(`package app
 
 view Card(props CardProps) {
 	<section class="card">
@@ -476,7 +437,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateRouteLink(t *testing.T) {
-	f, err := parser.Parse("route.gth", []byte(`package app
+	f, err := parser.ParseViews("route.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
@@ -515,7 +476,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestRejectRouteOnNonAnchor(t *testing.T) {
-	f, err := parser.Parse("route.gth", []byte(`package app
+	f, err := parser.ParseViews("route.gth", []byte(`package app
 
 view App(model Model) {
 	<div route>No</div>
@@ -540,7 +501,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestRouteErrorHasSourceContext(t *testing.T) {
-	f, err := parser.Parse("route.gth", []byte(`package app
+	f, err := parser.ParseViews("route.gth", []byte(`package app
 
 view App(model Model) {
 	<div route>No</div>
@@ -580,7 +541,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateNestedStatefulComponentView(t *testing.T) {
-	appFile, err := parser.Parse("app.gth", []byte(`package app
+	appFile, err := parser.ParseViews("app.gth", []byte(`package app
 
 view App(model Model) {
 	<main></main>
@@ -589,7 +550,7 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parentFile, err := parser.Parse("parent.gth", []byte(`package app
+	parentFile, err := parser.ParseViews("parent.gth", []byte(`package app
 
 view Parent(model ParentModel) {
 	<div>
@@ -638,13 +599,15 @@ view App(model Model) {
 	<button disabled={ model.Done }>Save</button>
 }
 `
-	f, err := parser.Parse("app.gth", []byte(src))
+	f, err := parser.ParseViews("app.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := generator.Generate(f, generator.Options{
+	app := testApp(t)
+	out, err := generator.GenerateSingle(f, app, generator.Options{
 		FileName:   "app.gth",
 		ModuleBase: "app",
+		App:        app,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -664,7 +627,7 @@ view App(model Model) {
 }
 
 func TestGenerateStatefulSlot(t *testing.T) {
-	appFile, err := parser.Parse("app.gth", []byte(`package app
+	appFile, err := parser.ParseViews("app.gth", []byte(`package app
 
 view App(model Model) {
 	<main>
@@ -677,7 +640,7 @@ view App(model Model) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	panelFile, err := parser.Parse("panel.gth", []byte(`package app
+	panelFile, err := parser.ParseViews("panel.gth", []byte(`package app
 
 view Panel(model PanelModel, props PanelProps) {
 	<section>

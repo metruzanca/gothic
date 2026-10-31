@@ -75,7 +75,7 @@ func TestGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := parser.Parse("view.gth", []byte(viewSrc))
+	view, err := parser.ParseViews("view.gth", []byte(viewSrc))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ view App(model Model) {
 `
 
 func TestGenerateCommandClosure(t *testing.T) {
-	view, err := parser.Parse("view.gth", []byte(commandClosureView))
+	view, err := parser.ParseViews("view.gth", []byte(commandClosureView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ view App(model Model) {
 `
 
 func TestGenerateConditionals(t *testing.T) {
-	view, err := parser.Parse("cond.gth", []byte(conditionalView))
+	view, err := parser.ParseViews("cond.gth", []byte(conditionalView))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +304,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateLoopInsideConditionalBranch(t *testing.T) {
-	view, err := parser.Parse("branch.gth", []byte(`package app
+	view, err := parser.ParseViews("branch.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
@@ -347,7 +347,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateComponentWithLoopsAndConditionals(t *testing.T) {
-	view, err := parser.Parse("disclosure.gth", []byte(`package ui
+	view, err := parser.ParseViews("disclosure.gth", []byte(`package ui
 
 view Disclosure(model DisclosureModel, props DisclosureProps) {
 	<div class="ui-disclosure">
@@ -415,7 +415,7 @@ func (m DisclosureModel) Update(msg Msg) (DisclosureModel, Cmd) { return m, nil 
 }
 
 func TestGenerateTypeSwitchWithoutAssignment(t *testing.T) {
-	view, err := parser.Parse("switch.gth", []byte(`package app
+	view, err := parser.ParseViews("switch.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.On }</div>
@@ -459,7 +459,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateJSCalls(t *testing.T) {
-	view, err := parser.Parse("js.gth", []byte(`package app
+	view, err := parser.ParseViews("js.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.Stored }</div>
@@ -524,7 +524,7 @@ func copyTitle() Msg {
 }
 
 func TestRejectJSCallsInViews(t *testing.T) {
-	view, err := parser.Parse("js.gth", []byte(`package app
+	view, err := parser.ParseViews("js.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ js.GetItem("title") }</div>
@@ -550,7 +550,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateLocationState(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
@@ -605,7 +605,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectRouteWithoutLocationMessage(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div><a href="/about" route>About</a></div>
@@ -631,7 +631,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestRejectNavigateWithoutLocationMessage(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -665,7 +665,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestJSErrorHasSourceContext(t *testing.T) {
-	view, err := parser.Parse("js.gth", []byte(`package app
+	view, err := parser.ParseViews("js.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
@@ -703,7 +703,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateComponentPropsInUpdate(t *testing.T) {
-	view, err := parser.Parse("tabs.gth", []byte(`package ui
+	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
 
 view Tabs(model TabsModel, props TabsProps) {
 	<div>{ model.Active }</div>
@@ -769,7 +769,7 @@ func (m TabsModel) Update(msg Msg, props TabsProps) (TabsModel, Cmd) {
 }
 
 func TestRejectComponentUpdatePropMismatch(t *testing.T) {
-	view, err := parser.Parse("tabs.gth", []byte(`package ui
+	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
 
 view Tabs(model TabsModel, props TabsProps) {
 	<div></div>
@@ -810,7 +810,7 @@ func (m TabsModel) Update(msg Msg, props string) (TabsModel, Cmd) { return m, ni
 }
 
 func componentInitFixture(initSource string) (*parser.Template, *goapp.App) {
-	view, _ := parser.Parse("counter.gth", []byte(`package ui
+	view, _ := parser.ParseViews("counter.gth", []byte(`package ui
 
 view Counter(model CounterModel) {
 	<div>{ model.Count }</div>
@@ -940,7 +940,7 @@ func TestComponentDestroyLifecycle(t *testing.T) {
 }
 
 func TestGenerateOptionalComponentProps(t *testing.T) {
-	appView, err := parser.Parse("box.gth", []byte(`package app
+	appView, err := parser.ParseViews("box.gth", []byte(`package app
 
 view App(model Model) {
 	<div><Box /></div>
@@ -976,7 +976,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateProvidedOptionalComponentProp(t *testing.T) {
-	appView, err := parser.Parse("box.gth", []byte(`package app
+	appView, err := parser.ParseViews("box.gth", []byte(`package app
 
 view App(model Model) {
 	<div><Box hint={ model.Hint } /></div>
@@ -1011,7 +1011,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGeneratePointerDeref(t *testing.T) {
-	view, err := parser.Parse("box.gth", []byte(`package ui
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
 
 view Box(model BoxModel, props BoxProps) {
 	<div>
@@ -1056,7 +1056,7 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) { return m, nil }
 }
 
 func TestRejectAddressOfProp(t *testing.T) {
-	appView, err := parser.Parse("box.gth", []byte(`package app
+	appView, err := parser.ParseViews("box.gth", []byte(`package app
 
 view App(model Model) {
 	<div><Box hint={ &model.Text } /></div>
@@ -1088,7 +1088,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGeneratePurePropsObject(t *testing.T) {
-	view, err := parser.Parse("props.gth", []byte(`package app
+	view, err := parser.ParseViews("props.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ (CardProps{Title: "x"}).Title }</div>
@@ -1124,7 +1124,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateComponentInitProps(t *testing.T) {
-	view, err := parser.Parse("counter.gth", []byte(`package ui
+	view, err := parser.ParseViews("counter.gth", []byte(`package ui
 
 view Counter(model CounterModel, props CounterProps) {
 	<div>{ model.Count }</div>
@@ -1170,7 +1170,7 @@ func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
 }
 
 func TestRejectComponentInitWrongPropsType(t *testing.T) {
-	view, err := parser.Parse("counter.gth", []byte(`package ui
+	view, err := parser.ParseViews("counter.gth", []byte(`package ui
 
 view Counter(model CounterModel, props CounterProps) {
 	<div></div>
@@ -1202,7 +1202,7 @@ func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
 }
 
 func TestGenerateComponentConstructor(t *testing.T) {
-	view, err := parser.Parse("tabs.gth", []byte(`package ui
+	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
 
 view Tabs(model TabsModel, props TabsProps) {
 	<div>{ model.Active }</div>
@@ -1254,7 +1254,7 @@ func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
 }
 
 func TestRejectComponentConstructorWrongResult(t *testing.T) {
-	view, err := parser.Parse("tabs.gth", []byte(`package ui
+	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
 
 view Tabs(model TabsModel, props TabsProps) {
 	<div></div>
@@ -1288,7 +1288,7 @@ func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
 }
 
 func TestGenerateCollectionExpressions(t *testing.T) {
-	view, err := parser.Parse("coll.gth", []byte(`package app
+	view, err := parser.ParseViews("coll.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.Items[0] }</div>
@@ -1351,7 +1351,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectThreeIndexSlice(t *testing.T) {
-	view, err := parser.Parse("coll.gth", []byte(`package app
+	view, err := parser.ParseViews("coll.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1384,7 +1384,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectUnsupportedCompoundAssign(t *testing.T) {
-	view, err := parser.Parse("coll.gth", []byte(`package app
+	view, err := parser.ParseViews("coll.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1417,7 +1417,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateRangeLoop(t *testing.T) {
-	view, err := parser.Parse("range.gth", []byte(`package app
+	view, err := parser.ParseViews("range.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1484,7 +1484,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateSwitch(t *testing.T) {
-	view, err := parser.Parse("switch.gth", []byte(`package app
+	view, err := parser.ParseViews("switch.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1549,7 +1549,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectSwitchFallthrough(t *testing.T) {
-	view, err := parser.Parse("switch.gth", []byte(`package app
+	view, err := parser.ParseViews("switch.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1588,7 +1588,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateRouteParams(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1645,7 +1645,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectUnknownRouteFunction(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1678,7 +1678,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateIfInit(t *testing.T) {
-	view, err := parser.Parse("ifinit.gth", []byte(`package app
+	view, err := parser.ParseViews("ifinit.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1723,7 +1723,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 
 func nestedComponentFixtures(t *testing.T) (*parser.Template, *parser.Template, *goapp.App) {
 	t.Helper()
-	childView, err := parser.Parse("child.gth", []byte(`package app
+	childView, err := parser.ParseViews("child.gth", []byte(`package app
 
 view Child(model ChildModel, props ChildProps) {
 	<span>{ props.Label }</span>
@@ -1732,7 +1732,7 @@ view Child(model ChildModel, props ChildProps) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parentView, err := parser.Parse("parent.gth", []byte(`package app
+	parentView, err := parser.ParseViews("parent.gth", []byte(`package app
 
 view Parent(model ParentModel) {
 	<div>
@@ -1830,7 +1830,7 @@ func TestGenerateNestedExternalComponentImport(t *testing.T) {
 
 func TestGenerateNestedComponentInComponentConditional(t *testing.T) {
 	child, _, app := nestedComponentFixtures(t)
-	parentView, err := parser.Parse("parent.gth", []byte(`package app
+	parentView, err := parser.ParseViews("parent.gth", []byte(`package app
 
 view Parent(model ParentModel) {
 	<div>
@@ -1874,7 +1874,7 @@ view Parent(model ParentModel) {
 
 func TestGenerateNestedComponentInComponentList(t *testing.T) {
 	child, _, app := nestedComponentFixtures(t)
-	parentView, err := parser.Parse("parent.gth", []byte(`package app
+	parentView, err := parser.ParseViews("parent.gth", []byte(`package app
 
 view Parent(model ParentModel) {
 	<div>
@@ -1917,7 +1917,7 @@ view Parent(model ParentModel) {
 }
 
 func TestGenerateDomPx(t *testing.T) {
-	view, err := parser.Parse("px.gth", []byte(`package app
+	view, err := parser.ParseViews("px.gth", []byte(`package app
 
 view App(model Model) {
 	<div class="spacer" style={ "height:" + dom.Px(model.Top) }></div>
@@ -1955,7 +1955,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestRejectUnknownDomFunction(t *testing.T) {
-	view, err := parser.Parse("px.gth", []byte(`package app
+	view, err := parser.ParseViews("px.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -1987,7 +1987,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateVirtualWindow(t *testing.T) {
-	view, err := parser.Parse("virtual.gth", []byte(`package app
+	view, err := parser.ParseViews("virtual.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2030,7 +2030,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestRejectUnknownVirtualFunction(t *testing.T) {
-	view, err := parser.Parse("virtual.gth", []byte(`package app
+	view, err := parser.ParseViews("virtual.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2062,7 +2062,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateAnySliceAndTypeAssert(t *testing.T) {
-	view, err := parser.Parse("any.gth", []byte(`package app
+	view, err := parser.ParseViews("any.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2111,7 +2111,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateBatchAndSequence(t *testing.T) {
-	view, err := parser.Parse("batch.gth", []byte(`package app
+	view, err := parser.ParseViews("batch.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.Log }</div>
@@ -2159,7 +2159,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateComponentBatchAndSequence(t *testing.T) {
-	view, err := parser.Parse("box.gth", []byte(`package ui
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
 
 view Box(model BoxModel) {
 	<div></div>
@@ -2204,7 +2204,7 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
 }
 
 func TestGenerateVariableWindow(t *testing.T) {
-	view, err := parser.Parse("virtual.gth", []byte(`package app
+	view, err := parser.ParseViews("virtual.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2249,7 +2249,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateVirtualRowsWindow(t *testing.T) {
-	view, err := parser.Parse("virtual.gth", []byte(`package app
+	view, err := parser.ParseViews("virtual.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2294,7 +2294,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateClientHeight(t *testing.T) {
-	view, err := parser.Parse("height.gth", []byte(`package app
+	view, err := parser.ParseViews("height.gth", []byte(`package app
 
 view App(model Model) {
 	<div></div>
@@ -2327,7 +2327,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateRouteTable(t *testing.T) {
-	view, err := parser.Parse("routes.gth", []byte(`package app
+	view, err := parser.ParseViews("routes.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.Page }</div>
@@ -2375,7 +2375,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateEmitLocal(t *testing.T) {
-	view, err := parser.Parse("box.gth", []byte(`package ui
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
 
 view Box(model BoxModel, props BoxProps) {
 	<button onclick={ emitLocal(props.OnClick) }>Go</button>
@@ -2417,7 +2417,7 @@ func (m BoxModel) Update(msg Msg, props BoxProps) (BoxModel, Cmd) { return m, ni
 }
 
 func TestGenerateBubbleCommand(t *testing.T) {
-	view, err := parser.Parse("box.gth", []byte(`package ui
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
 
 view Box(model BoxModel) {
 	<div></div>
@@ -2461,7 +2461,7 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
 }
 
 func TestRejectEmitLocalInAppView(t *testing.T) {
-	view, err := parser.Parse("app.gth", []byte(`package app
+	view, err := parser.ParseViews("app.gth", []byte(`package app
 
 view App(model Model) {
 	<button onclick={ emitLocal(Clicked{}) }>Go</button>
@@ -2486,7 +2486,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestGenerateTypeSwitchOnField(t *testing.T) {
-	view, err := parser.Parse("box.gth", []byte(`package ui
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
 
 view Box(model BoxModel) {
 	<div></div>
@@ -2532,7 +2532,7 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
 }
 
 func TestGenerateStatefulSlot(t *testing.T) {
-	view, err := parser.Parse("app.gth", []byte(`package app
+	view, err := parser.ParseViews("app.gth", []byte(`package app
 
 view App(model Model) {
 	<main>
@@ -2586,7 +2586,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 }
 
 func TestRejectStatefulChildrenWithoutSlot(t *testing.T) {
-	view, err := parser.Parse("app.gth", []byte(`package app
+	view, err := parser.ParseViews("app.gth", []byte(`package app
 
 view App(model Model) {
 	<main>

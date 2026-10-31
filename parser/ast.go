@@ -5,15 +5,8 @@ import "go/ast"
 
 // File is a parsed .gth file.
 type File struct {
-	Package    string
-	Procedures []Procedure
-	Templates  []*Template
-}
-
-// Procedure is a client-callable server procedure declared with rpc.
-type Procedure struct {
-	Name       string
-	ResultType string
+	Package   string
+	Templates []*Template
 }
 
 // Param is a named view parameter.
@@ -28,7 +21,6 @@ type Template struct {
 	Name      string
 	Params    string
 	ParamList []Param
-	State     []StateDecl
 	Children  []Node
 	// Stateful is set by the compiler for component roots with their own model.
 	Stateful bool
@@ -36,12 +28,6 @@ type Template struct {
 	Inline bool
 	// AcceptsChildren is set when the props type declares gothic.Children.
 	AcceptsChildren bool
-}
-
-// StateDecl declares component state. Init is a real Go expression.
-type StateDecl struct {
-	Name string
-	Init ast.Expr
 }
 
 // NodePosition is the source location of a view node.

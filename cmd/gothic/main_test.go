@@ -15,7 +15,13 @@ func TestGenerateReportsArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	src := `package views
 
-view Hello() {
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
+
+view App(model Model) {
 	<div>Hi</div>
 }
 `
@@ -425,7 +431,7 @@ view App(model Model) {
 }
 
 func TestBakeInlineRowVariants(t *testing.T) {
-	appFile, err := viewparser.Parse("app.gth", []byte(`package main
+	appFile, err := viewparser.ParseViews("app.gth", []byte(`package main
 
 view RowA(row RowA) {
 	<span>{ row.Title }</span>
@@ -473,7 +479,7 @@ view VirtualList(model VirtualListModel, props VirtualListProps) {
 		t.Fatalf("groups = %+v", groups)
 	}
 	for _, group := range groups {
-		inline, err := viewparser.Parse("virtual.gth", []byte(inlineSrc))
+		inline, err := viewparser.ParseViews("virtual.gth", []byte(inlineSrc))
 		if err != nil {
 			t.Fatal(err)
 		}

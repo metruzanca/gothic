@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-// Parse parses a .gth file from src. The name is used in error messages.
-func Parse(name string, src []byte) (*File, error) {
+// ParseViews parses a view-only .gth file. App files use ParseApp.
+func ParseViews(name string, src []byte) (*File, error) {
 	return parse(name, src, nil, 0)
 }
 
@@ -56,14 +56,8 @@ func (p *parser) parseFile() (*File, error) {
 				return nil, err
 			}
 			f.Templates = append(f.Templates, t)
-		case p.consumeKeyword("rpc"):
-			proc, err := p.parseProcedure()
-			if err != nil {
-				return nil, err
-			}
-			f.Procedures = append(f.Procedures, proc)
 		default:
-			return nil, p.errf("expected package, view, or rpc")
+			return nil, p.errf("expected package or view")
 		}
 	}
 	if f.Package == "" {
@@ -96,16 +90,6 @@ func (p *parser) parseTemplate() (*Template, error) {
 		return nil, p.errf("expected { after template name")
 	}
 
-	p.skipSpace()
-	for p.startsKeyword("state") {
-		sd, err := p.parseState()
-		if err != nil {
-			return nil, err
-		}
-		t.State = append(t.State, sd)
-		p.skipSpace()
-	}
-
 	nodes, err := p.parseNodesUntil('}')
 	if err != nil {
 		return nil, p.withHint(err, fmt.Sprintf("the view %s is missing a closing }", t.Name))
@@ -115,62 +99,6 @@ func (p *parser) parseTemplate() (*Template, error) {
 	}
 	t.Children = nodes
 	return t, nil
-}
-
-func (p *parser) parseState() (StateDecl, error) {
-	var sd StateDecl
-	if !p.consumeKeyword("state") {
-		return sd, p.errf("expected state")
-	}
-	p.skipSpace()
-	sd.Name = p.readIdent()
-	if sd.Name == "" {
-		return sd, p.errf("expected state name")
-	}
-	p.skipSpace()
-	if !p.consume("=") {
-		return sd, p.errf("expected = in state declaration")
-	}
-	p.skipSpace()
-	start := p.pos
-	for !p.eof() && p.peek() != '\n' && p.peek() != '\r' {
-		p.pos++
-	}
-	text := strings.TrimSpace(string(p.src[start:p.pos]))
-	if text == "" {
-		return sd, p.errf("expected Go expression for state %s", sd.Name)
-	}
-	expr, err := goparser.ParseExpr(text)
-	if err != nil {
-		return sd, p.errf("invalid state expression for %s: %v", sd.Name, err)
-	}
-	sd.Init = expr
-	return sd, nil
-}
-
-func (p *parser) parseProcedure() (Procedure, error) {
-	var proc Procedure
-	p.skipSpace()
-	proc.Name = p.readIdent()
-	if proc.Name == "" {
-		return proc, p.errf("expected procedure name")
-	}
-	p.skipSpace()
-	params := p.readBalanced('(', ')')
-	params = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(params, "("), ")"))
-	if params != "" {
-		return proc, p.errf("iteration 1 only supports zero-argument procedures")
-	}
-	p.skipSpace()
-	start := p.pos
-	for !p.eof() && p.peek() != '\n' && p.peek() != '\r' && p.peek() != '}' {
-		p.pos++
-	}
-	proc.ResultType = strings.TrimSpace(string(p.src[start:p.pos]))
-	if proc.ResultType == "" {
-		return proc, p.errf("expected procedure result type")
-	}
-	return proc, nil
 }
 
 func (p *parser) parseNodesUntil(stop byte) ([]Node, error) {

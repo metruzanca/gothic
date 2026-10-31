@@ -1297,6 +1297,3 @@ Not supported yet:
 - nested routers and wildcard or optional route segments,
 - message serialization,
 - `go/packages` type information.
-
-The earlier `state`, `rpc`, and imperative handler syntax still exists in the
-compiler as a legacy path, but it is not the direction of the proof of concept.

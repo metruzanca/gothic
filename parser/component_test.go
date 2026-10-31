@@ -25,7 +25,7 @@ view App(model Model) {
 `
 
 func TestParseComponentCall(t *testing.T) {
-	f, err := parser.Parse("component.gth", []byte(componentDemo))
+	f, err := parser.ParseViews("component.gth", []byte(componentDemo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ view App(model Model) {
 	<div><Card text="x" active></Card></div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ view App(model Model) {
 }
 
 func TestExpandAppSubstitutesProps(t *testing.T) {
-	f, err := parser.Parse("component.gth", []byte(componentDemo))
+	f, err := parser.ParseViews("component.gth", []byte(componentDemo))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ view App(model Model) {
 	<div><Card item={ model.Item } /></div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ view App(model Model) {
 	<div><Wrapper text="hello" /></div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +254,7 @@ view App(model Model) { <div><A model={ model } /></div> }
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, err := parser.Parse("component.gth", []byte(tt.src))
+			f, err := parser.ParseViews("component.gth", []byte(tt.src))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -298,7 +298,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("component.gth", []byte(src))
+	f, err := parser.ParseViews("component.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("attrs.gth", []byte(src))
+	f, err := parser.ParseViews("attrs.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("cond.gth", []byte(src))
+	f, err := parser.ParseViews("cond.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,7 +441,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,7 +479,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +512,7 @@ view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +535,7 @@ view App(model Model) {
 	<div><Box><p>x</p></Box></div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +558,7 @@ view App(model Model) {
 	<div><Tabs><p>x</p></Tabs></div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,7 +577,7 @@ view App(model Model) {
 	<div><slot /></div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,7 +597,7 @@ view App(model Model) {
 	<div><Box><p>x</p></Box></div>
 }
 `
-	f, err := parser.Parse("slot.gth", []byte(src))
+	f, err := parser.ParseViews("slot.gth", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}

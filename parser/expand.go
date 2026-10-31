@@ -107,9 +107,8 @@ func ExpandAppWithProps(f *File, components ComponentSet, propsTypes PropsTypes)
 		return nil, err
 	}
 	return &File{
-		Package:    f.Package,
-		Procedures: f.Procedures,
-		Templates:  []*Template{expanded},
+		Package:   f.Package,
+		Templates: []*Template{expanded},
 	}, nil
 }
 
@@ -119,7 +118,6 @@ func expandTemplate(t *Template, env map[string]ast.Expr, stack []string, compon
 		Name:         t.Name,
 		Params:       t.Params,
 		ParamList:    append([]Param(nil), t.ParamList...),
-		State:        append([]StateDecl(nil), t.State...),
 	}
 	for _, child := range t.Children {
 		n, err := expandNode(child, env, stack, components, propsTypes)
