@@ -36,3 +36,8 @@ with `go generate ./...`.
 Commit generated files (`*_gothic.go` and `*_gothic.js`) next to their
 `.gth` source. Generated Go uses `//go:embed` for its sibling JavaScript, so
 the generated files must exist at build time.
+
+## Releases
+
+Releases are initiated by the user only. See
+[docs/RELEASING.md](docs/RELEASING.md) for the Gothic and UI release process.
