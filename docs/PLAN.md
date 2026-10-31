@@ -224,7 +224,10 @@ Supported now:
 - precompiled external components from installable packages,
 - the independently versioned gothic UI kit,
 - `Msg = any` with messages as ordinary Go structs,
-- `Update` with a type switch,
+- `Update` with type and value switches,
+- indexing, two-index slicing, map literals, `len`, and `delete`,
+- compound assignment and `++`/`--`,
+- range loops over slices and maps with `break` and `continue`,
 - `append`, field access, assignments, `if err != nil`, and returns,
 - commands as functions or closures returning messages,
 - procedure calls inside commands, awaited in JavaScript,
@@ -282,20 +285,19 @@ These will be planned in detail after the proof of concept is evaluated:
 1. Nested stateful components.
 2. Children on stateful components, named slots, and fallback content if a
    real use case appears.
-3. More Go statements and expressions in `Update` and commands, including
-   indexing and slicing.
-4. Path parameters, nested routers, and route matching helpers.
-5. `Batch` and `Sequence` commands.
-6. Typed procedure argument validation and the no-JS fallback.
-7. `go/packages` for type information and stronger validation.
-8. Manifest, content hashing, and production serving.
-9. Formatter, LSP, and source maps.
-10. Selective vendoring of templ's HTML and whitespace handling with tests.
-11. A virtualized list example app.
+3. Path parameters, nested routers, and route matching helpers.
+4. `Batch` and `Sequence` commands.
+5. Typed procedure argument validation and the no-JS fallback.
+6. `go/packages` for type information and stronger validation.
+7. Manifest, content hashing, and production serving.
+8. Formatter, LSP, and source maps.
+9. Selective vendoring of templ's HTML and whitespace handling with tests.
+10. A virtualized list example app.
 
 ## Risks
 
-- The Go-to-JavaScript compiler subset grows with every app feature.
+- The Go-to-JavaScript compiler subset grows with every app feature. Map
+  reads, map key order, integer division, and slice aliasing differ from Go.
 - Client-only Go stubs for procedures are a prototype shortcut.
 - `Msg = any` gives up compile-time exhaustiveness. Bubble Tea accepts this; we
   can add optional validation later.

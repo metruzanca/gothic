@@ -546,8 +546,8 @@ components, and nested conditionals.
 
 The server renders only the chosen branch. The client adopts it on load and
 swaps branches when the condition changes, removing the unused nodes from the
-DOM. `len(x)` is supported in conditions and compiles to a null-safe length
-read, so `len(model.Items) > 0` works when the serialized slice is `null`.
+DOM. `len(x)` is supported in conditions and compiles to a runtime helper that
+counts slices, arrays, strings, and map keys, and returns 0 for null.
 
 A branch can contain stateful components. They mount when the branch appears
 and unmount when it leaves, so their state resets on re-entry. A `for` loop can
@@ -677,6 +677,68 @@ js.Reload()
 Calls are lowered to browser APIs in the generated JavaScript. They are only
 valid in `Init`, `Update`, or commands; calling them from a view is a compile
 error. The package does not expose arbitrary `window` access.
+
+### Client Go subset
+
+`Update`, `Init`, constructors, and commands compile a growing subset of Go.
+The following are supported:
+
+```go
+item := m.Items[0]
+m.Items[0] = item
+page := m.Items[1:3]
+tail := m.Items[1:]
+m.Counts = map[string]int{"open": 1, "done": 2}
+m.Total = len(m.Counts)
+delete(m.Counts, "done")
+m.Total += 1
+m.Count--
+```
+
+Indexing, two-index slicing, map literals, `len`, `delete`, compound
+assignment, and `++`/`--` all lower to JavaScript. Three-index slices, `&^=`,
+labeled branches, `goto`, and `fallthrough` are compile errors.
+
+Range loops work over slices and maps:
+
+```go
+for i, item := range m.Items {
+	if item == "" {
+		continue
+	}
+	m.Items[i] = item
+	if i > 100 {
+		break
+	}
+}
+
+for key, count := range m.Counts {
+	m.Total += count
+}
+```
+
+Non-type switches compile to JavaScript switches with explicit `break`:
+
+```go
+switch m.Filter {
+case "all", "active":
+	m.Count++
+case "completed":
+	m.Count--
+default:
+	m.Label = "none"
+}
+```
+
+Tagless switches and switch init statements are supported.
+
+Keep these differences from server Go in mind:
+
+- a missing map key reads as `undefined`, not the zero value,
+- map iteration uses JavaScript insertion order, and map keys arrive as strings,
+- `/=` is floating division,
+- slices copy instead of sharing a backing array,
+- view expressions still cannot declare variables or call procedures.
 
 ### Procedures
 
@@ -808,7 +870,10 @@ The proof of concept supports:
 - `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
 - message structs with zero or simple fields,
-- `Update` with a type switch,
+- `Update` with type and value switches,
+- indexing, two-index slicing, map literals, `len`, and `delete`,
+- compound assignment and `++`/`--`,
+- range loops over slices and maps with `break` and `continue`,
 - `append` and assignments,
 - `if err != nil`,
 - commands with procedure calls and command closures,

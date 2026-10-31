@@ -144,6 +144,7 @@ The gothic logo is by [Mackenzie Child](https://mackenziechild.me)
 - [Component commands and destroy](docs/ITERATION_12.md)
 - [Component props structs](docs/ITERATION_13.md)
 - [Prop-seeded component state](docs/ITERATION_14.md)
+- [Broader client Go subset](docs/ITERATION_15.md)
 - [Pitch](docs/PITCH.md)
 
 Iteration notes are historical records of the state at that time. Current
