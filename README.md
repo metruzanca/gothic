@@ -16,84 +16,126 @@ It prioritizes simplicity and productivity.
 ## A taste
 
 The syntax is under active development and subject to change. See the
-[ping/pong app](examples/pingpong), the
-[component demo](examples/components), the
-[TodoMVC app](examples/todo),
-[Gothicbook](examples/gothicbook), and the
-[router example](examples/router) for working examples.
+[guestbook](examples/guestbook), [TodoMVC](examples/todo),
+[Gothicbook](examples/gothicbook), and [router](examples/router) examples for
+working code.
 
 ```templ
-//app.gth
+// app.gth
+package main
+
 import (
 	"context"
 
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/js"
 )
 
-type Model struct{}
+type Message struct{ Text string }
 
-type HelloClicked struct{}
-type HelloReceived struct{ Message string }
+type EntryProps struct{ Item Message }
+
+type Model struct {
+	Draft    string
+	Messages []Message
+}
+
+type DraftChanged struct{ Text string }
+type PostClicked struct{}
+type Posted struct{ Message Message }
+type PostFailed struct{ Message string }
 
 // Procedures declares the RPC calls available to the client.
 // The embedded gothic.RPCService marks it for code generation.
 type Procedures interface {
 	gothic.RPCService
-	Hello(ctx context.Context) (string, error)
+	Post(ctx context.Context, text string) (Message, error)
 }
 
 func (m Model) Init() gothic.Cmd { return nil }
 
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
-	case HelloClicked:
-		return m, callHello
-	case HelloReceived:
-		js.Alert(msg.Message)
+	case DraftChanged:
+		m.Draft = msg.Text
+	case PostClicked:
+		text := m.Draft
+		if text == "" {
+			return m, nil
+		}
+		m.Draft = ""
+		return m, func() gothic.Msg {
+			posted, err := Post(text)
+			if err != nil {
+				return PostFailed{Message: err.Error()}
+			}
+			return Posted{Message: posted}
+		}
+	case Posted:
+		m.Messages = append(m.Messages, msg.Message)
+	case PostFailed:
+		m.Messages = append(m.Messages, Message{Text: msg.Message})
 	}
 	return m, nil
 }
 
-func callHello() gothic.Msg {
-	message, err := Hello()
-	if err != nil {
-		return HelloReceived{Message: err.Error()}
-	}
-	return HelloReceived{Message: message}
-}
-
-type BadgeProps struct {
-	Text string
-}
-
-view Badge(props BadgeProps) {
-	<span class="badge">{ props.Text }</span>
+view Entry(props EntryProps) {
+	<li>{ props.Item.Text }</li>
 }
 
 view App(model Model) {
-	<button onclick={ HelloClicked{} }>
-		Say hello
-		<Badge text="from Go" />
-	</button>
+	<div class="app">
+		<input value={ model.Draft } oninput={ DraftChanged{Text: event.target.value} } onenter={ PostClicked{} } />
+		<button onclick={ PostClicked{} }>Post</button>
+		if len(model.Messages) == 0 {
+			<p>No messages yet.</p>
+		} else {
+			<ul>
+				for i, message := range model.Messages {
+					<Entry key={ i } item={ message } />
+				}
+			</ul>
+		}
+	</div>
 }
 ```
 
 ```go
-//main.go
+// main.go
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"strings"
+
+	"github.com/metruzanca/gothic"
+)
+
 type procedures struct{}
 
-func (procedures) Hello(ctx context.Context) (string, error) {
-	return "Hello from the server!", nil
+func (procedures) Post(ctx context.Context, text string) (Message, error) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return Message{}, errors.New("write something first")
+	}
+	return Message{Text: text}, nil
 }
 
 func main() {
 	s := gothic.NewServer()
 	RegisterProcedures(s, procedures{})
 	s.MountApp("/", gothic.NewApp(Model{}))
-	s.ListenAndServe(":8080")
+	log.Fatal(s.ListenAndServe(":8080"))
 }
 ```
+
+Posting clears the draft and returns a command. The command calls the typed
+`Post` procedure, and the result comes back as a `Posted` message. The list is
+server-rendered, keyed, and updated in place. No JavaScript was written.
+
+The full example adds an in-memory store so messages survive reloads, plus
+tests: [examples/guestbook](examples/guestbook).
 
 ## UI kit
 
@@ -107,19 +149,11 @@ See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
 
 ## Status
 
-Early, working proof of concept. The ping/pong example runs end to end with
-server rendering, hydration, a Bubble Tea-style update loop, a typed server
-call, composable pure view components, and self-contained stateful components.
-Views support `if` / `else if` / `else`, pure components accept children
-through a default slot, and stateful components work inside branches and keyed
-lists. Components use props structs with optional pointer fields, seed initial state
-from props with `New<Model>(props)`, read props in `Init` and `Update`, react to
-prop changes, and run their own commands with unmount guards. TodoMVC uses conditionals for empty states and inline editing.
-Gothicbook includes slotted form fields and a scrollable, paginated list of
-expandable components. A small `js` package covers browser interop, and the
-router example uses path-based URL state with back and forward support. Parse
-and compiler errors include source excerpts, carets, and hints. An installable
-UI kit is included.
+Early, working proof of concept. Every example above runs end to end: server
+rendering, hydration, the update loop, typed procedures, pure and stateful
+components, conditionals, keyed lists, routing, and an installable UI kit.
+Current syntax and limits live in [SYNTAX.md](docs/SYNTAX.md) and
+[PLAN.md](docs/PLAN.md).
 
 ## Credits
 

@@ -15,7 +15,7 @@ go build ./...
 go vet ./...
 go test -count=1 ./...
 node --check client/runtime/gothic.js
-node --check examples/pingpong/pingpong_gothic.js
+node --check examples/guestbook/app_gothic.js
 node --check examples/router/app_gothic.js
 ```
 
@@ -27,7 +27,7 @@ For the UI, Gothicbook, and router modules, also run:
 (cd examples/router && go test ./...)
 ```
 
-Regenerate `.gth` artifacts with `go generate ./examples/pingpong`,
+Regenerate `.gth` artifacts with `go generate ./examples/guestbook`,
 `go run ./cmd/gothic generate ./ui`, or
 `go run ./cmd/gothic generate ./examples/gothicbook` when source changes affect
 the generated files. The router example regenerates from inside its own module

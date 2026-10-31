@@ -189,7 +189,7 @@ from the server and reconciled. There is no virtual DOM.
 | `js/` | Curated client-only browser interop. |
 | `route/` | Path pattern matching shared by the server and client. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
-| `examples/pingpong/` | The proof-of-concept app. |
+| `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
 | `ui/` | Precompiled, independently versioned UI kit module. |
