@@ -43,15 +43,15 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case LocationChanged:
 		m.Path = msg.Path
-		m.Page = "notfound"
-		if msg.Path == "/" {
+		switch msg.Path {
+		case "/":
 			m.Page = "home"
-		}
-		if msg.Path == "/about" {
+		case "/about":
 			m.Page = "about"
-		}
-		if msg.Path == "/settings" {
+		case "/settings":
 			m.Page = "settings"
+		default:
+			m.Page = "notfound"
 		}
 		m.LastPath = js.GetItem("lastPath")
 		js.SetItem("lastPath", msg.Path)

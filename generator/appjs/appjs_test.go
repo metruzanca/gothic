@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, focus, ifBlock, len, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, readState, rpc, text } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1412,6 +1412,177 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		RuntimeURL: "/_gothic/runtime.js",
 	})
 	if err == nil || !strings.Contains(err.Error(), "unsupported assignment operator") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateRangeLoop(t *testing.T) {
+	view, err := parser.Parse("range.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Items  []string
+	Counts map[string]int
+	Total  int
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	for i, item := range m.Items {
+		if item == "" {
+			continue
+		}
+		m.Items[i] = item
+		if i > 10 {
+			break
+		}
+	}
+	for _, count := range m.Counts {
+		m.Total += count
+	}
+	for key := range m.Counts {
+		_ = key
+	}
+	for range m.Items {
+		m.Total++
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "range.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`for (const [i, item] of entries(m.Items)) {`,
+		`continue;`,
+		`break;`,
+		`for (const [_, count] of entries(m.Counts)) {`,
+		`for (const [key] of entries(m.Counts)) {`,
+		`for (const __gothicItem of entries(m.Items)) {`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateSwitch(t *testing.T) {
+	view, err := parser.Parse("switch.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Filter string
+	Count  int
+	Label  string
+}
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch f := m.Filter; f {
+	case "all", "active":
+		m.Count++
+	case "completed":
+		m.Count--
+	default:
+		m.Label = "none"
+	}
+	switch {
+	case m.Count > 0:
+		m.Label = "positive"
+	case m.Count < 0:
+		m.Label = "negative"
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{
+		FileName:   "switch.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`const f = m.Filter;`,
+		`switch (f) {`,
+		`case "all":`,
+		`case "active":`,
+		`case "completed":`,
+		`default:`,
+		`switch (true) {`,
+		`case m.Count > 0:`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestRejectSwitchFallthrough(t *testing.T) {
+	view, err := parser.Parse("switch.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{ Step int }
+
+func (m Model) Init() Cmd { return nil }
+
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	switch m.Step {
+	case 1:
+		m.Step++
+		fallthrough
+	case 2:
+		m.Step = 0
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{
+		FileName:   "switch.gth",
+		RuntimeURL: "/_gothic/runtime.js",
+	})
+	if err == nil || !strings.Contains(err.Error(), "fallthrough is not supported") {
 		t.Fatalf("error = %v", err)
 	}
 }

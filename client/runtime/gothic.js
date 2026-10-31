@@ -260,6 +260,13 @@ export function len(value) {
   return 0;
 }
 
+export function entries(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((item, index) => [index, item]);
+  if (typeof value === "object") return Object.entries(value);
+  return [];
+}
+
 export function readState(id) {
   const el = document.querySelector(`script[data-gothic-state="${id}"]`);
   if (!el) return {};
