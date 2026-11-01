@@ -41,7 +41,6 @@ Use namespaced tags in `.gth` views:
 <ui.Tabs items={ model.Tabs } />
 <ui.Accordion items={ model.Accordion } />
 <ui.Disclosure key={ item.ID } item={ item } />
-<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
 ```
 
 `Button` emits its `onclick` message to the parent app through `emit`. The app
@@ -50,39 +49,6 @@ owns the message handler and any server procedures it calls.
 `Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`, and
 `Disclosure` uses `ui.DisclosureItem`. `Tabs` accepts an optional `active`
 pointer prop and seeds its active tab from it.
-
-`VirtualList` renders a fixed-height window of an app-defined row type:
-
-```go
-type RowData struct {
-	Title  string
-	Detail string
-}
-```
-
-```templ
-view Row(row RowData) {
-	<div class="row-content">
-		<strong>{ row.Title }</strong>
-		<span>{ row.Detail }</span>
-	</div>
-}
-```
-
-```templ
-<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
-```
-
-The row view must be a pure component with one parameter. The component owns
-its scroll offset and keeps only the visible rows in the DOM.
-
-- `height > 0` sets a fixed inline height. `height={ 0 }` lets CSS size the
-  element and measures it with a `ResizeObserver`.
-- `rowheight > 0` uses fixed rows. `rowheight={ 0 }` uses variable rows and an
-  optional `estimate` pointer prop, defaulting to 40px.
-
-Each list call can use a different row view; calls that share a row view share a
-generated variant.
 
 ## Components
 
@@ -98,19 +64,12 @@ Stateful components:
 - `Tabs` with `items []Tab`
 - `Accordion` with `items []AccordionItem`
 - `Disclosure` with `item DisclosureItem`, keeping its expanded state
-- `VirtualList` with `items`, `height`, optional `rowheight` or `estimate`, and a one-parameter row view
 
 `Counter` uses `Button` internally as a pure component. The app generator
 expands pure UI kit components into the consumer app. `Field` receives its
 children from the App view through `gothic.Children`, so events and state stay
-in the App. `Tabs`,
-`Accordion`, `Disclosure`, and `VirtualList` react to prop changes through their
+in the App. `Tabs` and `Accordion` react to prop changes through their
 component `Update`.
-
-`VirtualList` uses the headless
-[`virtual`](https://pkg.go.dev/github.com/metruzanca/gothic/virtual) package.
-It is shipped as an inline component, so the app generator bakes the row view
-into the component and compiles it with the app.
 
 ## Development
 

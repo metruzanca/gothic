@@ -190,20 +190,16 @@ fields case-insensitively:
 - Non-pointer fields are required.
 - Pointer fields are optional. Omitting the tag leaves the field nil.
 
-Older pure components can still declare individual props:
+Pure components take exactly one parameter named `props`:
 
 ```templ
-view Badge(text string) {
-	<span class="badge">{ text }</span>
+view Badge(props BadgeProps) {
+	<span class="badge">{ props.Text }</span>
 }
 ```
 
-New components should prefer a props struct. Pure components with a props
-struct use one parameter named `props`.
-
 The compiler expands components into the app before generating Go and
-JavaScript. Props from a struct are substituted as a struct literal; individual
-props are substituted directly.
+JavaScript. Props from the struct are substituted as a struct literal.
 
 Rules for pure components:
 
@@ -255,9 +251,8 @@ Rules:
   field works,
 - the view must render `{ props.Children }` exactly once,
 - named slots and fallback content are not supported yet,
-- `<slot />` is removed; children are placed with `{ props.Children }`,
-- precompiled stateful components cannot accept children; use an inline
-  stateful component or an App-local component.
+- precompiled stateful components cannot accept children; use an App-local
+  component.
 
 ### Stateful components
 
@@ -569,7 +564,7 @@ Use it in the App view:
   now.
 - Named slots and fallback content are not supported yet.
 - Precompiled library stateful components cannot accept children; use an
-  inline stateful component or an App-local component.
+  App-local component.
 
 ### Markup
 
@@ -601,52 +596,11 @@ the end only. `key` is reserved and is not passed to components as a prop.
 The server renders the initial children. The client adopts them and hydrates
 their events.
 
-### Virtualized lists
+### Long lists
 
-The UI kit has a ready-made virtual list that takes an app-defined row view:
-
-```go
-type RowData struct {
-	Title  string
-	Detail string
-}
-```
-
-```templ
-view Row(row RowData) {
-	<div class="row-content">
-		<strong>{ row.Title }</strong>
-		<span>{ row.Detail }</span>
-	</div>
-}
-```
-
-```templ
-<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ Row } />
-```
-
-The row view must be a pure component with one parameter. The component owns its
-scroll offset, seeds its initial window from props, and keeps only the visible
-rows in the DOM.
-
-Height and row height have two modes:
-
-- `height > 0` sets a fixed inline height. `height={ 0 }` leaves height to CSS
-  and measures the element with a `ResizeObserver`.
-- `rowheight > 0` uses fixed rows. `rowheight={ 0 }` uses variable rows and an
-  optional `estimate` for rows that have not been measured yet. The default
-  estimate is 40px.
-
-The component listens for element resizes, so a CSS-driven height reflows the
-visible window. Measured row heights are stored per index for variable lists.
-
-`VirtualList` ships as an inline library component, so the app generator bakes
-the row view into the component and compiles it with the app. The items slice is
-converted to `[]any` at the server boundary with `gothic.AnySlice`, and the row
-call casts it back to the app type. Each list call can use a different row view;
-calls that share a row view share a generated variant.
-
-For custom rows, use the headless `virtual` package:
+Core gothic keeps only the visible window in your own view. The separate
+`github.com/metruzanca/gothic/virtual` module provides the window math so the
+server and client agree:
 
 ```go
 import "github.com/metruzanca/gothic/virtual"
@@ -657,14 +611,6 @@ m.Count = win.Count
 m.Top = win.Top
 m.Bottom = win.Bottom
 ```
-
-`virtual.WindowFor` snaps the scroll offset to a row boundary and clamps it to
-the end of the list. The same rules run on the server and in the browser
-through a `virtualWindow` runtime helper.
-
-For variable rows, use `virtual.WindowForRows` or `virtual.VariableWindow` with
-a `map[int]int` of measured heights and an estimate. `WindowForRows` selects
-fixed or variable mode from the row height.
 
 Render the window with a scroll event and two spacers:
 
@@ -679,11 +625,8 @@ Render the window with a scroll event and two spacers:
 ```
 
 `dom.Px(n)` formats an integer pixel length as a string on the server and
-lowers to a `px` runtime helper in the browser.
-
-Both paths use a fixed row height and viewport height. See `examples/virtual`
-and the Gothicbook Virtualized list section. Variable heights, responsive
-viewport measurement, and scroll throttling are not implemented yet.
+lowers to a `px` runtime helper in the browser. See the
+[virtual example](../virtual/example) for a complete 5,000 row app.
 
 ### Conditionals
 
@@ -792,7 +735,7 @@ A plain left click is intercepted, `history.pushState` runs, and
 `LocationChanged` dispatches. Modifier clicks, `target` values other than
 `_self`, `download` links, and external origins are left to the browser.
 
-Programmatic navigation comes from the `js` package:
+Programmatic navigation comes from the `browser` module:
 
 ```go
 browser.Navigate("/about")
@@ -915,7 +858,7 @@ Limits:
 
 ### Browser interop
 
-The `js` package is a curated, client-only surface:
+The `browser` module is a curated, client-only surface:
 
 ```go
 import "github.com/metruzanca/gothic/browser"
@@ -1130,7 +1073,7 @@ The proof of concept supports:
 
 - one application model per package,
 - one `App` view with a single model parameter,
-- pure components with a props struct, or individual props during migration,
+- pure components with a props struct,
 - stateful components with their own model, a props struct, Init, Update, and view,
 - named tag props mapped case-insensitively to props struct fields,
 - optional pointer props with nil and null semantics,
@@ -1138,7 +1081,7 @@ The proof of concept supports:
 - app-local stateful components and precompiled external components,
 - components in the same file or separate files in the same package,
 - nested pure components and components inside lists,
-- children through `gothic.Children` on pure and inline stateful components,
+- children through `gothic.Children` on pure and stateful components,
 - stateful components inside children,
 - `if`, `else if`, and `else` in views, including inside loops and pure
   components,
@@ -1163,8 +1106,7 @@ The proof of concept supports:
 - `Batch` and `Sequence` command composition,
 - procedure arguments,
 - lists over a model field and keyed list reconciliation,
-- fixed-height virtualized lists with scroll events and `dom.Px` spacers,
-- the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
+- headless long-list windows through the separate `virtual` module,
 - reactive interpolated text and message-valued event bindings,
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,
@@ -1172,9 +1114,9 @@ The proof of concept supports:
 - `route` links with pushState, replaceState, back, and popstate,
 - path pattern matching and parameters through the `route` package,
 - request-scoped app models and catch-all app mounting for deep links,
-- curated browser interop through the `js` package,
+- curated browser interop through the `browser` module,
 - component-to-parent action messages through `emit`,
-- children on inline stateful components in static App positions through
+- children on stateful components in static App positions through
   `gothic.Children`,
 - App-owned procedures passed to components as action props,
 - procedure contracts through an interface embedding `gothic.RPCService`.
@@ -1185,13 +1127,12 @@ Not supported yet:
 - address-of expressions in views,
 - controlled components and function-valued props,
 - multiple app models,
-- children on stateful components,
 - named slots and fallback content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
 - typed procedure argument validation,
-- arbitrary browser globals outside the `js` package,
+- arbitrary browser globals outside the `browser` module,
 - nested routers and wildcard or optional route segments,
 - message serialization,
 - `go/packages` type information.

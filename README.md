@@ -16,8 +16,8 @@ It prioritizes simplicity and productivity.
 The syntax is under active development and subject to change. See the
 [guestbook](examples/guestbook), [TodoMVC](examples/todo),
 [Gothicbook](examples/gothicbook), [router](examples/router),
-[nested components](examples/nested), and
-[virtualized list](examples/virtual) examples for working code.
+[nested components](examples/nested), and the
+[virtualized list](virtual/example) for working code.
 ```templ
 // app.gth
 package main
@@ -140,14 +140,15 @@ go get github.com/metruzanca/gothic/ui
 ```
 
 See [ui/README.md](ui/README.md) and the [Gothicbook demo](examples/gothicbook).
-It includes a `VirtualList` component for fixed-height virtualized lists.
 
 ## Status
 
 Early, working proof of concept. Every example above runs end to end: server
 rendering, hydration, the update loop, typed procedures, pure and stateful
 components, conditionals, keyed lists, routing, an installable UI kit, and
-server-rendered documents with OpenGraph metadata. Current syntax and limits
+server-rendered documents with OpenGraph metadata. Browser interop ships as the
+separate `browser` module, and long-list windowing as the separate `virtual`
+module. Current syntax and limits
 live in [SYNTAX.md](docs/SYNTAX.md) and [PLAN.md](docs/PLAN.md).
 
 ## Credits

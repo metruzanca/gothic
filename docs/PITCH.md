@@ -123,13 +123,12 @@ The ping/pong proof of concept runs end to end.
 - `Update` and commands support indexing, two-index slicing, map literals, `len`, `delete`, compound assignment, `++`/`--`, range loops, and non-type switch statements.
 - `gothic.Batch` and `gothic.Sequence` compose commands.
 - Path patterns and parameters work through the `route` package on the server and in the browser.
-- The virtualized list example keeps 12 rows in the DOM for a 5,000 row model using the headless `virtual` package and `dom.Px` spacers.
-- The UI kit ships `VirtualList`, a virtual component that takes an app-defined one-parameter row view, supports responsive viewport measurement, and handles variable row heights.
+- The separate `virtual` module keeps 12 rows in the DOM for a 5,000 row model using `virtual.WindowFor` and `dom.Px` spacers.
 - Components run their own commands and are destroyed on unmount.
 - Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
-- Inline stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
+- Stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - A curated `js` package covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.

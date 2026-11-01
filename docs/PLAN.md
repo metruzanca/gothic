@@ -188,7 +188,7 @@ from the server and reconciled. There is no virtual DOM.
 | `browser/` | Curated client-only browser interop, shipped as its own module. |
 | `route/` | Path pattern matching shared by the server and client. |
 | `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
-| `virtual/` | Headless fixed-height list windowing shared by the server and client. |
+| `virtual/` | Headless list windowing, shipped as its own module. |
 | `server.go` | chi server, assets, procedures, and `MountApp`. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
@@ -196,7 +196,7 @@ from the server and reconciled. There is no virtual DOM.
 | `ui/` | Precompiled, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
 | `examples/router/` | Path-based URL state, route links, and browser interop. |
-| `examples/virtual/` | A fixed-height 5,000 row virtualized list. |
+| `virtual/example/` | A 5,000 row list built with the headless window helper. |
 
 The CLI detects an app file when the `.gth` file has a valid Go prelude with
 a `Model` type and a view whose start line begins with `view`.
@@ -207,7 +207,7 @@ Supported now:
 
 - one application model per package,
 - one `App` view with a single model parameter,
-- pure components with a props struct, or individual props during migration,
+- pure components with a props struct,
 - stateful components with a props struct,
 - named tag props mapped case-insensitively to struct fields,
 - optional pointer props with nil and null semantics,
@@ -240,13 +240,7 @@ Supported now:
 - direct procedure calls without an `api.` namespace,
 - lists over a model field with server-side adoption,
 - keyed list reconciliation by `key={ expr }`,
-- virtualized lists with scroll events and `dom.Px` spacers,
-- responsive viewport measurement through `ResizeObserver`,
-- variable-height rows with measured heights and an estimate,
-- the `ui.VirtualList` component and the headless `virtual.WindowFor` helper,
-- app-defined row views for `ui.VirtualList`, with one variant per distinct row
-  view,
-- inline stateful components compiled into the consuming app,
+- headless long-list windows through the separate `virtual` module,
 - `if`, `else if`, and `else` in views, including inside loops and pure components,
 - `for` loops directly inside conditional branches when the body is one element,
 - `len` in conditions with null-safe client lowering,
@@ -256,9 +250,9 @@ Supported now:
 - path pattern matching and parameters through the `route` package,
 - `route` links, pushState, replaceState, back, and popstate,
 - request-scoped app models and catch-all mounting for deep links,
-- curated browser interop through the `js` package,
+- curated browser interop through the `browser` module,
 - component-to-parent action messages through `emit`,
-- children on inline stateful components in static App positions through
+- children on stateful components in static App positions through
   `gothic.Children`,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
@@ -280,7 +274,7 @@ Not supported yet:
 - message serialization or logging,
 - `go/packages` type information,
 - typed procedure argument validation,
-- arbitrary browser globals outside the `js` package,
+- arbitrary browser globals outside the `browser` module,
 - wildcard or optional route segments and reverse URL building,
 - CSRF, auth, and the no-JS form fallback,
 - `gothic:json` manifests and content hashing,
@@ -317,15 +311,11 @@ These will be planned in detail after the proof of concept is evaluated:
   instances, and reset component state. State held only in the DOM, such as
   caret position, is lost. Destroy guards late command results but does not
   cancel the work.
-- The `js` package is deliberately small. Any new browser API is a design
+- The `browser` module is deliberately small. Any new browser API is a design
   decision, not an arbitrary escape hatch.
 - The model is serialized whole. Large models may need selective state later.
-  The virtualized list demonstrates this: the DOM stays small, but the full
-  list still travels in the state script.
-- Virtualized lists support fixed or variable row heights and fixed or
-  CSS-driven viewport heights. `ui.VirtualList` accepts app-defined row views
-  and generates one variant per distinct row view. Inline stateful components
-  are compiled into each consuming app.
+  The virtual example demonstrates this: the DOM stays small, but the full list
+  still travels in the state script.
 - Markup correctness is now ours. Selective vendoring and golden tests are the
   mitigation.
 - The client runtime and generated JavaScript are not yet minimized or hashed.
