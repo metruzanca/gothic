@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -912,7 +912,7 @@ func TestRejectComponentInitProps(t *testing.T) {
 		Name: "Counter", View: tpl, App: component, ModelJSON: `{"Count":0}`,
 		MountFunc: "mountCounter", CreateFunc: "createCounter",
 	}}, appjs.Options{FileName: "counter.gth"})
-	if err == nil || !strings.Contains(err.Error(), "Init cannot take props without a props type") {
+	if err == nil || !strings.Contains(err.Error(), "Init takes no parameters") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -1120,84 +1120,6 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 	if strings.Contains(src, `tag: "CardProps"`) {
 		t.Errorf("props struct literal should not be tagged as a message\n\n%s", src)
-	}
-}
-
-func TestGenerateComponentInitProps(t *testing.T) {
-	view, err := parser.ParseViews("counter.gth", []byte(`package ui
-
-view Counter(model CounterModel, props CounterProps) {
-	<div>{ model.Count }</div>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseComponents("counter.go", []byte(`package ui
-
-type CounterProps struct{ Label string }
-type CounterModel struct{ Count int }
-
-func (m CounterModel) Init(props CounterProps) Cmd {
-	browser.SetTitle(props.Label)
-	return nil
-}
-
-func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	component := app.ComponentApp("CounterModel")
-	out, err := appjs.GenerateComponents([]*generator.Stateful{{
-		Name: "Counter", View: view.Templates[0], App: component, ModelJSON: `{"Count":0}`,
-		PropsType: "CounterProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
-		MountFunc: "mountCounter", CreateFunc: "createCounter",
-	}}, appjs.Options{FileName: "counter.gth"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`function init(props) {`,
-		`(document.title = String(props.Label));`,
-		`run(init(props));`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated JS missing %q\n\n%s", want, src)
-		}
-	}
-}
-
-func TestRejectComponentInitWrongPropsType(t *testing.T) {
-	view, err := parser.ParseViews("counter.gth", []byte(`package ui
-
-view Counter(model CounterModel, props CounterProps) {
-	<div></div>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseComponents("counter.go", []byte(`package ui
-
-type CounterProps struct{ Label string }
-type CounterModel struct{}
-
-func (m CounterModel) Init(label string) Cmd { return nil }
-func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	component := app.ComponentApp("CounterModel")
-	_, err = appjs.GenerateComponents([]*generator.Stateful{{
-		Name: "Counter", View: view.Templates[0], App: component, ModelJSON: `{}`,
-		PropsType: "CounterProps", Props: []parser.Param{{Name: "Label", Type: "string"}},
-		MountFunc: "mountCounter", CreateFunc: "createCounter",
-	}}, appjs.Options{FileName: "counter.gth"})
-	if err == nil || !strings.Contains(err.Error(), "Init parameter has type string, want CounterProps") {
-		t.Fatalf("error = %v", err)
 	}
 }
 
@@ -1566,9 +1488,8 @@ view App(model Model) {
 	app, err := goapp.ParseSource("app.go", []byte(`package app
 
 type Model struct {
-	Page   string
-	ID     string
-	Edited bool
+	Page string
+	ID   string
 }
 
 type LocationChanged struct{ Path string; Query string; Hash string }
@@ -1582,7 +1503,6 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		if params != nil {
 			m.ID = params["id"]
 		}
-		m.Edited = route.Match("/todos/:id/edit", msg.Path)
 	}
 	return m, nil
 }
@@ -1602,7 +1522,6 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		`const params = routeParams("/todos/:id", msg.Path);`,
 		`if (params != null) {`,
 		`m.ID = params["id"];`,
-		`m.Edited = routeMatch("/todos/:id/edit", msg.Path);`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -1912,7 +1831,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)

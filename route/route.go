@@ -36,8 +36,3 @@ func Params(pattern, path string) map[string]string {
 	}
 	return params
 }
-
-// Match reports whether path matches pattern.
-func Match(pattern, path string) bool {
-	return Params(pattern, path) != nil
-}

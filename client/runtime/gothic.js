@@ -328,10 +328,6 @@ export function routeParams(pattern, path) {
   return params;
 }
 
-export function routeMatch(pattern, path) {
-  return routeParams(pattern, path) !== null;
-}
-
 function joinRoutePath(prefix, pattern) {
   if (!prefix) return pattern;
   if (!pattern) return prefix;

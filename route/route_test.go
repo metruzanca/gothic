@@ -36,12 +36,3 @@ func TestParams(t *testing.T) {
 		}
 	}
 }
-
-func TestMatch(t *testing.T) {
-	if !Match("/todos/:id", "/todos/42") {
-		t.Fatal("expected match")
-	}
-	if Match("/todos/:id", "/about") {
-		t.Fatal("expected no match")
-	}
-}
