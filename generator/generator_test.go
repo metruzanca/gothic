@@ -164,8 +164,8 @@ func TestGenerateProcedureArgs(t *testing.T) {
 
 const componentView = `package app
 
-view Status(text string) {
-	<p class="status">{ text }</p>
+view Status(props StatusProps) {
+	<p class="status">{ props.Text }</p>
 }
 
 view App(model Model) {
@@ -186,7 +186,8 @@ func TestGenerateAppExpandsComponents(t *testing.T) {
 			components[t.Name] = t
 		}
 	}
-	expanded, err := parser.ExpandApp(f, components)
+	props := parser.PropsTypes{"StatusProps": {Name: "StatusProps", Fields: []parser.Param{{Name: "Text", Type: "string"}}}}
+	expanded, err := parser.ExpandAppWithProps(f, components, props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +209,7 @@ func TestGenerateAppExpandsComponents(t *testing.T) {
 		`write("<p")`,
 		`write(" class=\"status")`,
 		`<!--g:text:0:open-->`,
-		`(model.Status)`,
+		`(StatusProps{Text: model.Status}).Text`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated Go missing %q\n\n%s", want, src)

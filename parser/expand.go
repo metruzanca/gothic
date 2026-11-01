@@ -249,38 +249,18 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, fmt.Errorf("component %s must have exactly one root element", call.Name)
 	}
 
-	childEnv := map[string]ast.Expr{}
-	usedPropsStruct := false
-	if len(component.ParamList) == 1 && component.ParamList[0].Name == "props" {
-		if spec, ok := propsTypes[component.ParamList[0].Type]; ok {
-			literal, err := propsStructLiteral(component, spec, call, env)
-			if err != nil {
-				return nil, err
-			}
-			childEnv["props"] = literal
-			usedPropsStruct = true
-		}
+	if len(component.ParamList) != 1 || component.ParamList[0].Name != "props" {
+		return nil, fmt.Errorf("component %s must take one props struct: view %s(props %sProps)", call.Name, call.Name, call.Name)
 	}
-	if !usedPropsStruct {
-		props := map[string]ast.Expr{}
-		for _, prop := range call.Props {
-			if _, exists := props[prop.Name]; exists {
-				return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
-			}
-			props[prop.Name] = substExpr(prop.Value, env)
-		}
-		for _, param := range component.ParamList {
-			value, ok := props[param.Name]
-			if !ok {
-				return nil, fmt.Errorf("component %s: missing prop %q", call.Name, param.Name)
-			}
-			childEnv[param.Name] = value
-			delete(props, param.Name)
-		}
-		for name := range props {
-			return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, name)
-		}
+	spec, ok := propsTypes[component.ParamList[0].Type]
+	if !ok {
+		return nil, fmt.Errorf("component %s: props type %s not found", call.Name, component.ParamList[0].Type)
 	}
+	literal, err := propsStructLiteral(component, spec, call, env)
+	if err != nil {
+		return nil, err
+	}
+	childEnv := map[string]ast.Expr{"props": literal}
 
 	children, err := expandNodes(call.Children, env, stack, components, propsTypes)
 	if err != nil {
@@ -290,13 +270,9 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 		return nil, err
 	}
 	childrenAllowed := false
-	if len(component.ParamList) > 0 {
-		if spec, ok := propsTypes[component.ParamList[len(component.ParamList)-1].Type]; ok {
-			for _, field := range spec.Fields {
-				if field.Type == "gothic.Children" {
-					childrenAllowed = true
-				}
-			}
+	for _, field := range spec.Fields {
+		if field.Type == "gothic.Children" {
+			childrenAllowed = true
 		}
 	}
 	if err := RejectSlots(component.Children); err != nil {

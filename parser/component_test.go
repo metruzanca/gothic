@@ -13,8 +13,12 @@ import (
 
 const componentDemo = `package views
 
-view Status(text string) {
-	<p class="status">{ text }</p>
+type StatusProps struct {
+	Text string
+}
+
+view Status(props StatusProps) {
+	<p class="status">{ props.Text }</p>
 }
 
 view App(model Model) {
@@ -24,16 +28,19 @@ view App(model Model) {
 }
 `
 
+func statusProps() parser.PropsTypes {
+	return parser.PropsTypes{"StatusProps": {Name: "StatusProps", Fields: []parser.Param{
+		{Name: "Text", Type: "string"},
+	}}}
+}
+
 func TestParseComponentCall(t *testing.T) {
-	f, err := parser.ParseViews("component.gth", []byte(componentDemo))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "component.gth", componentDemo)
 	if len(f.Templates) != 2 {
 		t.Fatalf("views = %d", len(f.Templates))
 	}
 	status := f.Templates[0]
-	if len(status.ParamList) != 1 || status.ParamList[0].Name != "text" || status.ParamList[0].Type != "string" {
+	if len(status.ParamList) != 1 || status.ParamList[0].Name != "props" || status.ParamList[0].Type != "StatusProps" {
 		t.Fatalf("params = %#v", status.ParamList)
 	}
 	root := f.Templates[1].Children[0].(*parser.Element)
@@ -51,17 +58,18 @@ func TestParseComponentCall(t *testing.T) {
 
 func TestParseComponentBooleanAndEmptyChildren(t *testing.T) {
 	src := `package views
-view Card(text string) {
-	<p>{ text }</p>
+type CardProps struct {
+	Text   string
+	Active bool
+}
+view Card(props CardProps) {
+	<p>{ props.Text }</p>
 }
 view App(model Model) {
 	<div><Card text="x" active></Card></div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "component.gth", src)
 	root := f.Templates[1].Children[0].(*parser.Element)
 	call := root.Children[0].(*parser.ComponentCall)
 	if len(call.Props) != 2 {
@@ -72,39 +80,9 @@ view App(model Model) {
 	}
 }
 
-func TestParseComponentChildren(t *testing.T) {
-	src := `package views
-view Card(text string) {
-	<p>{ text }<slot /></p>
-}
-view App(model Model) {
-	<div><Card text="x"><span>hi</span></Card></div>
-}
-`
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := f.Templates[1].Children[0].(*parser.Element)
-	call := root.Children[0].(*parser.ComponentCall)
-	if len(call.Children) != 1 {
-		t.Fatalf("children = %d", len(call.Children))
-	}
-	if span, ok := call.Children[0].(*parser.Element); !ok || span.Name != "span" {
-		t.Fatalf("child = %#v", call.Children[0])
-	}
-	p := f.Templates[0].Children[0].(*parser.Element)
-	if _, ok := p.Children[1].(*parser.Slot); !ok {
-		t.Fatalf("slot = %T", p.Children[1])
-	}
-}
-
 func TestExpandAppSubstitutesProps(t *testing.T) {
-	f, err := parser.ParseViews("component.gth", []byte(componentDemo))
-	if err != nil {
-		t.Fatal(err)
-	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	f := parseViews(t, "component.gth", componentDemo)
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), statusProps())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,28 +92,32 @@ func TestExpandAppSubstitutesProps(t *testing.T) {
 		t.Fatalf("component root = %q", p.Name)
 	}
 	interp := p.Children[0].(*parser.Interpolation)
-	if got := exprText(t, interp.Expr); got != "(model.Status)" {
+	got := exprText(t, interp.Expr)
+	if !strings.Contains(got, "StatusProps{Text: model.Status}") || !strings.HasSuffix(got, ".Text") {
 		t.Fatalf("interpolation = %q", got)
 	}
 }
 
 func TestExpandAppNestedComponents(t *testing.T) {
 	src := `package views
-view Label(value string) {
-	<span>{ value }</span>
+type LabelProps struct{ Value string }
+type CardProps struct{ Item Item }
+view Label(props LabelProps) {
+	<span>{ props.Value }</span>
 }
-view Card(item Item) {
-	<section><Label value={ item.Name } /></section>
+view Card(props CardProps) {
+	<section><Label value={ props.Item.Name } /></section>
 }
 view App(model Model) {
 	<div><Card item={ model.Item } /></div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
+	f := parseViews(t, "component.gth", src)
+	props := parser.PropsTypes{
+		"LabelProps": {Name: "LabelProps", Fields: []parser.Param{{Name: "Value", Type: "string"}}},
+		"CardProps":  {Name: "CardProps", Fields: []parser.Param{{Name: "Item", Type: "Item"}}},
 	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,21 +132,24 @@ view App(model Model) {
 
 func TestExpandAppComponentRootComponent(t *testing.T) {
 	src := `package views
-view Badge(text string) {
-	<span>{ text }</span>
+type BadgeProps struct{ Text string }
+type WrapperProps struct{ Text string }
+view Badge(props BadgeProps) {
+	<span>{ props.Text }</span>
 }
-view Wrapper(text string) {
-	<Badge text={ text } />
+view Wrapper(props WrapperProps) {
+	<Badge text={ props.Text } />
 }
 view App(model Model) {
 	<div><Wrapper text="hello" /></div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
+	f := parseViews(t, "component.gth", src)
+	props := parser.PropsTypes{
+		"BadgeProps":   {Name: "BadgeProps", Fields: []parser.Param{{Name: "Text", Type: "string"}}},
+		"WrapperProps": {Name: "WrapperProps", Fields: []parser.Param{{Name: "Text", Type: "string"}}},
 	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,22 +162,21 @@ view App(model Model) {
 
 func TestExpandAppLoopVariableShadowsProp(t *testing.T) {
 	src := `package views
-view Item(item string) {
-	<span>{ item }</span>
+type ItemProps struct{ Value string }
+view Item(props ItemProps) {
+	<span>{ props.Value }</span>
 }
 view App(model Model) {
 	<div>
 		for _, item := range model.Items {
-			<Item item={ item } />
+			<Item value={ item } />
 		}
 	</div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	f := parseViews(t, "component.gth", src)
+	props := parser.PropsTypes{"ItemProps": {Name: "ItemProps", Fields: []parser.Param{{Name: "Value", Type: "string"}}}}
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,12 +184,13 @@ view App(model Model) {
 	loop := root.Children[0].(*parser.For)
 	span := loop.Children[0].(*parser.Element)
 	interp := span.Children[0].(*parser.Interpolation)
-	if got := exprText(t, interp.Expr); got != "(item)" {
+	if got := exprText(t, interp.Expr); !strings.Contains(got, "Value: item") {
 		t.Fatalf("interpolation = %q", got)
 	}
 }
 
 func TestExpandAppErrors(t *testing.T) {
+	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{{Name: "Text", Type: "string"}}}}
 	tests := []struct {
 		name string
 		src  string
@@ -214,7 +199,8 @@ func TestExpandAppErrors(t *testing.T) {
 		{
 			name: "missing prop",
 			src: `package views
-view Card(text string) { <p>{ text }</p> }
+type CardProps struct{ Text string }
+view Card(props CardProps) { <p>{ props.Text }</p> }
 view App(model Model) { <div><Card /></div> }
 `,
 			want: "missing prop",
@@ -222,7 +208,8 @@ view App(model Model) { <div><Card /></div> }
 		{
 			name: "unknown prop",
 			src: `package views
-view Card(text string) { <p>{ text }</p> }
+type CardProps struct{ Text string }
+view Card(props CardProps) { <p>{ props.Text }</p> }
 view App(model Model) { <div><Card text="x" other="y" /></div> }
 `,
 			want: "unknown prop",
@@ -230,7 +217,8 @@ view App(model Model) { <div><Card text="x" other="y" /></div> }
 		{
 			name: "duplicate prop",
 			src: `package views
-view Card(text string) { <p>{ text }</p> }
+type CardProps struct{ Text string }
+view Card(props CardProps) { <p>{ props.Text }</p> }
 view App(model Model) { <div><Card text="x" text="y" /></div> }
 `,
 			want: "duplicate prop",
@@ -243,22 +231,37 @@ view App(model Model) { <div><Missing /></div> }
 			want: "unknown component",
 		},
 		{
+			name: "individual props",
+			src: `package views
+view Card(text string) { <p>{ text }</p> }
+view App(model Model) { <div><Card text="x" /></div> }
+`,
+			want: "must take one props struct",
+		},
+		{
 			name: "cycle",
 			src: `package views
-view A(model Model) { <div><B model={ model } /></div> }
-view B(model Model) { <div><A model={ model } /></div> }
-view App(model Model) { <div><A model={ model } /></div> }
+type AProps struct{ Value string }
+type BProps struct{ Value string }
+view A(props AProps) { <div><B value={ props.Value } /></div> }
+view B(props BProps) { <div><A value={ props.Value } /></div> }
+view App(model Model) { <div><A value="x" /></div> }
 `,
 			want: "component cycle",
 		},
 	}
+	cycleProps := parser.PropsTypes{
+		"CardProps": {Name: "CardProps", Fields: []parser.Param{{Name: "Text", Type: "string"}}},
+		"AProps":    {Name: "AProps", Fields: []parser.Param{{Name: "Value", Type: "string"}}},
+		"BProps":    {Name: "BProps", Fields: []parser.Param{{Name: "Value", Type: "string"}}},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f, err := parser.ParseViews("component.gth", []byte(tt.src))
-			if err != nil {
-				t.Fatal(err)
+			f := parseViews(t, "component.gth", tt.src)
+			if tt.name == "cycle" {
+				props = cycleProps
 			}
-			_, err = parser.ExpandApp(f, componentsOf(f))
+			_, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("error = %v, want %q", err, tt.want)
 			}
@@ -287,8 +290,9 @@ func exprText(t *testing.T, e ast.Expr) string {
 
 func TestParseListKey(t *testing.T) {
 	src := `package views
-view Item(item Model) {
-	<li>{ item.Name }</li>
+type ItemProps struct{ Item Model }
+view Item(props ItemProps) {
+	<li>{ props.Item.Name }</li>
 }
 view App(model Model) {
 	<div>
@@ -298,10 +302,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "component.gth", src)
 	root := f.Templates[1].Children[0].(*parser.Element)
 	loop := root.Children[0].(*parser.For)
 	call := loop.Children[0].(*parser.ComponentCall)
@@ -315,8 +316,9 @@ view App(model Model) {
 
 func TestExpandComponentKey(t *testing.T) {
 	src := `package views
-view Item(item Model) {
-	<li>{ item.Name }</li>
+type ItemProps struct{ Item Model }
+view Item(props ItemProps) {
+	<li>{ props.Item.Name }</li>
 }
 view App(model Model) {
 	<div>
@@ -326,11 +328,9 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("component.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	expanded, err := parser.ExpandApp(f, componentsOf(f))
+	f := parseViews(t, "component.gth", src)
+	props := parser.PropsTypes{"ItemProps": {Name: "ItemProps", Fields: []parser.Param{{Name: "Item", Type: "Model"}}}}
+	expanded, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,10 +351,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("attrs.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "attrs.gth", src)
 	root := f.Templates[0].Children[0].(*parser.Element)
 	input := root.Children[0].(*parser.Element)
 	if len(input.Attributes) != 3 {
@@ -381,12 +378,16 @@ view App(model Model) {
 func TestExpandConditionalInsideComponent(t *testing.T) {
 	src := `package views
 
-view Badge(text string, active bool) {
+type BadgeProps struct {
+	Text   string
+	Active bool
+}
+view Badge(props BadgeProps) {
 	<span>
-		if active {
-			<b class="on">{ text }</b>
+		if props.Active {
+			<b class="on">{ props.Text }</b>
 		} else {
-			<i class="off">{ text }</i>
+			<i class="off">{ props.Text }</i>
 		}
 	</span>
 }
@@ -397,15 +398,12 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("cond.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	components := parser.ComponentSet{}
-	for _, tpl := range f.Templates {
-		components[tpl.Name] = tpl
-	}
-	app, err := parser.ExpandApp(f, components)
+	f := parseViews(t, "cond.gth", src)
+	props := parser.PropsTypes{"BadgeProps": {Name: "BadgeProps", Fields: []parser.Param{
+		{Name: "Text", Type: "string"},
+		{Name: "Active", Type: "bool"},
+	}}}
+	app, err := parser.ExpandAppWithProps(f, componentsOf(f), props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,7 +413,7 @@ view App(model Model) {
 	if !ok {
 		t.Fatalf("expanded child = %T", wrapper.Children[0])
 	}
-	if got := exprText(t, cond.Cond); got != "(model.Active)" {
+	if got := exprText(t, cond.Cond); !strings.Contains(got, "model.Active") {
 		t.Fatalf("condition = %q", got)
 	}
 	if len(cond.Then) != 1 || len(cond.Else) != 1 {
@@ -441,10 +439,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 		{Name: "Text", Type: "string"},
@@ -479,10 +474,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 	}}}
@@ -512,10 +504,7 @@ view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
 		{Name: "Text", Type: "string"},
 	}}}
@@ -535,10 +524,7 @@ view App(model Model) {
 	<div><Box><p>x</p></Box></div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 	}}}
@@ -558,10 +544,7 @@ view App(model Model) {
 	<div><Tabs><p>x</p></Tabs></div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	components := componentsOf(f)
 	components["Tabs"].Stateful = true
 	components["Tabs"].Inline = true
@@ -577,34 +560,8 @@ view App(model Model) {
 	<div><slot /></div>
 }
 `
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := parseViews(t, "slot.gth", src)
 	if _, err := parser.ExpandApp(f, map[string]*parser.Template{}); err == nil || !strings.Contains(err.Error(), "children are placed with { props.Children }") {
-		t.Fatalf("error = %v", err)
-	}
-}
-
-func TestExpandRejectsUserSlotInComponent(t *testing.T) {
-	src := `package views
-
-view Box(props BoxProps) {
-	<div><slot /></div>
-}
-
-view App(model Model) {
-	<div><Box><p>x</p></Box></div>
-}
-`
-	f, err := parser.ParseViews("slot.gth", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
-		{Name: "Children", Type: "gothic.Children"},
-	}}}
-	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), props); err == nil || !strings.Contains(err.Error(), "remove <slot />") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -688,4 +645,13 @@ view App(model Model) {
 	if _, err := parser.ExpandAppWithProps(f, componentsOf(f), propsTypes); err == nil || !strings.Contains(err.Error(), `missing prop "Title"`) {
 		t.Fatalf("error = %v", err)
 	}
+}
+
+func parseViews(t *testing.T, name, src string) *parser.File {
+	t.Helper()
+	appFile, err := parser.ParseApp(name, []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return appFile.View
 }
