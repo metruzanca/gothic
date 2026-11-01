@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	_ "embed"
@@ -188,20 +187,15 @@ func mountApp(s *gothic.Server, st *store) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		_, _ = w.Write(styleCSS)
 	})
-	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		data, err := st.list(r.Context())
+		model := NewModelAt(data, r.URL.Path)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			model.Failure = err.Error()
 		}
-		var page bytes.Buffer
-		page.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gothic TodoMVC</title><link rel="stylesheet" href="/style.css"></head><body>`)
-		if err := gothic.NewApp(NewModel(data)).RenderTo(r.Context(), &page); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		page.WriteString(`</body></html>`)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(page.Bytes())
-	})
+		return model
+	}), gothic.WithDocument(gothic.Document{
+		Title:  "Gothic TodoMVC",
+		Styles: []string{"/style.css"},
+	}))
 }

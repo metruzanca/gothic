@@ -16,20 +16,6 @@ type TabsModel struct {
 	Active int
 }
 
-func NewTabsModel(props TabsProps) TabsModel {
-	m := TabsModel{}
-	if props.Active != nil {
-		m.Active = *props.Active
-	}
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
-	}
-	if m.Active < 0 {
-		m.Active = 0
-	}
-	return m
-}
-
 type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
@@ -39,6 +25,9 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
+		if msg.Initial && props.Active != nil {
+			m.Active = *props.Active
+		}
 	}
 	if m.Active >= len(props.Items) {
 		m.Active = len(props.Items) - 1

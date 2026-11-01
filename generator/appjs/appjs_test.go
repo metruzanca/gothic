@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeJoin, routeMatch, routeParams, routeResolve, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1201,7 +1201,7 @@ func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
 	}
 }
 
-func TestGenerateComponentConstructor(t *testing.T) {
+func TestGenerateComponentSeedsFromProps(t *testing.T) {
 	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
 
 view Tabs(model TabsModel, props TabsProps) {
@@ -1216,16 +1216,16 @@ view Tabs(model TabsModel, props TabsProps) {
 type TabsProps struct{ Active *int }
 type TabsModel struct{ Active int }
 
-func NewTabsModel(props TabsProps) TabsModel {
-	m := TabsModel{}
-	if props.Active != nil {
-		m.Active = *props.Active
-	}
-	return m
-}
-
 func (m TabsModel) Init() Cmd { return nil }
-func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
+func (m TabsModel) Update(msg Msg, props TabsProps) (TabsModel, Cmd) {
+	switch msg := msg.(type) {
+	case gothic.PropsChanged:
+		if msg.Initial && props.Active != nil {
+			m.Active = *props.Active
+		}
+	}
+	return m, nil
+}
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -1233,7 +1233,6 @@ func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
 	component := app.ComponentApp("TabsModel")
 	out, err := appjs.GenerateComponents([]*generator.Stateful{{
 		Name: "Tabs", View: view.Templates[0], App: component, ModelJSON: `{"Active":0}`, ModelType: "TabsModel",
-		Constructor: "NewTabsModel", ConstructorTakesProps: true,
 		PropsType: "TabsProps", Props: []parser.Param{{Name: "Active", Type: "*int"}},
 		MountFunc: "mountTabs", CreateFunc: "createTabs",
 	}}, appjs.Options{FileName: "tabs.gth"})
@@ -1242,48 +1241,15 @@ func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
 	}
 	src := string(out)
 	for _, want := range []string{
-		`function newTabs(props) {`,
-		`const model = newTabs(props);`,
-		`readComponentState(root) || newTabs(props)`,
-		`if (props.Active != null)`,
+		`const saved = readComponentState(root);`,
+		`if (!saved) model = update(model, {tag: "PropsChanged", Initial: true}, props)[0];`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
 		}
 	}
-}
-
-func TestRejectComponentConstructorWrongResult(t *testing.T) {
-	view, err := parser.ParseViews("tabs.gth", []byte(`package ui
-
-view Tabs(model TabsModel, props TabsProps) {
-	<div></div>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseComponents("tabs.go", []byte(`package ui
-
-type TabsProps struct{}
-type TabsModel struct{}
-
-func NewTabsModel(props TabsProps) string { return "" }
-func (m TabsModel) Init() Cmd { return nil }
-func (m TabsModel) Update(msg Msg) (TabsModel, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	component := app.ComponentApp("TabsModel")
-	_, err = appjs.GenerateComponents([]*generator.Stateful{{
-		Name: "Tabs", View: view.Templates[0], App: component, ModelJSON: `{}`, ModelType: "TabsModel",
-		Constructor: "NewTabsModel", ConstructorTakesProps: true,
-		PropsType: "TabsProps",
-		MountFunc: "mountTabs", CreateFunc: "createTabs",
-	}}, appjs.Options{FileName: "tabs.gth"})
-	if err == nil || !strings.Contains(err.Error(), "constructor returns string, want TabsModel") {
-		t.Fatalf("error = %v", err)
+	if strings.Contains(src, "newTabs") {
+		t.Errorf("generated JS should not emit a constructor\n\n%s", src)
 	}
 }
 
@@ -1946,7 +1912,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeJoin, routeMatch, routeParams, routeResolve, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeMatch, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -2274,54 +2240,6 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	if !strings.Contains(src, `m.Height = (document.querySelector("#rows")?.clientHeight ?? 0);`) {
 		t.Errorf("generated JS missing ClientHeight lowering\n\n%s", src)
-	}
-}
-
-func TestGenerateRouteTable(t *testing.T) {
-	view, err := parser.ParseViews("routes.gth", []byte(`package app
-
-view App(model Model) {
-	<div>{ model.Page }</div>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseSource("app.go", []byte(`package app
-
-type Model struct {
-	Page   string
-	Routes []route.Route
-}
-
-func (m Model) Init() Cmd { return nil }
-func (m Model) Update(msg Msg) (Model, Cmd) {
-	match := route.Resolve(m.Routes, "/hello/ada")
-	m.Page = match.Page
-	m.Routes = route.Join("/admin", m.Routes)
-	return m, nil
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := appjs.Generate(view, app, appjs.Options{
-		FileName:   "routes.gth",
-		RuntimeURL: "/_gothic/runtime.js",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`const match = routeResolve(m.Routes, "/hello/ada");`,
-		`m.Page = match.Page;`,
-		`m.Routes = routeJoin("/admin", m.Routes);`,
-		`routeJoin, routeMatch, routeParams, routeResolve, text`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated JS missing %q\n\n%s", want, src)
-		}
 	}
 }
 

@@ -84,8 +84,10 @@ func Sequence(cmds ...Cmd) Cmd {
 type Children struct{}
 
 // PropsChanged is dispatched to a stateful component when its props change.
-// Components can handle it in Update to react to new prop values.
-type PropsChanged struct{}
+// Initial is true on mount, so Update can seed local state from props once.
+type PropsChanged struct {
+	Initial bool
+}
 
 // Model is a Bubble Tea-style application model.
 type Model interface {

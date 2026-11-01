@@ -280,6 +280,9 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
+		if msg.Initial && props.Active != nil {
+			m.Active = *props.Active
+		}
 	}
 	if m.Active >= len(props.Items) {
 		m.Active = len(props.Items) - 1
@@ -408,28 +411,31 @@ mutating in place.
 
 #### Initial state from props
 
-A stateful component can build its initial state from props with an optional
-constructor named `New` plus the model type:
+Props always arrive through `gothic.PropsChanged`. On mount the component
+receives it with `Initial: true`; later prop changes use `Initial: false`.
 
 ```go
-func NewTabsModel(props TabsProps) TabsModel {
-	m := TabsModel{}
-	if props.Active != nil {
-		m.Active = *props.Active
+type TabsModel struct {
+	Active int
+}
+
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case gothic.PropsChanged:
+		if msg.Initial && props.Active != nil {
+			m.Active = *props.Active
+		}
 	}
-	return m
+	return m, nil
 }
 ```
 
-- The constructor may take zero parameters or one props parameter.
-- It must return the component model type.
-- The server uses it before serializing state, so SSR matches the props.
-- Client-created instances use the generated JavaScript constructor.
+- The server applies `PropsChanged{Initial: true}` before rendering, then
+  serializes the resulting state.
+- Client-created instances apply the same message before their first render.
 - Hydration reads the server-serialized state first.
-- Without a constructor, state starts at the zero value.
-
-Constructors must be deterministic and use the client Go subset. They must not
-depend on server-only data, time, randomness, or `js` interop.
+- There is no separate constructor. Seed local state only when `msg.Initial`,
+  so later prop changes do not reset it.
 
 #### Component commands
 
@@ -809,9 +815,6 @@ s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 mount reach the app. The server renders the model for the request, then the
 client hydrates it and dispatches `LocationChanged` on load.
 
-`HashChanged` still works for hash-only apps. If an app defines both
-`LocationChanged` and `HashChanged`, `LocationChanged` takes precedence.
-
 #### Documents and social previews
 
 `MountApp` renders a full HTML document: doctype, `lang`, charset, viewport,
@@ -916,66 +919,6 @@ Limits:
 - no trailing-slash normalization,
 - duplicate parameter names keep the last segment,
 - query and hash are not part of the pattern.
-
-#### Route tables
-
-Define a table once and use it on both server and client:
-
-```go
-var routes = []route.Route{
-	{Pattern: "/", Page: "home"},
-	{Pattern: "/about", Page: "about"},
-	{Pattern: "/hello/:name", Page: "hello"},
-}
-```
-
-Store the table in the model so it is available after hydration:
-
-```go
-type Model struct {
-	Routes []route.Route
-	Page   string
-	Name   string
-}
-
-func NewModel(path string) Model {
-	m := Model{Routes: routes}
-	match := route.Resolve(m.Routes, path)
-	m.Page = match.Page
-	m.Name = match.Params["name"]
-	return m
-}
-```
-
-`Update` uses the same call:
-
-```go
-match := route.Resolve(m.Routes, msg.Path)
-m.Page = match.Page
-if match.Matched {
-	m.Name = match.Params["name"]
-}
-```
-
-`route.Resolved` has `Page`, `Matched`, and `Params`. The first matching route
-wins. `route.Resolve` lowers to a `routeResolve` runtime helper.
-
-Prefix a table for nested sections with `route.Join`:
-
-```go
-admin := route.Join("/admin", routes)
-```
-
-`route.Join` returns a new table and lowers to `routeJoin`.
-
-The router example now defines one table and uses it in `NewModel` and
-`Update`.
-
-Limits:
-
-- no wildcard or optional segments,
-- no reverse URL builder,
-- route tables are ordered, so earlier routes win.
 
 ### Browser interop
 
@@ -1212,7 +1155,7 @@ The proof of concept supports:
   loops,
 - `gothic.PropsChanged` on prop changes,
 - component Init running once on mount,
-- prop-seeded initial component state through `New<Model>(props)`,
+- prop-seeded initial component state through `PropsChanged{Initial: true}`,
 - component commands with unmount guards,
 - `for` loops directly inside conditional branches when the body is one element,
 - the installable gothic UI kit,
@@ -1232,11 +1175,9 @@ The proof of concept supports:
 - reactive interpolated text and message-valued event bindings,
 - event values such as `event.target.value`,
 - dynamic attributes, class toggles, and focus bindings,
-- hash-based route changes through a `HashChanged` message,
 - path, query, and hash URL state through a `LocationChanged` message,
 - `route` links with pushState, replaceState, back, and popstate,
 - path pattern matching and parameters through the `route` package,
-- route tables through `route.Resolve` and prefixed tables through `route.Join`,
 - request-scoped app models and catch-all app mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,

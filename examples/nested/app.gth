@@ -45,20 +45,20 @@ type DashboardModel struct {
 type DashboardToggled struct{}
 type AddItem struct{}
 
-func NewDashboardModel(props DashboardProps) DashboardModel {
-	return DashboardModel{Items: props.Items}
-}
-
 func (m DashboardModel) Init() gothic.Cmd {
 	return nil
 }
 
 func (m DashboardModel) Update(msg gothic.Msg, props DashboardProps) (DashboardModel, gothic.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case DashboardToggled:
 		m.ShowBranch = !m.ShowBranch
 	case AddItem:
 		m.Items = append(m.Items, "item")
+	case gothic.PropsChanged:
+		if msg.Initial {
+			m.Items = props.Items
+		}
 	}
 	return m, nil
 }

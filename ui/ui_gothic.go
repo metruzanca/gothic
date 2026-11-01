@@ -129,20 +129,6 @@ type TabsModel struct {
 	Active int
 }
 
-func NewTabsModel(props TabsProps) TabsModel {
-	m := TabsModel{}
-	if props.Active != nil {
-		m.Active = *props.Active
-	}
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
-	}
-	if m.Active < 0 {
-		m.Active = 0
-	}
-	return m
-}
-
 type TabClicked struct{ Index int }
 
 func (m TabsModel) Init() gothic.Cmd { return nil }
@@ -152,6 +138,9 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 	case TabClicked:
 		m.Active = msg.Index
 	case gothic.PropsChanged:
+		if msg.Initial && props.Active != nil {
+			m.Active = *props.Active
+		}
 	}
 	if m.Active >= len(props.Items) {
 		m.Active = len(props.Items) - 1
@@ -278,6 +267,7 @@ func __gothicAccordionView(model AccordionModel, props AccordionProps) gothic.Co
 func Accordion(id string, key string, props AccordionProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model AccordionModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
@@ -406,6 +396,7 @@ func __gothicCounterView(model CounterModel, props CounterProps) gothic.Componen
 func Counter(id string, key string, props CounterProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model CounterModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true})
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
@@ -563,6 +554,7 @@ func __gothicDisclosureView(model DisclosureModel, props DisclosureProps) gothic
 func Disclosure(id string, key string, props DisclosureProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model DisclosureModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
@@ -759,7 +751,8 @@ func __gothicTabsView(model TabsModel, props TabsProps) gothic.Component {
 
 func Tabs(id string, key string, props TabsProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		model := NewTabsModel(props)
+		var model TabsModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err

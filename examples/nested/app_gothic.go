@@ -55,20 +55,20 @@ type DashboardModel struct {
 type DashboardToggled struct{}
 type AddItem struct{}
 
-func NewDashboardModel(props DashboardProps) DashboardModel {
-	return DashboardModel{Items: props.Items}
-}
-
 func (m DashboardModel) Init() gothic.Cmd {
 	return nil
 }
 
 func (m DashboardModel) Update(msg gothic.Msg, props DashboardProps) (DashboardModel, gothic.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case DashboardToggled:
 		m.ShowBranch = !m.ShowBranch
 	case AddItem:
 		m.Items = append(m.Items, "item")
+	case gothic.PropsChanged:
+		if msg.Initial {
+			m.Items = props.Items
+		}
 	}
 	return m, nil
 }
@@ -395,6 +395,7 @@ func __gothicPanelView(model PanelModel, props PanelProps, slot gothic.Component
 func __gothicPanelComponent(id string, key string, props PanelProps, slot gothic.Component) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model PanelModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true})
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
@@ -542,6 +543,7 @@ func __gothicCounterView(model CounterModel, props CounterProps) gothic.Componen
 func __gothicCounterComponent(id string, key string, props CounterProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		var model CounterModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
@@ -699,7 +701,8 @@ func __gothicDashboardView(model DashboardModel, props DashboardProps) gothic.Co
 
 func __gothicDashboardComponent(id string, key string, props DashboardProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		model := NewDashboardModel(props)
+		var model DashboardModel
+		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err

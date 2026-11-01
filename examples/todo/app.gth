@@ -45,6 +45,10 @@ type Model struct {
 }
 
 func NewModel(data TodoData) Model {
+	return NewModelAt(data, "/")
+}
+
+func NewModelAt(data TodoData, path string) Model {
 	return Model{
 		Todos:          data.Todos,
 		ActiveCount:    data.ActiveCount,
@@ -53,7 +57,18 @@ func NewModel(data TodoData) Model {
 		HasCompleted:   data.HasCompleted,
 		AllDone:        data.AllDone,
 		ItemWord:       data.ItemWord,
-		Filter:         "all",
+		Filter:         filterForPath(path),
+	}
+}
+
+func filterForPath(path string) string {
+	switch path {
+	case "/active":
+		return "active"
+	case "/completed":
+		return "completed"
+	default:
+		return "all"
 	}
 }
 
@@ -72,7 +87,11 @@ type SaveEdit struct{ ID int64 }
 type CancelEdit struct{ ID int64 }
 type TodosLoaded struct{ Data TodoData }
 type TodoFailed struct{ Message string }
-type HashChanged struct{ Hash string }
+type LocationChanged struct {
+	Path  string
+	Query string
+	Hash  string
+}
 
 type Procedures interface {
 	gothic.RPCService
@@ -91,14 +110,8 @@ func (m Model) Init() gothic.Cmd {
 
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
-	case HashChanged:
-		m.Filter = "all"
-		if msg.Hash == "#/active" {
-			m.Filter = "active"
-		}
-		if msg.Hash == "#/completed" {
-			m.Filter = "completed"
-		}
+	case LocationChanged:
+		m.Filter = filterForPath(msg.Path)
 	case DraftChanged:
 		m.Draft = msg.Text
 	case AddClicked:
@@ -228,9 +241,9 @@ view App(model Model) {
 		<footer id="footer" class="footer" class:hidden={ !model.HasTodos }>
 			<span class="todo-count"><strong>{ model.ActiveCount }</strong>{ " " }{ model.ItemWord }{ " left" }</span>
 			<ul class="filters">
-				<li><a class:selected={ model.Filter == "all" } href="#/">All</a></li>
-				<li><a class:selected={ model.Filter == "active" } href="#/active">Active</a></li>
-				<li><a class:selected={ model.Filter == "completed" } href="#/completed">Completed</a></li>
+				<li><a class:selected={ model.Filter == "all" } href="/" route>All</a></li>
+				<li><a class:selected={ model.Filter == "active" } href="/active" route>Active</a></li>
+				<li><a class:selected={ model.Filter == "completed" } href="/completed" route>Completed</a></li>
 			</ul>
 			<button class="clear-completed" class:hidden={ !model.HasCompleted } onclick={ ClearCompletedClicked{} }>Clear completed</button>
 		</footer>

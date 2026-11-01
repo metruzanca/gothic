@@ -40,27 +40,25 @@ type Options struct {
 
 // Stateful is a stateful component rendered as an island.
 type Stateful struct {
-	Name                  string
-	DisplayName           string
-	ViewName              string
-	GoName                string
-	MountFunc             string
-	CreateFunc            string
-	ModelType             string
-	ModelJSON             string
-	Constructor           string
-	ConstructorTakesProps bool
-	PropsType             string
-	Props                 []parser.Param
-	View                  *parser.Template
-	App                   *goapp.App
-	Listable              bool
-	External              bool
-	Children              bool
-	Slot                  bool
-	ImportAlias           string
-	ImportPath            string
-	ModuleURL             string
+	Name        string
+	DisplayName string
+	ViewName    string
+	GoName      string
+	MountFunc   string
+	CreateFunc  string
+	ModelType   string
+	ModelJSON   string
+	PropsType   string
+	Props       []parser.Param
+	View        *parser.Template
+	App         *goapp.App
+	Listable    bool
+	External    bool
+	Children    bool
+	Slot        bool
+	ImportAlias string
+	ImportPath  string
+	ModuleURL   string
 }
 
 // ComponentName returns the unqualified name used in DOM attributes.
@@ -86,11 +84,6 @@ func (c *Stateful) PropsGoType() string {
 // GoModelType returns the Go type used for the component model.
 func (c *Stateful) GoModelType() string {
 	return c.ModelType
-}
-
-// GoConstructor returns the Go constructor name.
-func (c *Stateful) GoConstructor() string {
-	return c.Constructor
 }
 
 // ComponentsModuleFileName returns the generated JavaScript file name for app components.
@@ -731,14 +724,13 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 	}
 	fmt.Fprintf(b, "func %s(id string, key string%s%s) gothic.Component {\n", comp.GoName, propsSig, slotSig)
 	b.WriteString("\treturn gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {\n")
-	if comp.Constructor != "" {
-		args := ""
-		if comp.ConstructorTakesProps {
-			args = "props"
+	fmt.Fprintf(b, "\t\tvar model %s\n", comp.GoModelType())
+	if comp.App != nil && comp.PropsType != "" {
+		if updateTakesProps(comp.App.Update) {
+			b.WriteString("\t\tmodel, _ = model.Update(gothic.PropsChanged{Initial: true}, props)\n")
+		} else {
+			b.WriteString("\t\tmodel, _ = model.Update(gothic.PropsChanged{Initial: true})\n")
 		}
-		fmt.Fprintf(b, "\t\tmodel := %s(%s)\n", comp.GoConstructor(), args)
-	} else {
-		fmt.Fprintf(b, "\t\tvar model %s\n", comp.GoModelType())
 	}
 	b.WriteString("\t\tstateJSON, err := json.Marshal(model)\n")
 	b.WriteString("\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n")
@@ -756,6 +748,21 @@ func writeStatefulWrapper(b *strings.Builder, comp *Stateful) {
 	b.WriteString("\t\tif _, err := io.WriteString(w, \"</script>\"); err != nil {\n\t\t\treturn err\n\t\t}\n")
 	fmt.Fprintf(b, "\t\tif err := %s(model%s).Render(ctx, w); err != nil {\n\t\t\treturn err\n\t\t}\n", comp.ViewName, viewProps)
 	b.WriteString("\t\t_, err = io.WriteString(w, \"</div>\")\n\t\treturn err\n\t})\n}\n\n")
+}
+
+func updateTakesProps(fn *ast.FuncDecl) bool {
+	if fn == nil || fn.Type.Params == nil {
+		return false
+	}
+	count := 0
+	for _, field := range fn.Type.Params.List {
+		if len(field.Names) == 0 {
+			count++
+			continue
+		}
+		count += len(field.Names)
+	}
+	return count > 1
 }
 
 func matchPropField(fields []parser.Param, tag string) (parser.Param, bool, error) {

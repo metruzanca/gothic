@@ -51,6 +51,10 @@ type Model struct {
 }
 
 func NewModel(data TodoData) Model {
+	return NewModelAt(data, "/")
+}
+
+func NewModelAt(data TodoData, path string) Model {
 	return Model{
 		Todos:          data.Todos,
 		ActiveCount:    data.ActiveCount,
@@ -59,7 +63,18 @@ func NewModel(data TodoData) Model {
 		HasCompleted:   data.HasCompleted,
 		AllDone:        data.AllDone,
 		ItemWord:       data.ItemWord,
-		Filter:         "all",
+		Filter:         filterForPath(path),
+	}
+}
+
+func filterForPath(path string) string {
+	switch path {
+	case "/active":
+		return "active"
+	case "/completed":
+		return "completed"
+	default:
+		return "all"
 	}
 }
 
@@ -78,7 +93,11 @@ type SaveEdit struct{ ID int64 }
 type CancelEdit struct{ ID int64 }
 type TodosLoaded struct{ Data TodoData }
 type TodoFailed struct{ Message string }
-type HashChanged struct{ Hash string }
+type LocationChanged struct {
+	Path  string
+	Query string
+	Hash  string
+}
 
 type Procedures interface {
 	gothic.RPCService
@@ -97,14 +116,8 @@ func (m Model) Init() gothic.Cmd {
 
 func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
-	case HashChanged:
-		m.Filter = "all"
-		if msg.Hash == "#/active" {
-			m.Filter = "active"
-		}
-		if msg.Hash == "#/completed" {
-			m.Filter = "completed"
-		}
+	case LocationChanged:
+		m.Filter = filterForPath(msg.Path)
 	case DraftChanged:
 		m.Draft = msg.Text
 	case AddClicked:
@@ -668,7 +681,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-5=\"selected\" href=\"#/\""); err != nil {
+		if err := write("<a data-gothic-class-5=\"selected\" href=\"/\" data-gothic-on=\"10\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -697,7 +710,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-6=\"selected\" href=\"#/active\""); err != nil {
+		if err := write("<a data-gothic-class-6=\"selected\" href=\"/active\" data-gothic-on=\"11\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -726,7 +739,7 @@ func App(model Model) gothic.Component {
 		if err := write("<li>"); err != nil {
 			return err
 		}
-		if err := write("<a data-gothic-class-7=\"selected\" href=\"#/completed\""); err != nil {
+		if err := write("<a data-gothic-class-7=\"selected\" href=\"/completed\" data-gothic-on=\"12\""); err != nil {
 			return err
 		}
 		if err := write(" class=\""); err != nil {
@@ -755,7 +768,7 @@ func App(model Model) gothic.Component {
 		if err := write("</ul>"); err != nil {
 			return err
 		}
-		if err := write("<button data-gothic-class-8=\"hidden\" data-gothic-on=\"10\""); err != nil {
+		if err := write("<button data-gothic-class-8=\"hidden\" data-gothic-on=\"13\""); err != nil {
 			return err
 		}
 		if err := write(" class=\"clear-completed"); err != nil {

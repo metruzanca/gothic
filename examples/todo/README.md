@@ -36,7 +36,7 @@ TodoMVC CSS is vendored in `style.css`.
   toggles.
 - `focus={ editing }` for inline editing.
 - `onenter` and `onescape` key shortcuts.
-- Hash routing through a `HashChanged` message.
+- Path-based routing through `LocationChanged` and `route` links.
 
 ## Behavior
 

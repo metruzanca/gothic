@@ -119,11 +119,10 @@ The ping/pong proof of concept runs end to end.
 - Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions bubble to the App.
 - Components unmount when their branch or list item leaves, so state resets on remount.
 - Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
-- Components can seed their initial state from props with an optional `New<Model>(props)` constructor.
+- Components seed their initial state from props through `PropsChanged{Initial: true}`.
 - `Update` and commands support indexing, two-index slicing, map literals, `len`, `delete`, compound assignment, `++`/`--`, range loops, and non-type switch statements.
 - `gothic.Batch` and `gothic.Sequence` compose commands.
 - Path patterns and parameters work through the `route` package on the server and in the browser.
-- Route tables use `route.Resolve` and `route.Join` on both sides.
 - The virtualized list example keeps 12 rows in the DOM for a 5,000 row model using the headless `virtual` package and `dom.Px` spacers.
 - The UI kit ships `VirtualList`, a virtual component that takes an app-defined one-parameter row view, supports responsive viewport measurement, and handles variable row heights.
 - Components run their own commands and are destroyed on unmount.

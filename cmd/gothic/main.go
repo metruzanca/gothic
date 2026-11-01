@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
@@ -437,16 +436,6 @@ func statefulProps(t *viewparser.Template, messages map[string][]goapp.Field) (s
 	return p.Type, props, children, nil
 }
 
-func componentConstructor(commands map[string]*ast.FuncDecl, modelType string) (string, bool) {
-	name := "New" + modelType
-	fn, ok := commands[name]
-	if !ok {
-		return "", false
-	}
-	takesProps := fn.Type.Params != nil && len(fn.Type.Params.List) > 0
-	return name, takesProps
-}
-
 func buildStateful(s *source, views []*viewparser.Template, registry viewparser.ComponentSet) ([]*generator.Stateful, error) {
 	components := make([]*generator.Stateful, 0, len(views))
 	for _, t := range views {
@@ -489,26 +478,23 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 		if err != nil {
 			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
 		}
-		constructor, constructorTakesProps := componentConstructor(s.app.Commands, modelType)
 		name := t.Name
 		components = append(components, &generator.Stateful{
-			Name:                  name,
-			GoName:                "__gothic" + viewparserName(name) + "Component",
-			ViewName:              "__gothic" + viewparserName(name) + "View",
-			MountFunc:             "mount" + viewparserName(name),
-			CreateFunc:            "create" + viewparserName(name),
-			ModelType:             modelType,
-			ModelJSON:             modelJSON,
-			Constructor:           constructor,
-			ConstructorTakesProps: constructorTakesProps,
-			PropsType:             propsType,
-			Props:                 props,
-			View:                  expanded,
-			App:                   app,
-			Listable:              true,
-			Children:              children,
-			Slot:                  hasChildren,
-			ModuleURL:             generator.ComponentsModuleURL(s.base),
+			Name:       name,
+			GoName:     "__gothic" + viewparserName(name) + "Component",
+			ViewName:   "__gothic" + viewparserName(name) + "View",
+			MountFunc:  "mount" + viewparserName(name),
+			CreateFunc: "create" + viewparserName(name),
+			ModelType:  modelType,
+			ModelJSON:  modelJSON,
+			PropsType:  propsType,
+			Props:      props,
+			View:       expanded,
+			App:        app,
+			Listable:   true,
+			Children:   children,
+			Slot:       hasChildren,
+			ModuleURL:  generator.ComponentsModuleURL(s.base),
 		})
 	}
 	return components, nil
@@ -684,24 +670,21 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			return 0, 0, fmt.Errorf("library component %s root must be an element", t.Name)
 		}
 		name := t.Name
-		constructor, constructorTakesProps := componentConstructor(sv.app.Commands, t.ParamList[0].Type)
 		stateful = append(stateful, &generator.Stateful{
-			Name:                  name,
-			GoName:                name,
-			ViewName:              "__gothic" + viewparserName(name) + "View",
-			MountFunc:             "mount" + viewparserName(name),
-			CreateFunc:            "create" + viewparserName(name),
-			ModelType:             t.ParamList[0].Type,
-			ModelJSON:             modelJSON,
-			Constructor:           constructor,
-			ConstructorTakesProps: constructorTakesProps,
-			PropsType:             propsType,
-			Props:                 props,
-			View:                  expanded,
-			App:                   sv.app.ComponentApp(t.ParamList[0].Type),
-			Listable:              true,
-			Children:              children,
-			ModuleURL:             cfg.ModuleURL,
+			Name:       name,
+			GoName:     name,
+			ViewName:   "__gothic" + viewparserName(name) + "View",
+			MountFunc:  "mount" + viewparserName(name),
+			CreateFunc: "create" + viewparserName(name),
+			ModelType:  t.ParamList[0].Type,
+			ModelJSON:  modelJSON,
+			PropsType:  propsType,
+			Props:      props,
+			View:       expanded,
+			App:        sv.app.ComponentApp(t.ParamList[0].Type),
+			Listable:   true,
+			Children:   children,
+			ModuleURL:  cfg.ModuleURL,
 		})
 	}
 
