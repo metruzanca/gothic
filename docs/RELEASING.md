@@ -65,14 +65,11 @@ go mod tidy
 Repeat in any example module that requires core if you want the workspace to
 build against the new core release.
 
-2. Remove local workspace files from the release commit. They point at `..` and
-   are only for development:
+2. Remove the local UI workspace file from the release commit. It points at
+   `..` and is only for development:
 
 ```sh
 git rm ui/go.work
-git rm browser/go.work
-git rm virtual/go.work
-git rm session/go.work
 ```
 
 The `auth` module uses local `replace` directives for development. Before
