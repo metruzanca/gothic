@@ -74,6 +74,52 @@ Disable them with `WithoutDefaultMiddleware`, or add your own with
 must honor the context to observe it. `WithTrustedProxies` is required before
 `X-Forwarded-For` and `X-Forwarded-Host` are believed.
 
+## Health checks
+
+Liveness and readiness endpoints are on by default:
+
+| Path | Purpose |
+|---|---|
+| `/healthz` | Liveness. Returns `{"status":"ok"}` with no dependencies. |
+| `/readyz` | Readiness. Returns 200, or 503 when the check fails. |
+
+```go
+s := gothic.NewServer(
+	gothic.WithReadiness("/readyz", func(ctx context.Context) error {
+		return db.PingContext(ctx)
+	}),
+)
+```
+
+The readiness check receives a request-scoped context with a five second
+deadline. Failure returns `{"status":"unavailable"}` and logs the cause. Both
+endpoints support `HEAD`, send `Cache-Control: no-store`, and are handled before
+the middleware chain, so auth, CSRF, and access logging do not apply.
+
+Change the paths with `WithHealth("/health")` and
+`WithReadiness("/ready", check)`. An empty path disables one endpoint, and
+`WithoutHealth()` disables both.
+
+## Dev mode
+
+`WithDevMode` enables development-only behavior and records the project
+directory:
+
+```go
+s := gothic.NewServer(gothic.WithDevMode("."))
+```
+
+In dev mode, Chrome DevTools workspace discovery is answered at
+`/.well-known/appspecific/com.chrome.devtools.json` with the absolute project
+root and a stable UUID. DevTools can then map the served site to local files.
+
+When dev mode is off, the same path returns a JSON 404 instead of falling
+through to the app catch-all, so the probe does not receive HTML. The response
+is handled before middleware and is not access logged.
+
+Do not enable dev mode in production: the response contains an absolute
+filesystem path.
+
 ## Routes
 
 `Server` wraps the common chi methods:

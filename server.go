@@ -55,6 +55,13 @@ type Server struct {
 	extraMiddleware      []func(http.Handler) http.Handler
 	csrf                 *CSRF
 
+	healthPath string
+	readyPath  string
+	readyCheck func(context.Context) error
+
+	devMode    bool
+	projectDir string
+
 	chainMu    sync.Mutex
 	middleware []func(http.Handler) http.Handler
 	chain      http.Handler
@@ -86,6 +93,8 @@ func NewServer(opts ...Option) *Server {
 		idleTimeout:          120 * time.Second,
 		shutdownTimeout:      15 * time.Second,
 		useDefaultMiddleware: true,
+		healthPath:           DefaultHealthPath,
+		readyPath:            DefaultReadyPath,
 	}
 	for _, opt := range opts {
 		if opt != nil {
@@ -274,6 +283,9 @@ func (s *Server) RegisterProcedure(name string, fn ProcedureFunc) {
 
 // ServeHTTP implements http.Handler.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if s.serveDevTools(w, r) || s.serveHealth(w, r) {
+		return
+	}
 	s.handler().ServeHTTP(w, r)
 }
 

@@ -132,6 +132,8 @@ the same shape.
 | `error.go` | Typed HTTP errors with status, code, and fields |
 | `http.go` | JSON helpers and error responses |
 | `form.go` | Form parsing and field validation |
+| `health.go` | Liveness and readiness endpoints |
+| `devtools.go` | Dev-only Chrome DevTools workspace discovery |
 | `csrf.go` | Signed double-submit CSRF protection |
 | `session/` | Server sessions, signed cookies, and memory or SQL stores |
 | `auth/` | argon2id passwords, session login, and user middleware |

@@ -198,6 +198,8 @@ from the server and reconciled. There is no virtual DOM.
 | `error.go` | Typed HTTP errors with status, code, and fields. |
 | `http.go` | JSON helpers and error responses. |
 | `form.go` | Form parsing and field validation. |
+| `health.go` | Liveness and readiness endpoints. |
+| `devtools.go` | Dev-only Chrome DevTools workspace discovery. |
 | `csrf.go` | Signed double-submit CSRF protection. |
 | `session/` | Server sessions, signed cookies, and memory or SQL stores. |
 | `auth/` | argon2id passwords, session login, and user middleware. |
@@ -290,7 +292,11 @@ Supported now:
 - opt-in CSRF protection with header and form tokens,
 - argon2id password hashes, session-backed login and logout, and user
   middleware,
-- form parsing and field validation that reuse the error envelope.
+- form parsing and field validation that reuse the error envelope,
+- liveness and readiness endpoints with configurable paths and readiness
+  checks,
+- dev-only Chrome DevTools workspace discovery that returns JSON when
+  disabled.
 
 Not supported yet:
 
