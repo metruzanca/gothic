@@ -123,7 +123,19 @@ the same shape.
 | `client/runtime/` | Embedded runtime helpers for text, lists, branches, attrs, events, and RPC |
 | `cmd/gothic/` | The `gothic generate` CLI |
 | `gothic.go` | `Model`, `Msg`, `Cmd`, `PropsChanged`, `Children`, and the app registry |
-| `server.go` | chi server, procedures, modules, and `MountApp` |
+| `server.go` | chi server, procedures, the global middleware chain, and `MountApp` |
+| `scope.go` | Scoped apps, base paths, and route prefixing |
+| `middleware.go` | Request IDs, panic recovery, access logs, and trusted proxies |
+| `serve.go` | `http.Server` timeouts, TLS, and graceful shutdown |
+| `option.go` | Server options |
+| `static.go` | Embedded assets and static file trees |
+| `error.go` | Typed HTTP errors with status, code, and fields |
+| `http.go` | JSON helpers and error responses |
+| `form.go` | Form parsing and field validation |
+| `csrf.go` | Signed double-submit CSRF protection |
+| `session/` | Server sessions, signed cookies, and memory or SQL stores |
+| `auth/` | argon2id passwords, session login, and user middleware |
+| `testutil.go` | `NewTestServer` for app tests |
 | `document.go` | HTML document, metadata, icons, stylesheets, and previews |
 | `route/` | Path pattern matching shared by the server and client |
 | `browser/` | Curated browser APIs, shipped as its own module |

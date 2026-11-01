@@ -15,8 +15,8 @@ It prioritizes simplicity and productivity.
 
 The syntax is under active development and subject to change. See the
 [guestbook](examples/guestbook), [TodoMVC](examples/todo),
-[Gothicbook](examples/gothicbook), [router](examples/router),
-[nested components](examples/nested), and the
+[accounts](examples/accounts), [Gothicbook](examples/gothicbook),
+[router](examples/router), [nested components](examples/nested), and the
 [virtualized list](virtual/example) for working code.
 ```templ
 // app.gth

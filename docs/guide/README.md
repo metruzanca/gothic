@@ -14,6 +14,7 @@ one and ends with a working example.
 5. [Browser interop](05-browser.md)
 6. [Long lists](06-long-lists.md)
 7. [Architecture](07-architecture.md)
+8. [The server](08-server.md)
 
 If you prefer to learn by reading code, the `examples/` directory has working
 apps for every feature in this guide. If you want the full grammar in one place,

@@ -189,11 +189,24 @@ from the server and reconciled. There is no virtual DOM.
 | `route/` | Path pattern matching shared by the server and client. |
 | `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
 | `virtual/` | Headless list windowing, shipped as its own module. |
-| `server.go` | chi server, procedures, modules, and `MountApp`. |
+| `server.go` | chi server, procedures, the global middleware chain, and `MountApp`. |
+| `scope.go` | Scoped apps, base paths, and route prefixing. |
+| `middleware.go` | Request IDs, panic recovery, access logs, and trusted proxies. |
+| `serve.go` | `http.Server` timeouts, TLS, and graceful shutdown. |
+| `option.go` | Server options. |
+| `static.go` | Embedded assets and static file trees. |
+| `error.go` | Typed HTTP errors with status, code, and fields. |
+| `http.go` | JSON helpers and error responses. |
+| `form.go` | Form parsing and field validation. |
+| `csrf.go` | Signed double-submit CSRF protection. |
+| `session/` | Server sessions, signed cookies, and memory or SQL stores. |
+| `auth/` | argon2id passwords, session login, and user middleware. |
+| `testutil.go` | `NewTestServer` for app tests. |
 | `document.go` | HTML document, metadata, icons, stylesheets, and previews. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
+| `examples/accounts/` | Sessions, CSRF, and login with password hashes. |
 | `ui/` | Precompiled, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
 | `examples/router/` | Path-based URL state, route links, and browser interop. |
@@ -260,7 +273,24 @@ Supported now:
 - error handling through messages,
 - procedure contracts through an interface embedding `gothic.RPCService`,
 - a generated client-only Go stub for each procedure,
-- source-context parse and compiler errors with hints.
+- source-context parse and compiler errors with hints,
+- chi routes for arbitrary HTTP verbs, plus path parameters and sub-routers,
+- global middleware that covers app routes, the runtime, modules, and
+  procedures,
+- request IDs, panic recovery, access logs, and trusted proxy handling,
+- server timeouts, TLS, and graceful shutdown with signal handling,
+- embedded assets and static file trees with ETag, range, and cache headers,
+- typed procedure errors with status, code, and field messages,
+- JSON and error helpers for REST handlers,
+- a test server with a procedure call helper,
+- scoped apps with isolated procedures, routes, documents, and middleware
+  below a prefix,
+- a base path that generated modules, the runtime, and RPC calls honor,
+- server-side sessions with signed cookies and memory or SQL stores,
+- opt-in CSRF protection with header and form tokens,
+- argon2id password hashes, session-backed login and logout, and user
+  middleware,
+- form parsing and field validation that reuse the error envelope.
 
 Not supported yet:
 
@@ -277,7 +307,7 @@ Not supported yet:
 - typed procedure argument validation,
 - arbitrary browser globals outside the `browser` module,
 - wildcard or optional route segments and reverse URL building,
-- CSRF, auth, and the no-JS form fallback,
+- a no-JS fallback for MVU apps,
 - `gothic:json` manifests and content hashing,
 - formatter, LSP, and source maps,
 
@@ -287,7 +317,7 @@ These will be planned in detail after the proof of concept is evaluated:
 
 1. Named slots, fallback content, and slotted components in branches or lists.
 2. Wildcard or optional route segments and reverse URL building.
-3. Typed procedure argument validation and the no-JS fallback.
+3. Typed procedure argument validation and a no-JS fallback for MVU apps.
 4. `go/packages` for type information and stronger validation.
 5. Manifest, content hashing, and production serving.
 6. Formatter, LSP, and source maps.
