@@ -201,10 +201,11 @@ component, so its state resets when it is created again.
 
 #### Props and Init
 
-`Init` and `Update` may take the props struct:
+`Update` may take the props struct. `Init` takes no parameters and runs after
+the initial `PropsChanged`:
 
 ```go
-func (m TabsModel) Init(props TabsProps) gothic.Cmd
+func (m TabsModel) Init() gothic.Cmd
 func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd)
 ```
 
@@ -460,9 +461,9 @@ if params != nil {
 }
 ```
 
-`route.Params` returns `map[string]string` or `nil`. `route.Match` returns only
-the boolean. Patterns are slash-separated, `:` captures one non-empty segment,
-and the pattern and path must have the same number of segments.
+`route.Params` returns `map[string]string` or `nil`. Patterns are
+slash-separated, `:` captures one non-empty segment, and the pattern and path
+must have the same number of segments.
 
 Programmatic navigation comes from the `browser` module:
 
@@ -708,7 +709,7 @@ Supported:
 - `Batch` and `Sequence`,
 - procedure arguments,
 - path, query, and hash state through `LocationChanged`,
-- `route` links, `route.Params`, and `route.Match`,
+- `route` links and `route.Params`,
 - request-scoped models and catch-all mounting,
 - documents, metadata, icons, stylesheets, and previews,
 - curated browser interop through `browser`,

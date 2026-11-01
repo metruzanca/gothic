@@ -117,7 +117,7 @@ Every example runs end to end.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
 - Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions go straight to the App.
 - Components unmount when their branch or list item leaves, so state resets on remount.
-- Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
+- Components use props structs, read props in `Update`, react to `PropsChanged`, and support optional pointer fields.
 - Components seed their initial state from props through `PropsChanged{Initial: true}`.
 - `Update` and commands support indexing, two-index slicing, map literals, `len`, `delete`, compound assignment, `++`/`--`, range loops, and non-type switch statements.
 - `gothic.Batch` and `gothic.Sequence` compose commands.
@@ -131,6 +131,7 @@ Every example runs end to end.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - A curated `browser` module covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
+- Optional `session` and `auth` modules cover signed cookies and argon2id login; CSRF protection stays in core.
 - `LocationChanged` and `route` links provide path-based URL state with pushState, back, and forward.
 - The router example renders deep links on the server and navigates on the client without a reload.
 - Parse and compiler errors show the file, line, source excerpt, caret, and a hint.

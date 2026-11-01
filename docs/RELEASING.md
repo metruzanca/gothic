@@ -1,6 +1,6 @@
 # Releasing
 
-Release tags are the published versions. Gothic is split into four Go modules
+Release tags are the published versions. Gothic is split into six Go modules
 with independent versions:
 
 | Module | Path | Tag |
@@ -9,6 +9,8 @@ with independent versions:
 | UI kit | `github.com/metruzanca/gothic/ui` | `ui/vX.Y.Z` |
 | Browser | `github.com/metruzanca/gothic/browser` | `browser/vX.Y.Z` |
 | Virtual | `github.com/metruzanca/gothic/virtual` | `virtual/vX.Y.Z` |
+| Sessions | `github.com/metruzanca/gothic/session` | `session/vX.Y.Z` |
+| Auth | `github.com/metruzanca/gothic/auth` | `auth/vX.Y.Z` |
 
 Only release the modules that changed. Tags are never moved or deleted. If a
 release is wrong, publish a new patch version.
@@ -20,8 +22,10 @@ the tag, so the tagged commits are reachable from the default branch.
 ## Dependency order
 
 - `ui` requires a tagged core version.
-- `browser` and `virtual` have no core dependency.
+- `browser`, `virtual`, and `session` have no core dependency.
+- `auth` requires core and `session`.
 - `virtual/example` requires core and `virtual`.
+- `examples/accounts` requires core, `session`, and `auth`.
 - `examples/gothicbook` requires core, `ui`, and `browser`.
 - `examples/router` requires core and `browser`.
 
@@ -46,7 +50,8 @@ semantic version understood by Go, such as `v1.2.3` or `v0.4.0`.
 ## Submodule release
 
 Each submodule tag uses the module directory as a prefix: `ui/vX.Y.Z`,
-`browser/vX.Y.Z`, or `virtual/vX.Y.Z`, never a plain `vX.Y.Z`.
+`browser/vX.Y.Z`, `virtual/vX.Y.Z`, `session/vX.Y.Z`, or `auth/vX.Y.Z`,
+never a plain `vX.Y.Z`.
 
 1. Bump the core requirement when the submodule depends on core:
 
@@ -66,6 +71,20 @@ build against the new core release.
 git rm ui/go.work
 git rm browser/go.work
 git rm virtual/go.work
+git rm session/go.work
+```
+
+The `auth` module uses local `replace` directives for development. Before
+tagging it, set the released core and session versions and remove the
+directives:
+
+```sh
+cd auth
+go mod edit -dropreplace=github.com/metruzanca/gothic
+go mod edit -dropreplace=github.com/metruzanca/gothic/session
+go mod edit -require=github.com/metruzanca/gothic@vA.B.C
+go mod edit -require=github.com/metruzanca/gothic/session@vA.B.C
+go mod tidy
 ```
 
 3. Run the module checks:
@@ -75,6 +94,9 @@ git rm virtual/go.work
 (cd browser && go test ./...)
 (cd virtual && go test ./...)
 (cd virtual/example && go test ./...)
+(cd session && go test ./...)
+(cd auth && go test ./...)
+(cd examples/accounts && go test ./...)
 (cd examples/gothicbook && go test ./...)
 (cd examples/router && go test ./...)
 ```
@@ -100,7 +122,9 @@ go get github.com/metruzanca/gothic@vX.Y.Z
 go get github.com/metruzanca/gothic/ui@vX.Y.Z
 go get github.com/metruzanca/gothic/browser@vX.Y.Z
 go get github.com/metruzanca/gothic/virtual@vX.Y.Z
-go list -m github.com/metruzanca/gothic github.com/metruzanca/gothic/ui github.com/metruzanca/gothic/browser github.com/metruzanca/gothic/virtual
+go get github.com/metruzanca/gothic/session@vX.Y.Z
+go get github.com/metruzanca/gothic/auth@vX.Y.Z
+go list -m github.com/metruzanca/gothic github.com/metruzanca/gothic/ui github.com/metruzanca/gothic/browser github.com/metruzanca/gothic/virtual github.com/metruzanca/gothic/session github.com/metruzanca/gothic/auth
 ```
 
 Module proxies cache repository refs for up to about 30 minutes. A newly pushed

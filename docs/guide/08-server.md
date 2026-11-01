@@ -1,8 +1,8 @@
 # 08 The server
 
 Gothic ships an HTTP server built on chi. You get procedures for your app, and
-you also get ordinary routes, middleware, static files, and graceful shutdown
-without adding a framework on top.
+you also get ordinary routes, middleware, assets, and graceful shutdown without
+adding a framework on top.
 
 ## Creating a server
 
@@ -25,6 +25,7 @@ s := gothic.NewServer(
 ```
 
 `WithAddr` is the address `Run` uses and the fallback for `ListenAndServe("")`.
+`SetDocument` sets the document defaults shared by mounted apps.
 
 ## Lifecycle
 
@@ -69,76 +70,63 @@ framework paths. Middleware added through `s.Router()` covers only routes
 registered through that router, so prefer `Use` for auth and logging.
 
 Defaults are a request ID, a recoverer, and an access log through `slog`.
-Disable them with `WithoutDefaultMiddleware`, or add your own with
-`WithMiddleware`. `WithRequestTimeout` bounds the request context, so handlers
-must honor the context to observe it. `WithTrustedProxies` is required before
-`X-Forwarded-For` and `X-Forwarded-Host` are believed.
+Disable them with `WithoutDefaultMiddleware`. `WithRequestTimeout` bounds the
+request context, so handlers must honor the context to observe it.
+`WithTrustedProxies` is required before `X-Forwarded-For` and
+`X-Forwarded-Host` are believed.
 
 ## Health checks
 
-Liveness and readiness endpoints are on by default:
+Health checks are opt-in. Add the endpoints you want:
+
+```go
+s := gothic.NewServer(
+	gothic.WithHealth(gothic.HealthPath),
+	gothic.WithReadiness(gothic.ReadyPath, func(ctx context.Context) error {
+		return db.PingContext(ctx)
+	}),
+)
+```
 
 | Path | Purpose |
 |---|---|
 | `/healthz` | Liveness. Returns `{"status":"ok"}` with no dependencies. |
 | `/readyz` | Readiness. Returns 200, or 503 when the check fails. |
 
-```go
-s := gothic.NewServer(
-	gothic.WithReadiness("/readyz", func(ctx context.Context) error {
-		return db.PingContext(ctx)
-	}),
-)
-```
-
 The readiness check receives a request-scoped context with a five second
 deadline. Failure returns `{"status":"unavailable"}` and logs the cause. Both
 endpoints support `HEAD`, send `Cache-Control: no-store`, and are handled before
 the middleware chain, so auth, CSRF, and access logging do not apply.
 
-Change the paths with `WithHealth("/health")` and
-`WithReadiness("/ready", check)`. An empty path disables one endpoint, and
-`WithoutHealth()` disables both.
-
-## Dev mode
-
-`WithDevMode` enables development-only behavior and records the project
-directory:
-
-```go
-s := gothic.NewServer(gothic.WithDevMode("."))
-```
-
-In dev mode, Chrome DevTools workspace discovery is answered at
-`/.well-known/appspecific/com.chrome.devtools.json` with the absolute project
-root and a stable UUID. DevTools can then map the served site to local files.
-
-When dev mode is off, the same path returns a JSON 404 instead of falling
-through to the app catch-all, so the probe does not receive HTML. The response
-is handled before middleware and is not access logged.
-
-Do not enable dev mode in production: the response contains an absolute
-filesystem path.
+Change the paths with `WithHealth` and `WithReadiness`. An empty path disables
+one endpoint.
 
 ## Routes
 
-`Server` wraps the common chi methods:
+`Get`, `Post`, and `Handle` cover the common cases:
 
 ```go
 s.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 	_ = gothic.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 })
 
-s.Route("/api/items", func(r chi.Router) {
+s.Handle("/hooks/", webhookHandler)
+```
+
+For anything else, use the chi router directly:
+
+```go
+s.Router().Route("/api/items", func(r chi.Router) {
 	r.Get("/{id}", getItem)
 	r.Delete("/{id}", deleteItem)
 })
+
+s.Router().NotFound(notFound)
 ```
 
-`Put`, `Patch`, `Delete`, `Head`, `Options`, `Method`, `Mount`, `Handle`,
-`Route`, `With`, `Group`, `NotFound`, and `MethodNotAllowed` are available.
-Path parameters come from `chi.URLParam`. Use `Router()` when you need the full
-router.
+Path parameters come from `chi.URLParam`. `Router` also exposes `Group`,
+`With`, `Mount`, and the rest of chi. Middleware added through the router covers
+only routes registered through it.
 
 A mounted app installs a catch-all below its pattern for deep links. Register
 API routes under a more specific prefix so they are matched first.
@@ -215,7 +203,7 @@ func createItem(w http.ResponseWriter, r *http.Request) {
 trailing data, and returns an `*Error`. `DecodeJSONLimit` takes a custom limit.
 `WriteError` negotiates JSON or plain text from the `Accept` header.
 
-## Static assets
+## Assets
 
 `Asset` serves one in-memory file with a content type, an ETag, and conditional
 requests:
@@ -227,31 +215,22 @@ var styleCSS []byte
 s.Asset("/style.css", styleCSS)
 ```
 
-`Static` serves a filesystem below a prefix, and `StaticDir` does the same for a
-directory on disk:
-
-```go
-//go:embed public
-var public embed.FS
-
-assets, _ := fs.Sub(public, "public")
-s.Static("/assets", assets)
-```
-
-Both set `Cache-Control: public, max-age=3600` by default. Use
-`WithImmutableAssets()` for content-addressed files whose names change when the
-content changes. Range requests and `HEAD` work, and files served through
-`Static` also get `Last-Modified`.
+Assets are cached for an hour by default and support `GET`, `HEAD`, and range
+requests. For directory serving, use `http.FileServerFS` with `s.Handle` or
+`s.Router()`.
 
 ## Testing
 
-`NewTestServer` starts the server on a random port and closes it with the test:
+`gothicest.NewTestServer` starts the server on a random port and closes it with
+the test:
 
 ```go
+import "github.com/metruzanca/gothic/gothicest"
+
 func TestCreate(t *testing.T) {
 	s := gothic.NewServer(gothic.WithLogger(slog.New(slog.DiscardHandler)))
 	s.RegisterProcedure("Create", create)
-	ts := gothic.NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	body, err := ts.Call("Create", "write docs")
 	if err != nil {
@@ -297,42 +276,6 @@ module URL, and custom rendering can call `gothic.BasePath(ctx)` to do the same.
 Scopes can nest. `s.Scope("/api").Scope("/v1")` serves under `/api/v1`, and the
 longest matching prefix wins.
 
-`Router`, `With`, `Group`, `NotFound`, and `MethodNotAllowed` operate on the
-shared chi router, so patterns registered through them are absolute.
-
-## Sessions
-
-`gothic/session` keeps state on the server and stores only a signed identifier
-in an `HttpOnly` cookie:
-
-```go
-store := session.NewMemoryStore() // lost on restart
-sessions := session.NewManager(store,
-	session.WithSecret(secret),
-	session.WithSecure(true),
-	session.WithSameSite(http.SameSiteLaxMode),
-)
-s.Use(sessions.Middleware)
-```
-
-```go
-sess := session.Get(r)
-sess.Set("theme", "dark")
-theme, ok := session.Value[string](sess, "theme")
-sess.Regenerate() // after a privilege change
-sess.Destroy()    // at logout
-```
-
-The defaults are a seven day lifetime, `Path=/`, `HttpOnly`, and
-`SameSite=Lax`. `session.NewSQLStore(db)` stores sessions in a
-`gothic_sessions` table in an existing database. Sessions are written before
-the first response byte, so cookies survive redirects and early writes.
-Rotating the secret invalidates every cookie.
-
-Values are JSON round-tripped, so prefer strings, booleans, and plain structs.
-Numbers decode as `float64`. Stored sessions have a fixed lifetime and are not
-extended on each request.
-
 ## CSRF
 
 `WithCSRF` enables signed double-submit protection:
@@ -354,48 +297,24 @@ s := gothic.NewServer(
 )
 ```
 
-CSRF is opt-in and independent of sessions, so it also protects the login form
+CSRF is opt-in and independent of sessions, so it also protects a login form
 before a session exists. Server-to-server clients need the token too, or an
 exempt path.
 
-## Users and forms
+## Optional modules
 
-`gothic/auth` connects users to sessions and hashes passwords with argon2id:
+These ship as separate Go modules:
 
-```go
-users, err := auth.NewSQLStore(db)
-manager := auth.NewManager(sessions, users)
+- [`session`](../../session/README.md): server sessions with signed cookies and
+  memory or SQL stores.
+- [`auth`](../../auth/README.md): argon2id passwords, session login, and user
+  middleware.
+- [`browser`](05-browser.md): curated browser APIs.
+- [`virtual`](06-long-lists.md): long-list windowing.
+- [`ui`](../../ui/README.md): the component kit.
 
-s.Use(manager.Middleware)
-s.Handle("/private", manager.RequireUser(private))
-
-_, err = manager.CreateUser(ctx, "ada@example.com", "Ada", password)
-user, err := manager.Login(r, email, password) // regenerates the session
-err = manager.Logout(r)
-```
-
-`RequireUser` returns 401. `RequireUserRedirect("/login")` sends browsers to a
-sign-in page with a `next` query parameter. `Login` returns
-`auth.ErrInvalidCredentials` for bad credentials and performs the same work for
-unknown emails, so response time does not reveal whether an account exists.
-
-For no-JavaScript forms, `ParseForm` and field validation map to the same error
-envelope as procedures:
-
-```go
-form, err := gothic.ParseForm(w, r)
-if err != nil {
-	gothic.WriteError(w, r, err)
-	return
-}
-email := form.Required("email", "Enter your email.")
-if err := form.Err(); err != nil {
-	renderLogin(w, r, email, err) // err has Fields
-	return
-}
-```
-
-See [examples/accounts](../../examples/accounts) for a complete login flow.
+Forms use standard `net/http` parsing for now. A dedicated form package is
+planned.
 
 ## Not included yet
 

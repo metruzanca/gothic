@@ -75,7 +75,7 @@ if params != nil {
 ```
 
 `route.Params` returns `map[string]string`, or `nil` when the path does not
-match. `route.Match(pattern, path)` returns only the boolean.
+match.
 
 Patterns are slash-separated. A segment that starts with `:` captures one
 non-empty segment. The pattern and path must have the same number of segments.

@@ -147,8 +147,9 @@ Early, working proof of concept. Every example above runs end to end: server
 rendering, hydration, the update loop, typed procedures, pure and stateful
 components, conditionals, keyed lists, routing, an installable UI kit, and
 server-rendered documents with OpenGraph metadata. Browser interop ships as the
-separate `browser` module, and long-list windowing as the separate `virtual`
-module. The [guide](docs/guide/01-quickstart.md) covers the whole loop, and
+separate `browser` module, long-list windowing as the separate `virtual` module,
+and sessions and auth as the separate `session` and `auth` modules. The
+[guide](docs/guide/01-quickstart.md) covers the whole loop, and
 [SYNTAX.md](docs/SYNTAX.md) is the full reference.
 
 ## Credits

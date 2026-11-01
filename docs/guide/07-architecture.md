@@ -128,16 +128,14 @@ the same shape.
 | `middleware.go` | Request IDs, panic recovery, access logs, and trusted proxies |
 | `serve.go` | `http.Server` timeouts, TLS, and graceful shutdown |
 | `option.go` | Server options |
-| `static.go` | Embedded assets and static file trees |
+| `asset.go` | Embedded assets with ETags and range support |
 | `error.go` | Typed HTTP errors with status, code, and fields |
 | `http.go` | JSON helpers and error responses |
-| `form.go` | Form parsing and field validation |
-| `health.go` | Liveness and readiness endpoints |
-| `devtools.go` | Dev-only Chrome DevTools workspace discovery |
+| `health.go` | Opt-in liveness and readiness endpoints |
 | `csrf.go` | Signed double-submit CSRF protection |
-| `session/` | Server sessions, signed cookies, and memory or SQL stores |
-| `auth/` | argon2id passwords, session login, and user middleware |
-| `testutil.go` | `NewTestServer` for app tests |
+| `session/` | Server sessions, shipped as its own module |
+| `auth/` | argon2id passwords, session login, and user middleware, shipped as its own module |
+| `gothicest/` | `NewTestServer` for app tests |
 | `document.go` | HTML document, metadata, icons, stylesheets, and previews |
 | `route/` | Path pattern matching shared by the server and client |
 | `browser/` | Curated browser APIs, shipped as its own module |
@@ -176,6 +174,9 @@ Nested modules have their own tests:
 (cd browser && go test ./...)
 (cd virtual && go test ./...)
 (cd virtual/example && go test ./...)
+(cd session && go test ./...)
+(cd auth && go test ./...)
+(cd examples/accounts && go test ./...)
 (cd examples/gothicbook && go test ./...)
 (cd examples/router && go test ./...)
 ```

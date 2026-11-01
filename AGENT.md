@@ -37,6 +37,9 @@ For the nested modules, also run:
 (cd browser && go test ./...)
 (cd virtual && go test ./...)
 (cd virtual/example && go test ./...)
+(cd session && go test ./...)
+(cd auth && go test ./...)
+(cd examples/accounts && go test ./...)
 (cd examples/gothicbook && go test ./...)
 (cd examples/router && go test ./...)
 ```
@@ -54,4 +57,4 @@ the generated files must exist at build time.
 ## Releases
 
 Releases are initiated by the user only. See
-[docs/RELEASING.md](docs/RELEASING.md) for the Gothic and UI release process.
+[docs/RELEASING.md](docs/RELEASING.md) for the module release process.

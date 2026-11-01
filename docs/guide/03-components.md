@@ -207,12 +207,12 @@ func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cm
 - Hydration reads the server-serialized state first.
 - There is no separate constructor.
 
-`Init` may also take the props struct when it needs to start a command from
-prop values:
+`Init` takes no parameters. It runs after the initial `PropsChanged`, so it can
+read the seeded model and return a command from that state:
 
 ```go
-func (m TabsModel) Init(props TabsProps) gothic.Cmd {
-	return nil
+func (m TabsModel) Init() gothic.Cmd {
+	return loadTab(m.Active)
 }
 ```
 

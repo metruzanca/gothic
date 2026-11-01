@@ -194,21 +194,19 @@ from the server and reconciled. There is no virtual DOM.
 | `middleware.go` | Request IDs, panic recovery, access logs, and trusted proxies. |
 | `serve.go` | `http.Server` timeouts, TLS, and graceful shutdown. |
 | `option.go` | Server options. |
-| `static.go` | Embedded assets and static file trees. |
+| `asset.go` | Embedded assets with ETags and range support. |
 | `error.go` | Typed HTTP errors with status, code, and fields. |
 | `http.go` | JSON helpers and error responses. |
-| `form.go` | Form parsing and field validation. |
-| `health.go` | Liveness and readiness endpoints. |
-| `devtools.go` | Dev-only Chrome DevTools workspace discovery. |
+| `health.go` | Opt-in liveness and readiness endpoints. |
 | `csrf.go` | Signed double-submit CSRF protection. |
-| `session/` | Server sessions, signed cookies, and memory or SQL stores. |
-| `auth/` | argon2id passwords, session login, and user middleware. |
-| `testutil.go` | `NewTestServer` for app tests. |
+| `session/` | Server sessions, shipped as its own module. |
+| `auth/` | argon2id passwords, session login, and user middleware, shipped as its own module. |
+| `gothicest/` | `NewTestServer` for app tests. |
 | `document.go` | HTML document, metadata, icons, stylesheets, and previews. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
-| `examples/accounts/` | Sessions, CSRF, and login with password hashes. |
+| `examples/accounts/` | Sessions, CSRF, and login with password hashes, in its own module. |
 | `ui/` | Precompiled, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
 | `examples/router/` | Path-based URL state, route links, and browser interop. |
@@ -227,7 +225,7 @@ Supported now:
 - stateful components with a props struct,
 - named tag props mapped case-insensitively to struct fields,
 - optional pointer props with nil and null semantics,
-- props in component Init and Update,
+- props in component `Update`,
 - compile-time component expansion and nested pure components,
 - children through `gothic.Children` in pure components,
 - stateful components inside children,
@@ -281,22 +279,24 @@ Supported now:
   procedures,
 - request IDs, panic recovery, access logs, and trusted proxy handling,
 - server timeouts, TLS, and graceful shutdown with signal handling,
-- embedded assets and static file trees with ETag, range, and cache headers,
+- embedded assets with ETag, range, and cache headers,
 - typed procedure errors with status, code, and field messages,
 - JSON and error helpers for REST handlers,
 - a test server with a procedure call helper,
 - scoped apps with isolated procedures, routes, documents, and middleware
   below a prefix,
 - a base path that generated modules, the runtime, and RPC calls honor,
-- server-side sessions with signed cookies and memory or SQL stores,
 - opt-in CSRF protection with header and form tokens,
-- argon2id password hashes, session-backed login and logout, and user
-  middleware,
-- form parsing and field validation that reuse the error envelope,
-- liveness and readiness endpoints with configurable paths and readiness
-  checks,
-- dev-only Chrome DevTools workspace discovery that returns JSON when
-  disabled.
+- opt-in liveness and readiness endpoints with configurable paths and
+  readiness checks.
+
+Optional modules:
+
+- `session`: server sessions with signed cookies and memory or SQL stores.
+- `auth`: argon2id passwords, session-backed login, and user middleware.
+- `browser`: curated browser APIs.
+- `virtual`: long-list windowing.
+- `ui`: the component kit.
 
 Not supported yet:
 

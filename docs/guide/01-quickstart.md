@@ -96,6 +96,22 @@ go run .
 Open <http://localhost:8080> and click the button. The count updates without a
 page reload.
 
+### Health checks
+
+Health checks are opt-in. Add them when you deploy:
+
+```go
+s := gothic.NewServer(
+	gothic.WithHealth(gothic.HealthPath),
+	gothic.WithReadiness(gothic.ReadyPath, func(ctx context.Context) error {
+		return nil
+	}),
+)
+```
+
+The readiness check receives a request-scoped context with a five second
+deadline. Leave the options out if you do not want the endpoints.
+
 ## What just happened
 
 Every gothic app follows the same three-part loop:
