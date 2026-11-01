@@ -8,10 +8,11 @@ import (
 	"time"
 )
 
-// Default health endpoint paths.
+// Recommended health endpoint paths. Health checks are opt-in; pass these to
+// WithHealth and WithReadiness to enable them.
 const (
-	DefaultHealthPath = "/healthz"
-	DefaultReadyPath  = "/readyz"
+	HealthPath = "/healthz"
+	ReadyPath  = "/readyz"
 )
 
 const readinessTimeout = 5 * time.Second
@@ -28,15 +29,6 @@ func WithReadiness(path string, check func(context.Context) error) Option {
 	return func(s *Server) {
 		s.readyPath = path
 		s.readyCheck = check
-	}
-}
-
-// WithoutHealth disables the liveness and readiness endpoints.
-func WithoutHealth() Option {
-	return func(s *Server) {
-		s.healthPath = ""
-		s.readyPath = ""
-		s.readyCheck = nil
 	}
 }
 

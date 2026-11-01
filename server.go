@@ -59,9 +59,6 @@ type Server struct {
 	readyPath  string
 	readyCheck func(context.Context) error
 
-	devMode    bool
-	projectDir string
-
 	chainMu    sync.Mutex
 	middleware []func(http.Handler) http.Handler
 	chain      http.Handler
@@ -93,8 +90,6 @@ func NewServer(opts ...Option) *Server {
 		idleTimeout:          120 * time.Second,
 		shutdownTimeout:      15 * time.Second,
 		useDefaultMiddleware: true,
-		healthPath:           DefaultHealthPath,
-		readyPath:            DefaultReadyPath,
 	}
 	for _, opt := range opts {
 		if opt != nil {
@@ -167,71 +162,9 @@ func (s *Server) Post(pattern string, h http.HandlerFunc) {
 	s.mux.Post(s.routePath(pattern), h)
 }
 
-// Put registers a PUT route.
-func (s *Server) Put(pattern string, h http.HandlerFunc) {
-	s.mux.Put(s.routePath(pattern), h)
-}
-
-// Patch registers a PATCH route.
-func (s *Server) Patch(pattern string, h http.HandlerFunc) {
-	s.mux.Patch(s.routePath(pattern), h)
-}
-
-// Delete registers a DELETE route.
-func (s *Server) Delete(pattern string, h http.HandlerFunc) {
-	s.mux.Delete(s.routePath(pattern), h)
-}
-
-// Head registers a HEAD route.
-func (s *Server) Head(pattern string, h http.HandlerFunc) {
-	s.mux.Head(s.routePath(pattern), h)
-}
-
-// Options registers an OPTIONS route.
-func (s *Server) Options(pattern string, h http.HandlerFunc) {
-	s.mux.Options(s.routePath(pattern), h)
-}
-
-// Method registers a handler for an arbitrary HTTP method.
-func (s *Server) Method(method, pattern string, h http.Handler) {
-	s.mux.Method(method, s.routePath(pattern), h)
-}
-
 // Handle registers a handler for a pattern.
 func (s *Server) Handle(pattern string, h http.Handler) {
 	s.mux.Handle(s.routePath(pattern), h)
-}
-
-// Mount mounts a handler below pattern.
-func (s *Server) Mount(pattern string, h http.Handler) {
-	s.mux.Mount(s.routePath(pattern), h)
-}
-
-// Route creates a sub-router below pattern.
-func (s *Server) Route(pattern string, fn func(r chi.Router)) {
-	s.mux.Route(s.routePath(pattern), fn)
-}
-
-// Group creates an inline sub-router for registering routes with shared
-// middleware.
-func (s *Server) Group(fn func(r chi.Router)) {
-	s.mux.Group(fn)
-}
-
-// With returns a router with the given middleware applied to routes
-// registered through it.
-func (s *Server) With(middleware ...func(http.Handler) http.Handler) chi.Router {
-	return s.mux.With(middleware...)
-}
-
-// NotFound sets the handler for unmatched routes.
-func (s *Server) NotFound(h http.HandlerFunc) {
-	s.mux.NotFound(h)
-}
-
-// MethodNotAllowed sets the handler for a matched path with the wrong method.
-func (s *Server) MethodNotAllowed(h http.HandlerFunc) {
-	s.mux.MethodNotAllowed(h)
 }
 
 // MountApp mounts an application at pattern. It renders a full HTML document
@@ -283,7 +216,7 @@ func (s *Server) RegisterProcedure(name string, fn ProcedureFunc) {
 
 // ServeHTTP implements http.Handler.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.serveDevTools(w, r) || s.serveHealth(w, r) {
+	if s.serveHealth(w, r) {
 		return
 	}
 	s.handler().ServeHTTP(w, r)

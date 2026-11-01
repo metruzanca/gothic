@@ -3,7 +3,6 @@ package gothic
 import (
 	"log/slog"
 	"net"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -29,11 +28,6 @@ func WithLogger(logger *slog.Logger) Option {
 		}
 		s.logger = logger
 	}
-}
-
-// WithDefaultDocument sets the document defaults shared by mounted apps.
-func WithDefaultDocument(doc Document) Option {
-	return func(s *Server) { s.doc = doc }
 }
 
 // WithMaxBodyBytes sets the procedure body limit.
@@ -81,14 +75,6 @@ func WithRequestTimeout(d time.Duration) Option {
 		if d > 0 {
 			s.requestTimeout = d
 		}
-	}
-}
-
-// WithMiddleware appends middleware after the defaults and before middleware
-// added later with Use.
-func WithMiddleware(middleware ...func(http.Handler) http.Handler) Option {
-	return func(s *Server) {
-		s.extraMiddleware = append(s.extraMiddleware, middleware...)
 	}
 }
 

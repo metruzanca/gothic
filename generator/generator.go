@@ -41,7 +41,6 @@ type Options struct {
 // Stateful is a stateful component rendered as an island.
 type Stateful struct {
 	Name        string
-	DisplayName string
 	ViewName    string
 	GoName      string
 	MountFunc   string
@@ -52,7 +51,6 @@ type Stateful struct {
 	Props       []parser.Param
 	View        *parser.Template
 	App         *goapp.App
-	Listable    bool
 	External    bool
 	Children    bool
 	Slot        bool
@@ -63,9 +61,6 @@ type Stateful struct {
 
 // ComponentName returns the unqualified name used in DOM attributes.
 func (c *Stateful) ComponentName() string {
-	if c.DisplayName != "" {
-		return c.DisplayName
-	}
 	return c.Name
 }
 

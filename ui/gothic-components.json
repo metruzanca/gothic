@@ -14,8 +14,7 @@
           "name": "Items",
           "type": "[]AccordionItem"
         }
-      ],
-      "listable": true
+      ]
     },
     {
       "name": "Counter",
@@ -28,8 +27,7 @@
           "name": "Label",
           "type": "string"
         }
-      ],
-      "listable": true
+      ]
     },
     {
       "name": "Disclosure",
@@ -42,8 +40,7 @@
           "name": "Item",
           "type": "DisclosureItem"
         }
-      ],
-      "listable": true
+      ]
     },
     {
       "name": "Tabs",
@@ -60,8 +57,7 @@
           "name": "Active",
           "type": "*int"
         }
-      ],
-      "listable": true
+      ]
     }
   ]
 }

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"testing/fstest"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -154,7 +153,7 @@ func asTestError(err error, target **Error) bool {
 
 func TestRouterVerbsAndParams(t *testing.T) {
 	s := NewServer(WithLogger(testLogger()))
-	s.Route("/api/items", func(r chi.Router) {
+	s.Router().Route("/api/items", func(r chi.Router) {
 		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, chi.URLParam(r, "id"))
 		})
@@ -208,46 +207,6 @@ func TestAsset(t *testing.T) {
 	body = ts.Body(res)
 	if res.StatusCode != http.StatusOK || body != "" {
 		t.Fatalf("HEAD = %d %q", res.StatusCode, body)
-	}
-}
-
-func TestStatic(t *testing.T) {
-	s := NewServer(WithLogger(testLogger()))
-	s.Static("/assets", fstest.MapFS{
-		"app.css":        {Data: []byte("body{}")},
-		"img/logo.svg":   {Data: []byte("<svg></svg>")},
-		"nested/file.md": {Data: []byte("# hi")},
-	})
-	ts := NewTestServer(t, s)
-
-	res := ts.Get("/assets/app.css")
-	body := ts.Body(res)
-	if res.StatusCode != http.StatusOK || body != "body{}" {
-		t.Fatalf("GET = %d %q", res.StatusCode, body)
-	}
-	if got := res.Header.Get("Cache-Control"); got != defaultAssetCacheControl {
-		t.Fatalf("cache control = %q", got)
-	}
-
-	res = ts.Get("/assets/")
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("directory = %d", res.StatusCode)
-	}
-	ts.Body(res)
-
-	client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}}
-	res, err := client.Get(ts.URL + "/assets")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ts.Body(res)
-	if res.StatusCode != http.StatusMovedPermanently {
-		t.Fatalf("redirect = %d, want 301", res.StatusCode)
-	}
-	if got := res.Header.Get("Location"); got != "/assets/" {
-		t.Fatalf("location = %q", got)
 	}
 }
 

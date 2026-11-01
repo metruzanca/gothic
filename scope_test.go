@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"testing/fstest"
 )
 
 type baseModel struct{}
@@ -88,7 +87,6 @@ func TestScopeRoutesAndAssets(t *testing.T) {
 		_, _ = io.WriteString(w, "users")
 	})
 	admin.Asset("/app.css", []byte("body{}"))
-	admin.Static("/files", fstest.MapFS{"a.txt": {Data: []byte("a")}})
 	ts := NewTestServer(t, s)
 
 	if body := ts.Body(ts.Get("/admin/users")); body != "users" {
@@ -96,9 +94,6 @@ func TestScopeRoutesAndAssets(t *testing.T) {
 	}
 	if body := ts.Body(ts.Get("/admin/app.css")); body != "body{}" {
 		t.Fatalf("GET asset = %q", body)
-	}
-	if body := ts.Body(ts.Get("/admin/files/a.txt")); body != "a" {
-		t.Fatalf("GET static = %q", body)
 	}
 	if res := ts.Get("/users"); res.StatusCode != http.StatusNotFound {
 		body := ts.Body(res)

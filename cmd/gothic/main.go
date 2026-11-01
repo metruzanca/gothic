@@ -66,8 +66,6 @@ type libraryComponent struct {
 	Create    string        `json:"create"`
 	PropsType string        `json:"props_type,omitempty"`
 	Props     []libraryProp `json:"props"`
-	Listable  bool          `json:"listable"`
-	Inline    bool          `json:"inline,omitempty"`
 	Children  bool          `json:"children,omitempty"`
 }
 
@@ -491,7 +489,6 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 			Props:      props,
 			View:       expanded,
 			App:        app,
-			Listable:   true,
 			Children:   children,
 			Slot:       hasChildren,
 			ModuleURL:  generator.ComponentsModuleURL(s.base),
@@ -682,7 +679,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			Props:      props,
 			View:       expanded,
 			App:        sv.app.ComponentApp(t.ParamList[0].Type),
-			Listable:   true,
 			Children:   children,
 			ModuleURL:  cfg.ModuleURL,
 		})
@@ -721,7 +717,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		manifest.Components = append(manifest.Components, libraryComponent{
 			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
-			PropsType: comp.PropsType, Props: props, Listable: comp.Listable, Children: comp.Children,
+			PropsType: comp.PropsType, Props: props, Children: comp.Children,
 		})
 	}
 	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
@@ -778,7 +774,6 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 				CreateFunc:  comp.Create,
 				PropsType:   comp.PropsType,
 				Props:       props,
-				Listable:    comp.Listable,
 				External:    true,
 				ImportAlias: manifest.Alias,
 				ImportPath:  manifest.Package,

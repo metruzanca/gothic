@@ -10,12 +10,16 @@ import (
 	"testing"
 )
 
-func TestDefaultHealthEndpoints(t *testing.T) {
-	s := NewServer(WithLogger(testLogger()))
+func TestHealthEndpoints(t *testing.T) {
+	s := NewServer(
+		WithLogger(testLogger()),
+		WithHealth(HealthPath),
+		WithReadiness(ReadyPath, nil),
+	)
 	s.MountApp("/", NewApp(baseModel{}))
 	ts := NewTestServer(t, s)
 
-	for _, path := range []string{DefaultHealthPath, DefaultReadyPath} {
+	for _, path := range []string{HealthPath, ReadyPath} {
 		res := ts.Get(path)
 		body := ts.Body(res)
 		if res.StatusCode != http.StatusOK || !strings.Contains(body, `"status":"ok"`) {
@@ -35,7 +39,7 @@ func TestDefaultHealthEndpoints(t *testing.T) {
 		}
 	}
 
-	res := ts.Do(mustRequest(t, http.MethodPost, ts.URL+DefaultHealthPath, nil, nil))
+	res := ts.Do(mustRequest(t, http.MethodPost, ts.URL+HealthPath, nil, nil))
 	ts.Body(res)
 	if res.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("POST health = %d, want 405", res.StatusCode)
@@ -48,6 +52,7 @@ func TestDefaultHealthEndpoints(t *testing.T) {
 func TestReadinessFailure(t *testing.T) {
 	s := NewServer(
 		WithLogger(testLogger()),
+		WithHealth(HealthPath),
 		WithReadiness("/readyz", func(ctx context.Context) error {
 			return errors.New("database is down")
 		}),
@@ -59,7 +64,7 @@ func TestReadinessFailure(t *testing.T) {
 	if res.StatusCode != http.StatusServiceUnavailable || !strings.Contains(body, "unavailable") {
 		t.Fatalf("readyz = %d %q", res.StatusCode, body)
 	}
-	if res := ts.Get("/healthz"); res.StatusCode != http.StatusOK {
+	if res := ts.Get(HealthPath); res.StatusCode != http.StatusOK {
 		ts.Body(res)
 		t.Fatalf("healthz = %d, want 200", res.StatusCode)
 	}
@@ -81,21 +86,16 @@ func TestHealthConfigurablePaths(t *testing.T) {
 		ts.Body(res)
 		t.Fatalf("custom ready = %d", res.StatusCode)
 	}
-	if res := ts.Get(DefaultHealthPath); res.StatusCode != http.StatusNotFound {
-		ts.Body(res)
-		t.Fatalf("default health = %d, want 404", res.StatusCode)
-	}
-
-	disabled := NewServer(WithLogger(testLogger()), WithoutHealth())
-	disabledServer := NewTestServer(t, disabled)
-	if res := disabledServer.Get(DefaultHealthPath); res.StatusCode != http.StatusNotFound {
-		disabledServer.Body(res)
-		t.Fatalf("disabled health = %d, want 404", res.StatusCode)
+	plain := NewServer(WithLogger(testLogger()))
+	plainServer := NewTestServer(t, plain)
+	if res := plainServer.Get(HealthPath); res.StatusCode != http.StatusNotFound {
+		plainServer.Body(res)
+		t.Fatalf("health without options = %d, want 404", res.StatusCode)
 	}
 }
 
 func TestHealthBypassesMiddleware(t *testing.T) {
-	s := NewServer(WithLogger(testLogger()))
+	s := NewServer(WithLogger(testLogger()), WithHealth(HealthPath))
 	var hits int
 	s.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ func TestHealthBypassesMiddleware(t *testing.T) {
 	s.MountApp("/", NewApp(baseModel{}))
 	ts := NewTestServer(t, s)
 
-	if res := ts.Get(DefaultHealthPath); res.StatusCode != http.StatusOK {
+	if res := ts.Get(HealthPath); res.StatusCode != http.StatusOK {
 		ts.Body(res)
 		t.Fatalf("health = %d, want 200", res.StatusCode)
 	}
@@ -148,14 +148,13 @@ func (h *captureHandler) messages() []string {
 
 func TestHealthDoesNotLogRequests(t *testing.T) {
 	capture := &captureHandler{}
-	s := NewServer(WithLogger(slog.New(capture)))
+	s := NewServer(WithLogger(slog.New(capture)), WithHealth(HealthPath))
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
 	ts := NewTestServer(t, s)
 
-	ts.Body(ts.Get(DefaultHealthPath))
-	ts.Body(ts.Get(DevToolsWorkspacePath))
+	ts.Body(ts.Get(HealthPath))
 	ts.Body(ts.Get("/"))
 
 	requests := 0
@@ -165,7 +164,7 @@ func TestHealthDoesNotLogRequests(t *testing.T) {
 		}
 	}
 	if requests != 1 {
-		t.Fatalf("request logs = %d, want 1 (health and devtools should be silent)", requests)
+		t.Fatalf("request logs = %d, want 1 (health should be silent)", requests)
 	}
 }
 
