@@ -71,7 +71,7 @@ func TestNestedApp(t *testing.T) {
 	appJS, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`from "/_gothic/modules/app_components_gothic.js"`,
+		`from "./app_components_gothic.js"`,
 		`mountDashboard`,
 		`createDashboard`,
 		`data-gothic-slot`,

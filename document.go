@@ -1,6 +1,7 @@
 package gothic
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -131,6 +132,7 @@ func WriteDocument(w io.Writer, r *http.Request, doc Document, body Component) e
 			b.WriteString("\n")
 		}
 	}
+	writeRuntimeConfig(&b, r)
 	b.WriteString("</head>\n<body>\n")
 
 	if _, err := io.WriteString(w, b.String()); err != nil {
@@ -258,4 +260,27 @@ func headerValue(r *http.Request, key string) string {
 
 func escape(value string) string {
 	return html.EscapeString(value)
+}
+
+// writeRuntimeConfig exposes the mount base path and the CSRF token to the
+// client runtime. It runs before the generated module script.
+func writeRuntimeConfig(b *strings.Builder, r *http.Request) {
+	if r == nil {
+		return
+	}
+	payload := map[string]string{}
+	if base := BasePath(r.Context()); base != "" {
+		payload["base"] = base
+	}
+	if token := CSRFToken(r); token != "" {
+		payload["csrf"] = token
+	}
+	if len(payload) == 0 {
+		return
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	fmt.Fprintf(b, "<script>window.__gothic=Object.assign(window.__gothic||{},%s)</script>\n", data)
 }

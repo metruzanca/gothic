@@ -3,23 +3,34 @@ package gothic
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	runtimeclient "github.com/metruzanca/gothic/client/runtime"
+)
+
+// Framework paths. Generated code and the client runtime share these.
+const (
+	frameworkPrefix = "/_gothic"
+	RuntimePath     = frameworkPrefix + "/runtime.js"
+	ModulesPrefix   = frameworkPrefix + "/modules/"
+	RPCPrefix       = frameworkPrefix + "/rpc/"
 )
 
 // ProcedureFunc handles a server procedure call.
 type ProcedureFunc func(ctx context.Context, body []byte) (any, error)
 
 // Server is the gothic HTTP server. It wraps a chi router, serves the client
-// runtime and generated modules, and dispatches procedure calls.
+// runtime and generated modules, dispatches procedure calls, and runs the
+// global middleware chain.
 type Server struct {
 	mux        *chi.Mux
 	mu         sync.RWMutex
@@ -27,15 +38,81 @@ type Server struct {
 
 	docMu sync.RWMutex
 	doc   Document
+
+	// Runtime configuration, set by Option values in NewServer.
+	logger            *slog.Logger
+	addr              string
+	maxBodyBytes      int64
+	readTimeout       time.Duration
+	readHeaderTimeout time.Duration
+	writeTimeout      time.Duration
+	idleTimeout       time.Duration
+	shutdownTimeout   time.Duration
+	requestTimeout    time.Duration
+	trustedProxies    []*net.IPNet
+
+	useDefaultMiddleware bool
+	extraMiddleware      []func(http.Handler) http.Handler
+	csrf                 *CSRF
+
+	chainMu    sync.Mutex
+	middleware []func(http.Handler) http.Handler
+	chain      http.Handler
+
+	srvMu sync.Mutex
+	srv   *http.Server
+
+	// Scope state. A child shares the root mux and module registry and owns
+	// its procedures, document defaults, and middleware.
+	root     *Server
+	basePath string
+	scopesMu sync.RWMutex
+	scopes   []*Server
 }
 
-// NewServer returns a Server with a chi router.
-func NewServer() *Server {
-	return &Server{
-		mux:        chi.NewRouter(),
-		procedures: map[string]ProcedureFunc{},
-		doc:        DefaultDocument(),
+// NewServer returns a Server with a chi router and the default middleware
+// stack. Options customize the server before any route is registered.
+func NewServer(opts ...Option) *Server {
+	s := &Server{
+		mux:                  chi.NewRouter(),
+		procedures:           map[string]ProcedureFunc{},
+		doc:                  DefaultDocument(),
+		logger:               slog.Default(),
+		addr:                 ":8080",
+		maxBodyBytes:         DefaultMaxBodyBytes,
+		readHeaderTimeout:    5 * time.Second,
+		readTimeout:          30 * time.Second,
+		writeTimeout:         30 * time.Second,
+		idleTimeout:          120 * time.Second,
+		shutdownTimeout:      15 * time.Second,
+		useDefaultMiddleware: true,
 	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(s)
+		}
+	}
+	s.middleware = s.buildMiddleware()
+	return s
+}
+
+func (s *Server) buildMiddleware() []func(http.Handler) http.Handler {
+	var chain []func(http.Handler) http.Handler
+	if s.useDefaultMiddleware {
+		chain = append(chain, withRequestID)
+		if len(s.trustedProxies) > 0 {
+			chain = append(chain, s.realIP)
+		}
+		chain = append(chain, s.accessLog, s.recoverer)
+	}
+	if s.csrf != nil {
+		chain = append(chain, s.csrf.Middleware)
+	}
+	if s.requestTimeout > 0 {
+		chain = append(chain, timeoutMiddleware(s.requestTimeout))
+	}
+	chain = append(chain, s.extraMiddleware...)
+	return chain
 }
 
 // SetDocument replaces the server-wide document defaults. Apps mounted with
@@ -52,24 +129,100 @@ func (s *Server) document() Document {
 	return s.doc
 }
 
-// Get registers a GET route.
+// Use appends middleware to the global chain. Unlike chi, it applies to the
+// runtime, modules, and procedures as well as router routes, and it can be
+// called after routes are registered.
+func (s *Server) Use(middleware ...func(http.Handler) http.Handler) {
+	if len(middleware) == 0 {
+		return
+	}
+	s.chainMu.Lock()
+	defer s.chainMu.Unlock()
+	s.middleware = append(s.middleware, middleware...)
+	s.chain = nil
+}
+
+// Router exposes the underlying chi router for scoped middleware, groups, and
+// anything else the Server does not wrap. Middleware added through the router
+// covers only routes registered through it, so prefer Use for auth and
+// logging.
+func (s *Server) Router() chi.Router { return s.mux }
+
+// Get registers a GET route. Patterns are relative to the server scope.
 func (s *Server) Get(pattern string, h http.HandlerFunc) {
-	s.mux.Get(pattern, h)
+	s.mux.Get(s.routePath(pattern), h)
 }
 
 // Post registers a POST route.
 func (s *Server) Post(pattern string, h http.HandlerFunc) {
-	s.mux.Post(pattern, h)
+	s.mux.Post(s.routePath(pattern), h)
+}
+
+// Put registers a PUT route.
+func (s *Server) Put(pattern string, h http.HandlerFunc) {
+	s.mux.Put(s.routePath(pattern), h)
+}
+
+// Patch registers a PATCH route.
+func (s *Server) Patch(pattern string, h http.HandlerFunc) {
+	s.mux.Patch(s.routePath(pattern), h)
+}
+
+// Delete registers a DELETE route.
+func (s *Server) Delete(pattern string, h http.HandlerFunc) {
+	s.mux.Delete(s.routePath(pattern), h)
+}
+
+// Head registers a HEAD route.
+func (s *Server) Head(pattern string, h http.HandlerFunc) {
+	s.mux.Head(s.routePath(pattern), h)
+}
+
+// Options registers an OPTIONS route.
+func (s *Server) Options(pattern string, h http.HandlerFunc) {
+	s.mux.Options(s.routePath(pattern), h)
+}
+
+// Method registers a handler for an arbitrary HTTP method.
+func (s *Server) Method(method, pattern string, h http.Handler) {
+	s.mux.Method(method, s.routePath(pattern), h)
 }
 
 // Handle registers a handler for a pattern.
 func (s *Server) Handle(pattern string, h http.Handler) {
-	s.mux.Handle(pattern, h)
+	s.mux.Handle(s.routePath(pattern), h)
 }
 
-// Use appends middleware to the router.
-func (s *Server) Use(middlewares ...func(http.Handler) http.Handler) {
-	s.mux.Use(middlewares...)
+// Mount mounts a handler below pattern.
+func (s *Server) Mount(pattern string, h http.Handler) {
+	s.mux.Mount(s.routePath(pattern), h)
+}
+
+// Route creates a sub-router below pattern.
+func (s *Server) Route(pattern string, fn func(r chi.Router)) {
+	s.mux.Route(s.routePath(pattern), fn)
+}
+
+// Group creates an inline sub-router for registering routes with shared
+// middleware.
+func (s *Server) Group(fn func(r chi.Router)) {
+	s.mux.Group(fn)
+}
+
+// With returns a router with the given middleware applied to routes
+// registered through it.
+func (s *Server) With(middleware ...func(http.Handler) http.Handler) chi.Router {
+	return s.mux.With(middleware...)
+}
+
+// NotFound sets the handler for unmatched routes.
+func (s *Server) NotFound(h http.HandlerFunc) {
+	s.mux.NotFound(h)
+}
+
+// MethodNotAllowed sets the handler for a matched path with the wrong method.
+func (s *Server) MethodNotAllowed(h http.HandlerFunc) {
+	s.mux.MethodNotAllowed(h)
 }
 
 // MountApp mounts an application at pattern. It renders a full HTML document
@@ -82,29 +235,33 @@ func (s *Server) MountApp(pattern string, app *App, opts ...AppOption) {
 	for _, opt := range opts {
 		opt(&doc)
 	}
+	mountPath := s.routePath(pattern)
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		view, err := app.view(r)
+		req := r.WithContext(WithBasePath(r.Context(), s.basePath))
+		view, err := app.view(req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			s.logError(req, err)
+			WriteError(w, req, Internal("internal server error", err))
 			return
 		}
 		var page bytes.Buffer
-		if err := WriteDocument(&page, r, doc, view); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err := WriteDocument(&page, req, doc, view); err != nil {
+			s.logError(req, err)
+			WriteError(w, req, Internal("internal server error", err))
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(page.Bytes())
 	}
-	s.Get(pattern, handler)
-	if strings.Contains(pattern, "*") {
+	s.mux.Get(mountPath, handler)
+	if strings.Contains(mountPath, "*") {
 		return
 	}
-	catch := strings.TrimSuffix(pattern, "/") + "/*"
-	if pattern == "/" || pattern == "" {
+	catch := strings.TrimSuffix(mountPath, "/") + "/*"
+	if mountPath == "/" {
 		catch = "/*"
 	}
-	s.Get(catch, handler)
+	s.mux.Get(catch, handler)
 }
 
 // RegisterProcedure registers a server procedure. Generated code calls this
@@ -115,86 +272,127 @@ func (s *Server) RegisterProcedure(name string, fn ProcedureFunc) {
 	s.procedures[name] = fn
 }
 
-// ListenAndServe starts the server and logs the URL it is listening on.
-func (s *Server) ListenAndServe(addr string) error {
-	log.Printf("gothic: listening on %s", displayURL(addr))
-	return http.ListenAndServe(addr, s)
-}
-
-func displayURL(addr string) string {
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return addr
-	}
-	if host == "" || host == "0.0.0.0" || host == "::" {
-		host = "localhost"
-	}
-	return "http://" + net.JoinHostPort(host, port)
-}
-
 // ServeHTTP implements http.Handler.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler().ServeHTTP(w, r)
+}
+
+// handler builds and caches the middleware chain.
+func (s *Server) handler() http.Handler {
+	s.chainMu.Lock()
+	defer s.chainMu.Unlock()
+	if s.chain != nil {
+		return s.chain
+	}
+	var h http.Handler = http.HandlerFunc(s.dispatch)
+	for i := len(s.middleware) - 1; i >= 0; i-- {
+		h = s.middleware[i](h)
+	}
+	s.chain = h
+	return h
+}
+
+func (s *Server) dispatch(w http.ResponseWriter, r *http.Request) {
+	if s.root == nil {
+		if scope := s.matchScope(r.URL.Path); scope != nil {
+			scope.handler().ServeHTTP(w, r)
+			return
+		}
+	}
+	s.dispatchLocal(w, r)
+}
+
+func (s *Server) dispatchLocal(w http.ResponseWriter, r *http.Request) {
+	path := s.relativePath(r.URL.Path)
 	switch {
-	case r.URL.Path == "/_gothic/runtime.js":
+	case path == RuntimePath:
 		serveJS(w, runtimeclient.RuntimeJS)
-	case strings.HasPrefix(r.URL.Path, "/_gothic/modules/"):
-		data, ok := lookupModule(r.URL.Path)
+	case strings.HasPrefix(path, ModulesPrefix):
+		data, ok := lookupModule(path)
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
 		serveJS(w, data)
-	case strings.HasPrefix(r.URL.Path, "/_gothic/rpc/"):
-		s.handleRPC(w, r)
+	case strings.HasPrefix(path, RPCPrefix):
+		s.handleRPC(w, r, path)
 	default:
 		s.mux.ServeHTTP(w, r)
 	}
 }
 
-func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request, path string) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeErrorJSON(w, Errorf(http.StatusMethodNotAllowed, "method_not_allowed", "procedure calls require POST"))
 		return
 	}
-	name := strings.TrimPrefix(r.URL.Path, "/_gothic/rpc/")
+	if !IsJSONContentType(r.Header.Get("Content-Type")) {
+		writeErrorJSON(w, Errorf(http.StatusUnsupportedMediaType, "unsupported_media_type", "expected application/json"))
+		return
+	}
+	if !s.sameOrigin(r) {
+		writeErrorJSON(w, Forbidden("cross-origin procedure calls are not allowed"))
+		return
+	}
+	name := strings.TrimPrefix(path, RPCPrefix)
+	if name == "" || strings.Contains(name, "/") {
+		writeErrorJSON(w, NotFound("unknown procedure"))
+		return
+	}
 	s.mu.RLock()
 	fn, ok := s.procedures[name]
 	s.mu.RUnlock()
 	if !ok {
-		writeRPCError(w, http.StatusNotFound, "unknown procedure")
+		writeErrorJSON(w, NotFound("unknown procedure"))
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.maxBodyBytes))
 	if err != nil {
-		writeRPCError(w, http.StatusBadRequest, err.Error())
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeErrorJSON(w, Errorf(http.StatusRequestEntityTooLarge, "body_too_large", "request body exceeds %d bytes", s.maxBodyBytes))
+			return
+		}
+		writeErrorJSON(w, BadRequest(err.Error()))
 		return
 	}
 	result, err := fn(r.Context(), body)
 	if err != nil {
-		writeRPCError(w, http.StatusInternalServerError, err.Error())
+		s.logError(r, err)
+		writeErrorJSON(w, asError(err))
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"result": result})
+	_ = JSON(w, http.StatusOK, map[string]any{"result": result})
 }
 
-func writeRPCError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"error": map[string]string{"message": message},
-	})
+// sameOrigin rejects cross-site procedure calls. Requests without an Origin
+// header, such as server-to-server and command-line clients, are allowed.
+func (s *Server) sameOrigin(r *http.Request) bool {
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "", "same-origin", "none":
+	default:
+		return false
+	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	host := r.Host
+	if trustedProxy(r) || s.isTrustedProxy(r.RemoteAddr) {
+		if forwarded := headerValue(r, "X-Forwarded-Host"); forwarded != "" {
+			host = forwarded
+		}
+	}
+	return strings.EqualFold(u.Host, host)
 }
 
 func serveJS(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write(data)
-}
-
-func serveAsset(w http.ResponseWriter, contentType string, data []byte) {
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=3600")
 	_, _ = w.Write(data)
 }

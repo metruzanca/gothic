@@ -252,9 +252,18 @@ export function on(root, marker, event, handler, skipComponents = true) {
 }
 
 export async function rpc(name, ...args) {
-  const res = await fetch(`/_gothic/rpc/${encodeURIComponent(name)}`, {
+  // The runtime is served from <base>/_gothic/runtime.js, so the app base is
+  // its parent directory. This keeps RPC working when an app is mounted under
+  // a prefix.
+  const appBase = new URL("../", import.meta.url);
+  const headers = { "Content-Type": "application/json" };
+  const config = globalThis.__gothic;
+  if (config && config.csrf) {
+    headers["X-Gothic-Csrf"] = config.csrf;
+  }
+  const res = await fetch(new URL(`_gothic/rpc/${encodeURIComponent(name)}`, appBase), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ args }),
   });
   let data = null;
@@ -264,11 +273,13 @@ export async function rpc(name, ...args) {
     data = null;
   }
   if (!res.ok || (data && data.error)) {
-    const message =
-      data && data.error && data.error.message
-        ? data.error.message
-        : `rpc ${name} failed`;
-    throw new Error(message);
+    const detail = (data && data.error) || {};
+    const err = new Error(detail.message || `rpc ${name} failed`);
+    err.name = "GothicError";
+    err.status = res.status;
+    if (detail.code) err.code = detail.code;
+    if (detail.fields) err.fields = detail.fields;
+    throw err;
   }
   return data ? data.result : undefined;
 }

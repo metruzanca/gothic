@@ -149,7 +149,7 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 
 	js := getPage(t, ts.URL+"/_gothic/modules/app_gothic.js")
 	for _, want := range []string{
-		`from "/_gothic/modules/ui_gothic.js"`,
+		`from "./ui_gothic.js"`,
 		`mountTabs`,
 		`mountAccordion`,
 		`mountCounter`,

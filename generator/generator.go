@@ -424,7 +424,10 @@ func (g *templateGen) generate() (string, error) {
 		return "", err
 	}
 	if g.appRoot {
-		fmt.Fprintf(&b, "\t\tif err := write(%s); err != nil {\n\t\t\treturn err\n\t\t}\n", strconv.Quote("\n<script type=\"module\" src=\""+g.moduleURL+"\"></script>\n"))
+		fmt.Fprintf(&b, "\t\tif err := write(%s + gothic.BasePath(ctx) + %s + %s); err != nil {\n\t\t\treturn err\n\t\t}\n",
+			strconv.Quote("\n<script type=\"module\" src=\""),
+			strconv.Quote(g.moduleURL),
+			strconv.Quote("\"></script>\n"))
 	}
 	b.WriteString("\t\treturn nil\n\t})\n}\n")
 

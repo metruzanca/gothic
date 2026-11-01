@@ -706,7 +706,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	}
 	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
 		FileName:    filepath.Join(dir, "library.gth"),
-		RuntimeURL:  "/_gothic/runtime.js",
+		RuntimeURL:  "../runtime.js",
 		AllStateful: stateful,
 		PropsTypes:  usedPropsTypes(pure, stateful),
 	})
@@ -881,7 +881,7 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 	}
 	jsSrc, err := appjs.Generate(expanded, s.app, appjs.Options{
 		FileName:            s.path,
-		RuntimeURL:          "/_gothic/runtime.js",
+		RuntimeURL:          "../runtime.js",
 		Stateful:            stateful,
 		ComponentsModuleURL: generator.ComponentsModuleURL(s.base),
 		PropsTypes:          propsTypes,
@@ -906,7 +906,7 @@ func generateApp(s *source, expanded *viewparser.File, stateful []*generator.Sta
 		}
 		compSrc, err := appjs.GenerateComponents(localStateful, appjs.Options{
 			FileName:       s.path,
-			RuntimeURL:     "/_gothic/runtime.js",
+			RuntimeURL:     "../runtime.js",
 			Stateful:       stateful,
 			AllStateful:    stateful,
 			ProcedureNames: procedureNames,

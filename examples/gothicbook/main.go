@@ -87,10 +87,10 @@ func main() {
 func mountApp(s *gothic.Server, counter *counterStore) {
 	RegisterProcedures(s, procedures{counter: counter})
 	ui.MountStyles(s)
-	serveFile(s, "/style.css", "text/css; charset=utf-8", pageCSS)
-	serveFile(s, "/gothic-mark.svg", "image/svg+xml", pageMark)
-	serveFile(s, "/gothic-wordmark.svg", "image/svg+xml", pageWordmark)
-	serveFile(s, "/og.png", "image/png", pageOG)
+	s.Asset("/style.css", pageCSS)
+	s.Asset("/gothic-mark.svg", pageMark)
+	s.Asset("/gothic-wordmark.svg", pageWordmark)
+	s.Asset("/og.png", pageOG)
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		return NewModelAt(r.URL.Path, int(counter.count.Load()))
 	}),
@@ -104,11 +104,4 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 			ExtraHead:   themeScript,
 		}),
 	)
-}
-
-func serveFile(s *gothic.Server, pattern, contentType string, data []byte) {
-	s.Get(pattern, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", contentType)
-		_, _ = w.Write(data)
-	})
 }

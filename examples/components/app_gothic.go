@@ -183,7 +183,7 @@ func App(model Model) gothic.Component {
 		if err := write("</div>"); err != nil {
 			return err
 		}
-		if err := write("\n<script type=\"module\" src=\"/_gothic/modules/app_gothic.js\"></script>\n"); err != nil {
+		if err := write("\n<script type=\"module\" src=\"" + gothic.BasePath(ctx) + "/_gothic/modules/app_gothic.js" + "\"></script>\n"); err != nil {
 			return err
 		}
 		return nil

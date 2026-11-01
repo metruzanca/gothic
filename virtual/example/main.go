@@ -5,7 +5,6 @@ package main
 import (
 	_ "embed"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/metruzanca/gothic"
@@ -24,10 +23,7 @@ func main() {
 
 func newServer() *gothic.Server {
 	s := gothic.NewServer()
-	s.Get("/style.css", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		_, _ = w.Write(pageCSS)
-	})
+	s.Asset("/style.css", pageCSS)
 	s.MountApp("/", gothic.NewApp(NewModel()),
 		gothic.WithDocument(gothic.Document{
 			Title:  "Virtualized list",

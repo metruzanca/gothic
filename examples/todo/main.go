@@ -183,10 +183,7 @@ func main() {
 }
 
 func mountApp(s *gothic.Server, st *store) {
-	s.Get("/style.css", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		_, _ = w.Write(styleCSS)
-	})
+	s.Asset("/style.css", styleCSS)
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		data, err := st.list(r.Context())
 		model := NewModelAt(data, r.URL.Path)

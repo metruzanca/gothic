@@ -33,14 +33,14 @@ func UnmarshalArgs(body []byte, dst ...any) error {
 		Args []json.RawMessage `json:"args"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return fmt.Errorf("gothic: decode arguments: %w", err)
+		return BadRequest(fmt.Sprintf("gothic: decode arguments: %v", err))
 	}
 	if len(payload.Args) != len(dst) {
-		return fmt.Errorf("gothic: got %d arguments, want %d", len(payload.Args), len(dst))
+		return BadRequest(fmt.Sprintf("gothic: got %d arguments, want %d", len(payload.Args), len(dst)))
 	}
 	for i := range dst {
 		if err := json.Unmarshal(payload.Args[i], dst[i]); err != nil {
-			return fmt.Errorf("gothic: argument %d: %w", i, err)
+			return BadRequest(fmt.Sprintf("gothic: argument %d: %v", i, err))
 		}
 	}
 	return nil

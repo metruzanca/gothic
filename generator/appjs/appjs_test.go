@@ -288,7 +288,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { mountTabs, createTabs } from "/_gothic/modules/tabs.js";`,
+		`import { mountTabs, createTabs } from "./tabs.js";`,
 		`ifBlock(root, "0",`,
 		`createTabs("c0")`,
 		`frag.appendChild(e0);`,
@@ -1785,7 +1785,7 @@ func TestGenerateNestedExternalComponentImport(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { createCounter, mountCounter } from "/_gothic/modules/ui.js";`,
+		`import { createCounter, mountCounter } from "./ui.js";`,
 		`const c0 = mountCounter(c0Node, {Label: "hi"}, emit);`,
 	} {
 		if !strings.Contains(src, want) {

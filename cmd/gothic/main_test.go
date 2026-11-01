@@ -251,6 +251,7 @@ view App(model Model) {
 		`__gothicCounterComponent`,
 		`data-gothic-component=\"Counter\"`,
 		`data-gothic-key`,
+		`gothic.BasePath(ctx)`,
 	} {
 		if !strings.Contains(string(goSrc), want) {
 			t.Errorf("generated Go missing %q\n\n%s", want, goSrc)
@@ -279,7 +280,7 @@ view App(model Model) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`from "/_gothic/modules/app_components_gothic.js"`,
+		`from "./app_components_gothic.js"`,
 		`mountCounter`,
 		`createCounter`,
 		`String(item.ID)`,
@@ -419,7 +420,7 @@ view App(model Model) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`from "/_gothic/modules/app_components_gothic.js"`,
+		`from "./app_components_gothic.js"`,
 		`mountParent`,
 		`createParent`,
 	} {
