@@ -2,7 +2,8 @@
 
 A small session and login app with no client JavaScript. It shows the pieces
 you need before building your own auth: server sessions, CSRF-protected forms,
-argon2id password hashes, and user middleware.
+argon2id password hashes, and user middleware. It builds against the separate
+`session` and `auth` modules.
 
 ## Run
 
@@ -25,8 +26,8 @@ startup and old cookies stop validating after a restart.
 - `gothic.WithCSRF` with a hidden `csrf_token` field on every form.
 - `gothic/auth` with argon2id hashes, `Login`, `Logout`, `RequireUserRedirect`,
   and session regeneration on sign in.
-- `gothic.ParseForm` and field validation that re-renders the form with an
-  error message.
+- standard `net/http` form parsing that re-renders the form with an error
+  message.
 - `gothic.WriteDocument` for plain server-rendered pages without a `.gth` app.
 
 ## Routes

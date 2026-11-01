@@ -133,21 +133,14 @@ func (a *app) loginPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) login(w http.ResponseWriter, r *http.Request) {
-	form, err := gothic.ParseForm(w, r)
-	if err != nil {
-		gothic.WriteError(w, r, err)
+	if err := r.ParseForm(); err != nil {
+		gothic.WriteError(w, r, gothic.BadRequest("invalid form data"))
 		return
 	}
-	email := form.String("email")
-	password := form.String("password")
-	next := safeNext(form.String("next"))
-	if email == "" {
-		form.AddError("email", "Enter your email.")
-	}
-	if password == "" {
-		form.AddError("password", "Enter your password.")
-	}
-	if err := form.Err(); err != nil {
+	email := strings.TrimSpace(r.PostForm.Get("email"))
+	password := r.PostForm.Get("password")
+	next := safeNext(strings.TrimSpace(r.PostForm.Get("next")))
+	if email == "" || password == "" {
 		a.renderLogin(w, r, http.StatusBadRequest, email, next, "Enter your email and password.")
 		return
 	}

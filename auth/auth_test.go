@@ -53,12 +53,11 @@ func authServer(t *testing.T) (*auth.Manager, *gothicest.TestServer) {
 	s.Use(sessions.Middleware)
 	s.Use(manager.Middleware)
 	s.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-		form, err := gothic.ParseForm(w, r)
-		if err != nil {
-			gothic.WriteError(w, r, err)
+		if err := r.ParseForm(); err != nil {
+			gothic.WriteError(w, r, gothic.BadRequest("invalid form data"))
 			return
 		}
-		user, err := manager.Login(r, form.String("email"), form.String("password"))
+		user, err := manager.Login(r, r.PostForm.Get("email"), r.PostForm.Get("password"))
 		if err != nil {
 			gothic.WriteError(w, r, gothic.Unauthorized("invalid email or password"))
 			return
