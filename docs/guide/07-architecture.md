@@ -140,7 +140,7 @@ the same shape.
 | `route/` | Path pattern matching shared by the server and client |
 | `browser/` | Curated browser APIs, shipped as its own module |
 | `virtual/` | Long-list window math, shipped as its own module |
-| `ui/` | Precompiled UI kit, shipped as its own module |
+| `ui/` | Headless UI kit, shipped as its own module |
 
 ## Why no virtual DOM
 

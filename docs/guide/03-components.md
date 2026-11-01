@@ -352,31 +352,55 @@ Add the component package to the app prelude:
 //gothic:components github.com/metruzanca/gothic/ui
 ```
 
-Mount the styles in `main.go`:
+The kit is headless. It ships markup and behavior, not CSS. Style parts with
+`data-part` and state with `data-*`:
 
-```go
-import "github.com/metruzanca/gothic/ui"
-
-ui.MountStyles(s)
+```css
+[data-part="button"] { /* ... */ }
+[data-part="tabs-trigger"][data-active="true"] { /* ... */ }
 ```
 
 Use namespaced tags:
 
 ```templ
-<ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
-<ui.Card title="Card title" body="Card body" />
-<ui.Field label="Your name">
-	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
+<ui.Button variant={ dom.Ptr("primary") } onclick={ SaveClicked{} }>Save</ui.Button>
+<ui.Field id="name" label="Your name">
+	<input id="name" value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
 </ui.Field>
-<ui.Tabs items={ model.Tabs } />
-<ui.Disclosure item={ model.FeatureDisclosure } />
+<ui.Checkbox id="done" checked={ model.Done } onchange={ DoneChanged{} }>Done</ui.Checkbox>
+<ui.Switch id="notify" checked={ model.Notify } onchange={ NotifyChanged{} }>Notify</ui.Switch>
 ```
 
-Pure UI kit components are expanded into your app by the generator. Stateful
-ones ship as a precompiled module. `ui.Button` emits its `onclick` message to
-the App, which owns the procedure.
+Tabs and accordions are compound parts. The App owns their state:
 
-See [ui/README.md](../../ui/README.md) for the current component list.
+```templ
+<ui.Tabs>
+	<ui.TabsList label={ dom.Ptr("Settings") } onkeynav={ TabKey{Key: event.key} }>
+		for i, tab := range model.Tabs {
+			<ui.TabsTrigger
+				id={ dom.ID("settings-tab", i) }
+				controls={ dom.Ptr(dom.ID("settings-panel", i)) }
+				active={ model.ActiveTab == tab.ID }
+				onclick={ TabClicked{ID: tab.ID} }
+			>{ tab.Label }</ui.TabsTrigger>
+		}
+	</ui.TabsList>
+	for i, tab := range model.Tabs {
+		<ui.TabsPanel
+			id={ dom.ID("settings-panel", i) }
+			labelledby={ dom.Ptr(dom.ID("settings-tab", i)) }
+			active={ model.ActiveTab == tab.ID }
+		>{ tab.Panel }</ui.TabsPanel>
+	}
+</ui.Tabs>
+```
+
+`ui.Combobox` is the one stateful primitive in this release. It filters local
+items, handles keyboard navigation, and emits `ui.ComboboxValueChanged` to the
+App.
+
+See [ui/README.md](../../ui/README.md) for the full primitive list and the
+styling contract.
 
 ## Limits
 

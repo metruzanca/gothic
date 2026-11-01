@@ -125,7 +125,7 @@ Every example runs end to end.
 - The separate `virtual` module keeps 12 rows in the DOM for a 5,000 row model using `virtual.WindowFor` and `dom.Px` spacers.
 - Components run their own commands and are destroyed on unmount.
 - Components are destroyed on unmount, so late command results cannot update them.
-- The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
+- The separately versioned UI kit ships headless compound primitives: Button, Field, Checkbox, Switch, Tabs, Accordion, and a stateful Combobox.
 - Components can emit action messages to the parent app; the app owns server procedures.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.

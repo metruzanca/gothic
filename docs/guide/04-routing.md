@@ -175,7 +175,7 @@ s.MountApp("/", gothic.NewApp(NewModel()),
 		Description: "A tiny design system demo.",
 		Image:       "/og.png",
 		Icons:       []gothic.Icon{{Href: "/favicon.svg"}},
-		Styles:      []string{"/gothic-ui.css", "/style.css"},
+		Styles:      []string{"/style.css"},
 	}),
 )
 ```

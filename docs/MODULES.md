@@ -39,9 +39,9 @@ the `gothicest` test helpers. This is the only required module.
 go get github.com/metruzanca/gothic/ui
 ```
 
-Pure `Button`, `Card`, and `Field` components, plus stateful `Counter`, `Tabs`,
-`Accordion`, and `Disclosure`. The components are precompiled and expanded into
-the consuming app. `ui.MountStyles` serves the stylesheet.
+Headless compound primitives: `Button`, `Field`, `Checkbox`, `Switch`,
+`Tabs`, `Accordion`, and a stateful `Combobox`. The kit ships markup and
+behavior, not CSS. Style parts with `data-part` and state with `data-*`.
 
 Add the package to an app with:
 

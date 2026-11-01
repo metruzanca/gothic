@@ -357,6 +357,11 @@ adds or removes a class:
 ```
 
 `focus={ expr }` focuses the element when the expression becomes true.
+`scroll={ expr }` scrolls the element into view when the expression becomes true.
+
+Empty `aria-*` and `data-*` values are omitted from both the server render and
+the client update. Other attributes keep their values, so `value=""` still
+renders.
 
 `key={ expr }` declares a list key. `key` is reserved and is not passed to
 components as a prop.
@@ -431,6 +436,13 @@ Event handlers receive the DOM event as `event`:
 <input onenter={ SaveEdit{ID: todo.ID} } onescape={ CancelEdit{ID: todo.ID} } />
 ```
 
+`onkeynav` is a keydown handler for ArrowUp, ArrowDown, Home, End, PageUp,
+PageDown, Enter, and Escape. It calls `preventDefault` before dispatching:
+
+```templ
+<div onkeynav={ KeyNav{Key: event.key} }>...</div>
+```
+
 ## Routing
 
 Define a `LocationChanged` message:
@@ -502,7 +514,7 @@ s.MountApp("/", gothic.NewApp(NewModel()),
 		Description: "A tiny design system demo.",
 		Image:       "/og.png",
 		Icons:       []gothic.Icon{{Href: "/favicon.svg"}},
-		Styles:      []string{"/gothic-ui.css", "/style.css"},
+		Styles:      []string{"/style.css"},
 	}),
 )
 ```
@@ -578,6 +590,13 @@ Not supported:
 Differences from server Go:
 
 - `dom.Px(n)` formats pixel lengths for style attributes.
+- `dom.Str(*string)`, `dom.StrOr(*string, string)`, and `dom.True(*bool)` read
+  optional props.
+- `dom.If(cond, yes, no)` and `dom.ID(base, index)` build attribute values and
+  ARIA ids.
+- `dom.Ptr(value)` and `dom.BoolPtr(value)` create optional pointer props.
+- `strings.ToLower`, `strings.TrimSpace`, and `strings.Contains` work in
+  `Update` and commands.
 - `browser.ClientHeight(selector)` reads an element height.
 - A missing map key reads as `undefined`, not the zero value.
 - Map iteration uses JavaScript insertion order, and map keys arrive as strings.
@@ -667,6 +686,16 @@ return m, gothic.Sequence(
 
 Both are client-only. The Go stubs exist so `Init`, `Update`, and commands
 compile.
+
+A stateful component can send a message to the App from `Init`, `Update`, or a
+command with `gothic.Emit`:
+
+```go
+return m, gothic.Emit(ValueChanged{Value: m.Value})
+```
+
+`gothic.Emit` is a component-only command. Using it in the App is a compile
+error.
 
 ## Rendering
 

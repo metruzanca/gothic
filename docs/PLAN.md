@@ -207,7 +207,7 @@ from the server and reconciled. There is no virtual DOM.
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
 | `examples/accounts/` | Sessions, CSRF, and login with password hashes, in its own module. |
-| `ui/` | Precompiled, independently versioned UI kit module. |
+| `ui/` | Headless, independently versioned UI kit module. |
 | `examples/gothicbook/` | The UI kit design system demo. |
 | `examples/router/` | Path-based URL state, route links, and browser interop. |
 | `virtual/example/` | A 5,000 row list built with the headless window helper. |
