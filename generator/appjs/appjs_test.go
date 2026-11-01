@@ -459,7 +459,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 }
 
 func TestGenerateJSCalls(t *testing.T) {
-	view, err := parser.ParseViews("js.gth", []byte(`package app
+	view, err := parser.ParseViews("browser.gth", []byte(`package app
 
 view App(model Model) {
 	<div>{ model.Stored }</div>
@@ -475,34 +475,34 @@ type SaveClicked struct{ Text string }
 type ClearClicked struct{}
 
 func (m Model) Init() Cmd {
-	js.SetTitle("start")
+	browser.SetTitle("start")
 	return nil
 }
 
 func (m Model) Update(msg Msg) (Model, Cmd) {
 	switch msg := msg.(type) {
 	case SaveClicked:
-		js.SetItem("title", msg.Text)
-		m.Stored = js.GetItem("title")
-		js.SetTitle(m.Stored)
-		js.Log("saved", msg.Text)
+		browser.SetItem("title", msg.Text)
+		m.Stored = browser.GetItem("title")
+		browser.SetTitle(m.Stored)
+		browser.Log("saved", msg.Text)
 	case ClearClicked:
-		js.RemoveItem("title")
-		js.Alert("cleared")
+		browser.RemoveItem("title")
+		browser.Alert("cleared")
 		return m, copyTitle
 	}
 	return m, nil
 }
 
 func copyTitle() Msg {
-	js.Copy("title")
+	browser.Copy("title")
 	return nil
 }
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "browser.gth"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,10 +524,10 @@ func copyTitle() Msg {
 }
 
 func TestRejectJSCallsInViews(t *testing.T) {
-	view, err := parser.ParseViews("js.gth", []byte(`package app
+	view, err := parser.ParseViews("browser.gth", []byte(`package app
 
 view App(model Model) {
-	<div>{ js.GetItem("title") }</div>
+	<div>{ browser.GetItem("title") }</div>
 }
 `))
 	if err != nil {
@@ -543,7 +543,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "browser.gth"})
 	if err == nil || !strings.Contains(err.Error(), "only be used in Init, Update, or commands") {
 		t.Fatalf("error = %v", err)
 	}
@@ -574,7 +574,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 	switch msg.(type) {
 	case LocationChanged:
 	case GoAbout:
-		js.Navigate("/about")
+		browser.Navigate("/about")
 	}
 	return m, nil
 }
@@ -650,7 +650,7 @@ func (m Model) Init() Cmd { return nil }
 func (m Model) Update(msg Msg) (Model, Cmd) {
 	switch msg.(type) {
 	case Go:
-		js.Navigate("/about")
+		browser.Navigate("/about")
 	}
 	return m, nil
 }
@@ -659,17 +659,17 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		t.Fatal(err)
 	}
 	_, err = appjs.Generate(view, app, appjs.Options{FileName: "routes.gth"})
-	if err == nil || !strings.Contains(err.Error(), "js.Navigate requires a LocationChanged message") {
+	if err == nil || !strings.Contains(err.Error(), "browser.Navigate requires a LocationChanged message") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestJSErrorHasSourceContext(t *testing.T) {
-	view, err := parser.ParseViews("js.gth", []byte(`package app
+	view, err := parser.ParseViews("browser.gth", []byte(`package app
 
 view App(model Model) {
 	<div>
-		<p>{ js.GetItem("name") }</p>
+		<p>{ browser.GetItem("name") }</p>
 	</div>
 }
 `))
@@ -686,7 +686,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = appjs.Generate(view, app, appjs.Options{FileName: "js.gth"})
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "browser.gth"})
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -694,7 +694,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	if !errors.As(err, &pe) {
 		t.Fatalf("error type = %T: %v", err, err)
 	}
-	if pe.File != "js.gth" || pe.Line != 5 {
+	if pe.File != "browser.gth" || pe.Line != 5 {
 		t.Fatalf("position = %s:%d:%d", pe.File, pe.Line, pe.Col)
 	}
 	if !strings.Contains(pe.Hint, "Update") {
@@ -829,7 +829,7 @@ func (m CounterModel) Update(msg Msg) (CounterModel, Cmd) { return m, nil }
 
 func TestGenerateComponentInit(t *testing.T) {
 	tpl, app := componentInitFixture(`func (m CounterModel) Init() Cmd {
-	js.SetTitle("ready")
+	browser.SetTitle("ready")
 	return nil
 }`)
 	component := app.ComponentApp("CounterModel")
@@ -858,7 +858,7 @@ func TestGenerateComponentInitCommand(t *testing.T) {
 }
 
 func doThing() Msg {
-	js.SetTitle("done")
+	browser.SetTitle("done")
 	return nil
 }`)
 	component := app.ComponentApp("CounterModel")
@@ -1139,7 +1139,7 @@ type CounterProps struct{ Label string }
 type CounterModel struct{ Count int }
 
 func (m CounterModel) Init(props CounterProps) Cmd {
-	js.SetTitle(props.Label)
+	browser.SetTitle(props.Label)
 	return nil
 }
 
@@ -2225,7 +2225,7 @@ view App(model Model) {
 type Model struct{ Height int }
 
 func (m Model) Init() Cmd {
-	m.Height = js.ClientHeight("#rows")
+	m.Height = browser.ClientHeight("#rows")
 	return nil
 }
 func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }

@@ -1,11 +1,11 @@
-// Package js exposes a small, curated set of browser APIs to gothic apps.
+// Package browser exposes a small, curated set of browser APIs to gothic apps.
 //
 // Every function is client-only. Call them from Update or from commands. The
 // Go stubs exist so the prelude compiles; the generator lowers each call to
 // the equivalent browser API in the generated JavaScript.
-package js
+package browser
 
-const clientOnly = "gothic: js functions can only run in the browser"
+const clientOnly = "gothic: browser functions can only run in the browser"
 
 // Alert shows a browser alert dialog.
 func Alert(message string) {

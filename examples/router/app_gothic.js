@@ -57,7 +57,7 @@ function render(model) {
     e7.appendChild(document.createTextNode("Settings"));
     e6.appendChild(e7);
     const e8 = document.createElement("p");
-    e8.appendChild(document.createTextNode("This page was reached through a command that called js.Navigate."));
+    e8.appendChild(document.createTextNode("This page was reached through a command that called browser.Navigate."));
     e6.appendChild(e8);
   frag.appendChild(e6);
   return frag; },

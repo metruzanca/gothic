@@ -177,7 +177,7 @@ function render(model) {
     e34.appendChild(document.createTextNode("Button"));
     e32.appendChild(e34);
     const e35 = document.createElement("p");
-    e35.appendChild(document.createTextNode("Primary and secondary actions. The primary button calls js.Alert."));
+    e35.appendChild(document.createTextNode("Primary and secondary actions. The primary button calls browser.Alert."));
     e32.appendChild(e35);
   frag.appendChild(e32);
     const e36 = document.createElement("div");

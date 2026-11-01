@@ -16,7 +16,7 @@ builds against this checkout. A consumer would use tagged module versions.
 
 ## Shows
 
-- `ui.Button`, including a primary action that calls `js.Alert`
+- `ui.Button`, including a primary action that calls `browser.Alert`
 - `ui.Card`
 - `ui.Field` wrapping a controlled input
 - `ui.Tabs`, with controls that disable at the ends of the range

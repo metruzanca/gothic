@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/js"
+	"github.com/metruzanca/gothic/browser"
 	"github.com/metruzanca/gothic/ui"
 	"html"
 	"io"
@@ -77,7 +77,7 @@ type ButtonClicked struct{}
 
 case ButtonClicked:
 	return m, func() gothic.Msg {
-		js.Alert("Hello from Gothicbook")
+		browser.Alert("Hello from Gothicbook")
 		return nil
 	}`,
 		CardCode: `// Page
@@ -349,7 +349,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		}
 	case ButtonClicked:
 		return m, func() gothic.Msg {
-			js.Alert("Hello from Gothicbook")
+			browser.Alert("Hello from Gothicbook")
 			return nil
 		}
 	case IncrementClicked:
@@ -1331,7 +1331,7 @@ func App(model Model) gothic.Component {
 			if err := write("<p>"); err != nil {
 				return err
 			}
-			if err := write("Primary and secondary actions. The primary button calls js.Alert."); err != nil {
+			if err := write("Primary and secondary actions. The primary button calls browser.Alert."); err != nil {
 				return err
 			}
 			if err := write("</p>"); err != nil {

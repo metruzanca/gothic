@@ -185,7 +185,7 @@ from the server and reconciled. There is no virtual DOM.
 | `client/runtime/` | Embedded runtime helpers: `list`, `ifBlock`, `text`, `attr`, `classToggle`, `focus`, `on`, `readState`, `rpc`. |
 | `cmd/gothic/` | The `gothic generate` CLI. |
 | `gothic.go` | `RPCService`, `Msg`, `Cmd`, `Model`, `App`, `Component`, request-scoped app models, and module registry. |
-| `js/` | Curated client-only browser interop. |
+| `browser/` | Curated client-only browser interop, shipped as its own module. |
 | `route/` | Path pattern matching shared by the server and client. |
 | `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
 | `virtual/` | Headless fixed-height list windowing shared by the server and client. |

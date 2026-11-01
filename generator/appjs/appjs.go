@@ -1608,8 +1608,8 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 			return x + ".message", nil
 		}
 		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
-			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "js" {
-				return g.jsCall(sel.Sel.Name, e.Args, ctx)
+			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "browser" {
+				return g.browserCall(sel.Sel.Name, e.Args, ctx)
 			}
 			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "route" {
 				return g.routeCall(sel.Sel.Name, e.Args, ctx)
@@ -1796,9 +1796,9 @@ func (g *gen) routeCall(name string, args []ast.Expr, ctx exprCtx) (string, erro
 	}
 }
 
-func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) {
+func (g *gen) browserCall(name string, args []ast.Expr, ctx exprCtx) (string, error) {
 	if !ctx.allowJS {
-		return "", g.exprErr(ctx, "move js calls into Init, Update, or a command", "js.%s can only be used in Init, Update, or commands", name)
+		return "", g.exprErr(ctx, "move browser calls into Init, Update, or a command", "browser.%s can only be used in Init, Update, or commands", name)
 	}
 	parts := make([]string, len(args))
 	for i, arg := range args {
@@ -1811,34 +1811,34 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 	switch name {
 	case "Alert":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.Alert expects one argument")
+			return "", fmt.Errorf("browser.Alert expects one argument")
 		}
 		return fmt.Sprintf("window.alert(%s)", parts[0]), nil
 	case "Log":
 		return "console.log(" + strings.Join(parts, ", ") + ")", nil
 	case "SetTitle":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.SetTitle expects one argument")
+			return "", fmt.Errorf("browser.SetTitle expects one argument")
 		}
 		return fmt.Sprintf("(document.title = String(%s))", parts[0]), nil
 	case "GetItem":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.GetItem expects one argument")
+			return "", fmt.Errorf("browser.GetItem expects one argument")
 		}
 		return fmt.Sprintf("(localStorage.getItem(%s) ?? \"\")", parts[0]), nil
 	case "SetItem":
 		if len(parts) != 2 {
-			return "", fmt.Errorf("js.SetItem expects two arguments")
+			return "", fmt.Errorf("browser.SetItem expects two arguments")
 		}
 		return fmt.Sprintf("localStorage.setItem(%s, %s)", parts[0], parts[1]), nil
 	case "RemoveItem":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.RemoveItem expects one argument")
+			return "", fmt.Errorf("browser.RemoveItem expects one argument")
 		}
 		return fmt.Sprintf("localStorage.removeItem(%s)", parts[0]), nil
 	case "Copy":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.Copy expects one argument")
+			return "", fmt.Errorf("browser.Copy expects one argument")
 		}
 		call := fmt.Sprintf("navigator.clipboard.writeText(%s)", parts[0])
 		if ctx.async {
@@ -1847,45 +1847,45 @@ func (g *gen) jsCall(name string, args []ast.Expr, ctx exprCtx) (string, error) 
 		return call, nil
 	case "ClientHeight":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.ClientHeight expects one argument")
+			return "", fmt.Errorf("browser.ClientHeight expects one argument")
 		}
 		return fmt.Sprintf("(document.querySelector(%s)?.clientHeight ?? 0)", parts[0]), nil
 	case "Focus":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.Focus expects one argument")
+			return "", fmt.Errorf("browser.Focus expects one argument")
 		}
 		return fmt.Sprintf("document.querySelector(%s)?.focus()", parts[0]), nil
 	case "Navigate":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.Navigate expects one argument")
+			return "", fmt.Errorf("browser.Navigate expects one argument")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Navigate requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "browser.Navigate requires a LocationChanged message")
 		}
 		return fmt.Sprintf("navigate(%s)", parts[0]), nil
 	case "Replace":
 		if len(parts) != 1 {
-			return "", fmt.Errorf("js.Replace expects one argument")
+			return "", fmt.Errorf("browser.Replace expects one argument")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Replace requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "browser.Replace requires a LocationChanged message")
 		}
 		return fmt.Sprintf("replaceLocation(%s)", parts[0]), nil
 	case "Back":
 		if len(parts) != 0 {
-			return "", fmt.Errorf("js.Back takes no arguments")
+			return "", fmt.Errorf("browser.Back takes no arguments")
 		}
 		if _, ok := g.app.Messages["LocationChanged"]; !ok {
-			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "js.Back requires a LocationChanged message")
+			return "", g.exprErr(ctx, "add a LocationChanged message to the app", "browser.Back requires a LocationChanged message")
 		}
 		return "history.back()", nil
 	case "Reload":
 		if len(parts) != 0 {
-			return "", fmt.Errorf("js.Reload takes no arguments")
+			return "", fmt.Errorf("browser.Reload takes no arguments")
 		}
 		return "location.reload()", nil
 	default:
-		return "", fmt.Errorf("unknown js function %s", name)
+		return "", fmt.Errorf("unknown browser function %s", name)
 	}
 }
 

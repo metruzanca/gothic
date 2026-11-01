@@ -795,9 +795,9 @@ A plain left click is intercepted, `history.pushState` runs, and
 Programmatic navigation comes from the `js` package:
 
 ```go
-js.Navigate("/about")
-js.Replace("/about")
-js.Back()
+browser.Navigate("/about")
+browser.Replace("/about")
+browser.Back()
 ```
 
 These are client-only and valid in `Init`, `Update`, or commands. They require
@@ -911,7 +911,7 @@ func (m Model) Update(msg gothic.Msg) (Model, gothic.Cmd) {
 
 The router example uses `/hello/:name` and renders the captured name on the
 server and after client-side navigation. Its input and Say hello button build a
-new path in a command with `js.Navigate("/hello/" + name)`.
+new path in a command with `browser.Navigate("/hello/" + name)`.
 
 Limits:
 
@@ -925,18 +925,18 @@ Limits:
 The `js` package is a curated, client-only surface:
 
 ```go
-import "github.com/metruzanca/gothic/js"
+import "github.com/metruzanca/gothic/browser"
 
-js.Alert("Saved")
-js.Log("loaded", count)
-js.SetTitle("Todos")
-js.SetItem("theme", "dark")
-theme := js.GetItem("theme")
-js.RemoveItem("theme")
-js.Copy("text to copy")
-js.Focus("#search")
-height := js.ClientHeight("#rows")
-js.Reload()
+browser.Alert("Saved")
+browser.Log("loaded", count)
+browser.SetTitle("Todos")
+browser.SetItem("theme", "dark")
+theme := browser.GetItem("theme")
+browser.RemoveItem("theme")
+browser.Copy("text to copy")
+browser.Focus("#search")
+height := browser.ClientHeight("#rows")
+browser.Reload()
 ```
 
 Calls are lowered to browser APIs in the generated JavaScript. They are only
@@ -1000,7 +1000,7 @@ Tagless switches and switch init statements are supported.
 Keep these differences from server Go in mind:
 
 - `dom.Px(n)` formats pixel lengths for style attributes,
-- `js.ClientHeight(selector)` reads an element height for measurement commands,
+- `browser.ClientHeight(selector)` reads an element height for measurement commands,
 - a missing map key reads as `undefined`, not the zero value,
 - map iteration uses JavaScript insertion order, and map keys arrive as strings,
 - `/=` is floating division,

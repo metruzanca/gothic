@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/js"
+	"github.com/metruzanca/gothic/browser"
 	"github.com/metruzanca/gothic/route"
 	"html"
 	"io"
@@ -79,17 +79,17 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Name = params["name"]
 			m.Draft = m.Name
 		}
-		m.LastPath = js.GetItem("lastPath")
-		js.SetItem("lastPath", msg.Path)
-		js.SetTitle("gothic router: " + m.Page)
+		m.LastPath = browser.GetItem("lastPath")
+		browser.SetItem("lastPath", msg.Path)
+		browser.SetTitle("gothic router: " + m.Page)
 	case GoSettings:
 		return m, func() gothic.Msg {
-			js.Navigate("/settings")
+			browser.Navigate("/settings")
 			return nil
 		}
 	case GoBack:
 		return m, func() gothic.Msg {
-			js.Back()
+			browser.Back()
 			return nil
 		}
 	case NameChanged:
@@ -100,7 +100,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			return m, nil
 		}
 		return m, func() gothic.Msg {
-			js.Navigate("/hello/" + name)
+			browser.Navigate("/hello/" + name)
 			return nil
 		}
 	}
@@ -348,7 +348,7 @@ func App(model Model) gothic.Component {
 			if err := write("<p>"); err != nil {
 				return err
 			}
-			if err := write("This page was reached through a command that called js.Navigate."); err != nil {
+			if err := write("This page was reached through a command that called browser.Navigate."); err != nil {
 				return err
 			}
 			if err := write("</p>"); err != nil {

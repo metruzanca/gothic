@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/js"
+	"github.com/metruzanca/gothic/browser"
 	"github.com/metruzanca/gothic/ui"
 )
 
@@ -73,7 +73,7 @@ type ButtonClicked struct{}
 
 case ButtonClicked:
 	return m, func() gothic.Msg {
-		js.Alert("Hello from Gothicbook")
+		browser.Alert("Hello from Gothicbook")
 		return nil
 	}`,
 		CardCode: `// Page
@@ -346,7 +346,7 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		}
 	case ButtonClicked:
 		return m, func() gothic.Msg {
-			js.Alert("Hello from Gothicbook")
+			browser.Alert("Hello from Gothicbook")
 			return nil
 		}
 	case IncrementClicked:
@@ -470,7 +470,7 @@ view App(model Model) {
 					<header class="page-head">
 						<p class="eyebrow">component</p>
 						<h1>Button</h1>
-						<p>Primary and secondary actions. The primary button calls js.Alert.</p>
+						<p>Primary and secondary actions. The primary button calls browser.Alert.</p>
 					</header>
 					<div class="demo">
 						<div class="row">

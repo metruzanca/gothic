@@ -27,12 +27,16 @@ go test -count=1 ./...
 node --check client/runtime/gothic.js
 node --check examples/guestbook/app_gothic.js
 node --check examples/router/app_gothic.js
+node --check virtual/example/app_gothic.js
 ```
 
-For the UI, Gothicbook, and router modules, also run:
+For the nested modules, also run:
 
 ```sh
 (cd ui && go test ./...)
+(cd browser && go test ./...)
+(cd virtual && go test ./...)
+(cd virtual/example && go test ./...)
 (cd examples/gothicbook && go test ./...)
 (cd examples/router && go test ./...)
 ```
