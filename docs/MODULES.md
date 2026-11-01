@@ -13,6 +13,17 @@ HTTP server. Everything else is optional.
 | Sessions | `github.com/metruzanca/gothic/session` | `session/vX.Y.Z` | sqlite for tests |
 | Auth | `github.com/metruzanca/gothic/auth` | `auth/vX.Y.Z` | core, sessions |
 
+Current releases:
+
+| Module | Version |
+|---|---|
+| Core | `v0.4.0` |
+| UI kit | `ui/v0.2.0` |
+| Browser | `browser/v0.1.0` |
+| Virtual | `virtual/v0.1.0` |
+| Sessions | `session/v0.1.0` |
+| Auth | `auth/v0.1.0` |
+
 ## Core
 
 ```sh

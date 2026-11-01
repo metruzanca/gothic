@@ -3,9 +3,9 @@ module github.com/metruzanca/gothic/examples/accounts
 go 1.26.0
 
 require (
-	github.com/metruzanca/gothic v0.0.0
-	github.com/metruzanca/gothic/auth v0.0.0
-	github.com/metruzanca/gothic/session v0.0.0
+	github.com/metruzanca/gothic v0.4.0
+	github.com/metruzanca/gothic/auth v0.1.0
+	github.com/metruzanca/gothic/session v0.1.0
 	modernc.org/sqlite v1.61.0
 )
 
