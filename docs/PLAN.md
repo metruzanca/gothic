@@ -266,8 +266,6 @@ Supported now:
 - request-scoped app models and catch-all mounting for deep links,
 - curated browser interop through the `browser` module,
 - component-to-parent action messages through `emit`,
-- children on stateful components in static App positions through
-  `gothic.Children`,
 - App-owned procedures passed to components as action props,
 - SSR, model serialization, hydration, and client-side dispatch,
 - error handling through messages,
@@ -304,7 +302,6 @@ Not supported yet:
 - address-of expressions in views,
 - controlled components and function-valued props,
 - multiple app models,
-- named slots and fallback content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
@@ -321,13 +318,12 @@ Not supported yet:
 
 These will be planned in detail after the proof of concept is evaluated:
 
-1. Named slots, fallback content, and slotted components in branches or lists.
-2. Wildcard or optional route segments and reverse URL building.
-3. Typed procedure argument validation and a no-JS fallback for MVU apps.
-4. `go/packages` for type information and stronger validation.
-5. Manifest, content hashing, and production serving.
-6. Formatter, LSP, and source maps.
-7. Selective vendoring of templ's HTML and whitespace handling with tests.
+1. Wildcard or optional route segments and reverse URL building.
+2. Typed procedure argument validation and a no-JS fallback for MVU apps.
+3. `go/packages` for type information and stronger validation.
+4. Manifest, content hashing, and production serving.
+5. Formatter, LSP, and source maps.
+6. Selective vendoring of templ's HTML and whitespace handling with tests.
 
 ## Risks
 
@@ -339,10 +335,9 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no declared procedures, and
-  children on stateful components are supported only in static App positions.
-  Precompiled library components cannot accept children. Prop change detection
-  is reference-based. Props seed state through `PropsChanged{Initial: true}`,
-  not a constructor. Commands are guarded after unmount, but there is no general
+  stateful components cannot accept children. Prop change detection is
+  reference-based. Props seed state through `PropsChanged{Initial: true}`, not
+  a constructor. Commands are guarded after unmount, but there is no general
   cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component

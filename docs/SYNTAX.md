@@ -119,7 +119,7 @@ them into the caller before generating Go and JavaScript.
 
 ### Children
 
-A component accepts children when its props struct embeds `gothic.Children`:
+A pure component accepts children when its props struct embeds `gothic.Children`:
 
 ```templ
 type FieldProps struct {
@@ -145,8 +145,7 @@ view Field(props FieldProps) {
   loop variables, events, conditionals, and stateful components.
 - The component must render `{ props.Children }` exactly once.
 - A named `Children gothic.Children` field works too.
-- Named slots and fallback content are not supported.
-- Precompiled library stateful components cannot accept children.
+- Children are available on pure components only.
 
 ### Stateful components
 
@@ -197,7 +196,8 @@ write child state. State starts at the zero value unless seeded from props.
 
 Stateful components can render in static positions, inside `if` branches, and
 as keyed list items. Closing a branch or removing a keyed list item unmounts the
-component, so its state resets when it is created again.
+component, so its state resets when it is created again. Stateful components
+cannot accept children; use a pure component for layout.
 
 #### Props and Init
 
@@ -691,7 +691,7 @@ Supported:
   view,
 - named tag props mapped case-insensitively,
 - optional pointer props with `nil` and `null` semantics,
-- children through `gothic.Children` on pure and stateful components,
+- children through `gothic.Children` on pure components,
 - components in the same file or separate files in the same package,
 - nested pure and stateful components,
 - stateful components inside conditionals and keyed lists, with unmount,
@@ -721,7 +721,6 @@ Not supported yet:
 - address-of expressions in views,
 - controlled components and function-valued props,
 - multiple app models,
-- named slots and fallback content,
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,

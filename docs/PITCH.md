@@ -127,7 +127,6 @@ Every example runs end to end.
 - Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
-- Stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
 - A curated `browser` module covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
@@ -146,11 +145,10 @@ gothic grows its own bootstrap compiler and may vendor small, attributed pieces 
 
 ## What comes next
 
-1. Named slots and fallback content.
-2. Wildcard or optional route segments and reverse URL building.
-3. Typed procedure argument validation and the no-JS form fallback.
-4. `go/packages` type information for stronger compiler checks.
-5. Manifest, content hashing, formatter, LSP, and source maps.
+1. Wildcard or optional route segments and reverse URL building.
+2. Typed procedure argument validation and the no-JS form fallback.
+3. `go/packages` type information for stronger compiler checks.
+4. Manifest, content hashing, formatter, LSP, and source maps.
 
 ## Why this can work
 

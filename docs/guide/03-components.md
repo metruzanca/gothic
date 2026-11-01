@@ -56,7 +56,7 @@ procedures.
 
 ## Children
 
-A component accepts children when its props struct embeds `gothic.Children`:
+A pure component accepts children when its props struct embeds `gothic.Children`:
 
 ```templ
 import "github.com/metruzanca/gothic"
@@ -86,7 +86,7 @@ Use it like any other element:
 - Children are expanded in the caller's scope, so they can use the App model,
   loop variables, events, conditionals, and stateful components.
 - Children render nothing when the component is called without children.
-- Named slots and fallback content are not supported.
+- Children are available on pure components only.
 
 A named field works too:
 
@@ -319,26 +319,6 @@ view Dashboard(model DashboardModel, props DashboardProps) {
 - Unmounting the parent destroys the whole tree.
 - Keyed list children keep their state while their key stays in the list.
 
-A stateful component can also take children through `gothic.Children`:
-
-```go
-type PanelProps struct {
-	gothic.Children
-	Title string
-}
-```
-
-```templ
-view Panel(model PanelModel, props PanelProps) {
-	<section>
-		<h2>{ props.Title }</h2>
-		{ props.Children }
-	</section>
-}
-```
-
-Children keep the App scope, so App state and events work inside the panel.
-
 ## Conditionals and loops
 
 Components can use `if`, `else if`, `else`, and `for` like the App view:
@@ -402,12 +382,11 @@ See [ui/README.md](../../ui/README.md) for the current component list.
 
 - Components cannot declare procedures; procedures are App-owned.
 - Address-of expressions are not supported in views.
-- Named slots and fallback content are not supported.
 - Function-valued props are not supported.
 - Go cannot call a component function directly yet.
 - `switch` is not part of the view language.
 - A pure component renders exactly one root element.
-- Precompiled library stateful components cannot accept children.
+- Stateful components cannot accept children; use a pure component for layout.
 
 ## What next
 
