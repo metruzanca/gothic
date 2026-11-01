@@ -82,7 +82,7 @@ func TestGothicbookPages(t *testing.T) {
 		{"/field", []string{`<h1>Field</h1>`, `data-part="field"`, `data-part="checkbox"`, `data-part="switch"`}},
 		{"/tabs", []string{`<h1>Tabs</h1>`, `role="tablist"`, `role="tab"`, `role="tabpanel"`}},
 		{"/accordion", []string{`<h1>Accordion</h1>`, `data-part="accordion"`, `aria-expanded="true"`}},
-		{"/combobox", []string{`<h1>Combobox</h1>`, `role="combobox"`, `aria-controls="fruit-listbox"`, `name="fruit"`}},
+		{"/combobox", []string{`<h1>Combobox</h1>`, `role="combobox"`, `aria-controls="fruit-listbox"`, `name="fruit"`, `data-part="combobox-chips"`, `Favourite fruits`}},
 	}
 	for _, page := range pages {
 		html := getPage(t, ts.URL+page.path)

@@ -561,8 +561,37 @@ button {
 	cursor: pointer;
 }
 
+[data-part="combobox-option"]:hover,
+[data-part="combobox-option"][data-hovered="true"],
 [data-part="combobox-option"][data-highlighted="true"] {
 	background: var(--accent-soft);
+}
+
+[data-part="combobox-chips"] {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+[data-part="combobox-chip"] {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.2rem 0.45rem;
+	border-radius: 999px;
+	background: var(--accent-soft);
+	color: var(--text);
+	font-size: 0.85rem;
+}
+
+[data-part="combobox-chip-remove"] {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	font: inherit;
+	line-height: 1;
+	cursor: pointer;
 }
 
 [data-part="combobox-empty"] {

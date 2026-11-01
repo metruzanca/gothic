@@ -31,6 +31,14 @@
           "type": "*string"
         },
         {
+          "name": "Values",
+          "type": "[]string"
+        },
+        {
+          "name": "Multiple",
+          "type": "*bool"
+        },
+        {
           "name": "AriaLabel",
           "type": "*string"
         },

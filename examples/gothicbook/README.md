@@ -22,7 +22,7 @@ versions.
 - `ui.Checkbox` and `ui.Switch` as controlled primitives
 - compound `ui.Tabs` with app-owned active state and `onkeynav`
 - compound `ui.Accordion` with app-owned open state
-- `ui.Combobox` with local filtering, keyboard navigation, and typed messages
+- `ui.Combobox` with local filtering, keyboard navigation, hover states, and single or multiple selection
 - a server-backed button that runs an RPC procedure
 - client-side routing with server-rendered deep links
 - a system-aware theme with a session-only manual toggle

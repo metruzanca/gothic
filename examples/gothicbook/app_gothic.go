@@ -28,22 +28,24 @@ type AccordionEntry struct {
 }
 
 type Model struct {
-	Path          string
-	Page          string
-	Wordmark      string
-	Count         int
-	Error         string
-	Name          string
-	NameError     string
-	Done          bool
-	Notify        bool
-	Tabs          []TabEntry
-	ActiveTab     string
-	Accordion     []AccordionEntry
-	OpenAccordion string
-	Fruits        []ui.ComboboxItem
-	FruitValue    string
-	FruitLabel    string
+	Path             string
+	Page             string
+	Wordmark         string
+	Count            int
+	Error            string
+	Name             string
+	NameError        string
+	Done             bool
+	Notify           bool
+	Tabs             []TabEntry
+	ActiveTab        string
+	Accordion        []AccordionEntry
+	OpenAccordion    string
+	Fruits           []ui.ComboboxItem
+	FruitValue       string
+	FruitLabel       string
+	FruitValues      []string
+	FruitValueLabels []string
 }
 
 type LocationChanged struct {
@@ -69,15 +71,17 @@ type Procedures interface {
 
 func NewModelAt(path string, count int) Model {
 	m := Model{
-		Path:          path,
-		Page:          pageForPath(path),
-		Wordmark:      wordmarkHref,
-		Count:         count,
-		Name:          "Ada",
-		ActiveTab:     "profile",
-		OpenAccordion: "one",
-		FruitValue:    "banana",
-		FruitLabel:    "Banana",
+		Path:             path,
+		Page:             pageForPath(path),
+		Wordmark:         wordmarkHref,
+		Count:            count,
+		Name:             "Ada",
+		ActiveTab:        "profile",
+		OpenAccordion:    "one",
+		FruitValue:       "banana",
+		FruitLabel:       "Banana",
+		FruitValues:      []string{"apple", "fig"},
+		FruitValueLabels: []string{"Apple", "Fig"},
 		Tabs: []TabEntry{
 			{ID: "profile", Label: "Profile", Panel: "Profile settings. The App owns the active tab."},
 			{ID: "notifications", Label: "Notifications", Panel: "Notification settings. Keyboard navigation is handled with onkeynav."},
@@ -195,6 +199,9 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case ui.ComboboxValueChanged:
 		m.FruitValue = msg.Value
 		m.FruitLabel = msg.Label
+	case ui.ComboboxValuesChanged:
+		m.FruitValues = msg.Values
+		m.FruitValueLabels = msg.Labels
 	}
 	return m, nil
 }
@@ -2164,7 +2171,7 @@ func App(model Model) gothic.Component {
 			if err := write("</header>"); err != nil {
 				return err
 			}
-			if err := ui.Combobox("c0", "", ui.ComboboxProps{ID: "fruit", Items: model.Fruits, FieldLabel: dom.Ptr("Fruit"), Value: dom.Ptr(model.FruitValue), Label: dom.Ptr(model.FruitLabel), Placeholder: dom.Ptr("Pick a fruit"), Name: dom.Ptr("fruit"), Clearable: dom.BoolPtr(true), ClearLabel: dom.Ptr("Clear fruit")}).Render(ctx, w); err != nil {
+			if err := ui.Combobox("c0", "", ui.ComboboxProps{ID: "fruit", Items: model.Fruits, FieldLabel: dom.Ptr("Fruit"), Value: dom.Ptr(model.FruitValue), Label: dom.Ptr(model.FruitLabel), Values: nil, Placeholder: dom.Ptr("Pick a fruit"), Name: dom.Ptr("fruit"), Clearable: dom.BoolPtr(true), ClearLabel: dom.Ptr("Clear fruit")}).Render(ctx, w); err != nil {
 				return err
 			}
 			if err := write("<p"); err != nil {
@@ -2207,6 +2214,18 @@ func App(model Model) gothic.Component {
 				return err
 			}
 			if err := write("</p>"); err != nil {
+				return err
+			}
+			if err := write("<h2>"); err != nil {
+				return err
+			}
+			if err := write("Multiple"); err != nil {
+				return err
+			}
+			if err := write("</h2>"); err != nil {
+				return err
+			}
+			if err := ui.Combobox("c1", "", ui.ComboboxProps{ID: "fruits-multi", Items: model.Fruits, FieldLabel: dom.Ptr("Favourite fruits"), Values: model.FruitValues, Multiple: dom.BoolPtr(true), Placeholder: dom.Ptr("Pick several fruits"), Name: dom.Ptr("fruits"), Clearable: dom.BoolPtr(true), ClearLabel: dom.Ptr("Clear fruits")}).Render(ctx, w); err != nil {
 				return err
 			}
 		} else {

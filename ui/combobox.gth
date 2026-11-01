@@ -18,6 +18,8 @@ type ComboboxProps struct {
 	FieldLabel  *string
 	Value       *string
 	Label       *string
+	Values      []string
+	Multiple    *bool
 	AriaLabel   *string
 	Placeholder *string
 	EmptyText   *string
@@ -30,12 +32,16 @@ type ComboboxProps struct {
 }
 
 type ComboboxModel struct {
-	Query   string
-	Value   string
-	Label   string
-	Open    bool
-	Active  int
-	Visible []ComboboxItem
+	Query       string
+	Value       string
+	Label       string
+	Multi       bool
+	Selected    []ComboboxItem
+	SelectedSet map[string]bool
+	Open        bool
+	Active      int
+	Hovered     int
+	Visible     []ComboboxItem
 }
 
 type ComboboxValueChanged struct {
@@ -44,9 +50,18 @@ type ComboboxValueChanged struct {
 	Label string
 }
 
+type ComboboxValuesChanged struct {
+	ID     string
+	Values []string
+	Labels []string
+}
+
 type ComboboxInput struct{ Text string }
 type ComboboxKey struct{ Key string }
 type ComboboxSelected struct{ Index int }
+type ComboboxRemove struct{ Value string }
+type ComboboxHovered struct{ Index int }
+type ComboboxUnhovered struct{ Index int }
 type ComboboxOpened struct{}
 type ComboboxClosed struct{}
 type ComboboxCleared struct{}
@@ -57,18 +72,33 @@ func (m ComboboxModel) Update(msg gothic.Msg, props ComboboxProps) (ComboboxMode
 	switch msg := msg.(type) {
 	case gothic.PropsChanged:
 		if msg.Initial {
-			if props.Value != nil {
-				m.Value = *props.Value
-			}
-			if props.Label != nil {
-				m.Label = *props.Label
-			}
-			m.Query = m.Label
-			if m.Query == "" {
-				m.Query = m.Value
-			}
+			m.Multi = props.Multiple != nil && *props.Multiple
+			m.Hovered = -1
 			m.Visible = props.Items
 			m.Active = 0
+			m.SelectedSet = map[string]bool{}
+			if m.Multi {
+				for _, item := range props.Items {
+					for _, value := range props.Values {
+						if item.Value == value {
+							m.Selected = append(m.Selected, item)
+							m.SelectedSet[item.Value] = true
+						}
+					}
+				}
+			} else {
+				if props.Value != nil {
+					m.Value = *props.Value
+					m.SelectedSet[m.Value] = true
+				}
+				if props.Label != nil {
+					m.Label = *props.Label
+				}
+				m.Query = m.Label
+				if m.Query == "" {
+					m.Query = m.Value
+				}
+			}
 		}
 	case ComboboxInput:
 		m.Query = msg.Text
@@ -83,14 +113,29 @@ func (m ComboboxModel) Update(msg gothic.Msg, props ComboboxProps) (ComboboxMode
 		m.Active = 0
 	case ComboboxOpened:
 		m.Open = true
-		if m.Query == m.Label {
+		if m.Multi {
+			m.Query = ""
+		} else if m.Query == m.Label {
 			m.Query = ""
 		}
 		m.Visible = props.Items
 		m.Active = 0
 	case ComboboxClosed:
 		m.Open = false
-		m.Query = m.Label
+		if m.Multi {
+			m.Query = ""
+		} else {
+			m.Query = m.Label
+		}
+	case ComboboxHovered:
+		if msg.Index >= 0 {
+			m.Hovered = msg.Index
+			m.Active = msg.Index
+		}
+	case ComboboxUnhovered:
+		if m.Hovered == msg.Index {
+			m.Hovered = -1
+		}
 	case ComboboxKey:
 		if !m.Open {
 			if msg.Key == "ArrowDown" || msg.Key == "Enter" {
@@ -129,31 +174,113 @@ func (m ComboboxModel) Update(msg gothic.Msg, props ComboboxProps) (ComboboxMode
 			}
 		case "Enter":
 			if len(m.Visible) > 0 && m.Active >= 0 && m.Active < len(m.Visible) {
+				if m.Multi {
+					item := m.Visible[m.Active]
+					if m.SelectedSet[item.Value] {
+						next := []ComboboxItem{}
+						for _, selected := range m.Selected {
+							if selected.Value != item.Value {
+								next = append(next, selected)
+							}
+						}
+						m.Selected = next
+						delete(m.SelectedSet, item.Value)
+					} else {
+						m.Selected = append(m.Selected, item)
+						m.SelectedSet[item.Value] = true
+					}
+					m.Query = ""
+					m.Open = true
+					m.Visible = props.Items
+					m.Active = 0
+					values := []string{}
+					labels := []string{}
+					for _, selected := range m.Selected {
+						values = append(values, selected.Value)
+						labels = append(labels, selected.Label)
+					}
+					return m, gothic.Emit(ComboboxValuesChanged{ID: props.ID, Values: values, Labels: labels})
+				}
 				item := m.Visible[m.Active]
 				m.Value = item.Value
 				m.Label = item.Label
 				m.Query = item.Label
 				m.Open = false
+				m.SelectedSet = map[string]bool{item.Value: true}
 				return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
 			}
 		case "Escape":
 			m.Open = false
-			m.Query = m.Label
+			if m.Multi {
+				m.Query = ""
+			} else {
+				m.Query = m.Label
+			}
 		}
 	case ComboboxSelected:
 		if msg.Index >= 0 && msg.Index < len(m.Visible) {
+			if m.Multi {
+				item := m.Visible[msg.Index]
+				if m.SelectedSet[item.Value] {
+					next := []ComboboxItem{}
+					for _, selected := range m.Selected {
+						if selected.Value != item.Value {
+							next = append(next, selected)
+						}
+					}
+					m.Selected = next
+					delete(m.SelectedSet, item.Value)
+				} else {
+					m.Selected = append(m.Selected, item)
+					m.SelectedSet[item.Value] = true
+				}
+				m.Query = ""
+				m.Open = true
+				m.Visible = props.Items
+				m.Active = 0
+				values := []string{}
+				labels := []string{}
+				for _, selected := range m.Selected {
+					values = append(values, selected.Value)
+					labels = append(labels, selected.Label)
+				}
+				return m, gothic.Emit(ComboboxValuesChanged{ID: props.ID, Values: values, Labels: labels})
+			}
 			item := m.Visible[msg.Index]
 			m.Value = item.Value
 			m.Label = item.Label
 			m.Query = item.Label
 			m.Open = false
+			m.SelectedSet = map[string]bool{item.Value: true}
 			return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
 		}
+	case ComboboxRemove:
+		next := []ComboboxItem{}
+		for _, item := range m.Selected {
+			if item.Value != msg.Value {
+				next = append(next, item)
+			}
+		}
+		m.Selected = next
+		delete(m.SelectedSet, msg.Value)
+		values := []string{}
+		labels := []string{}
+		for _, selected := range m.Selected {
+			values = append(values, selected.Value)
+			labels = append(labels, selected.Label)
+		}
+		return m, gothic.Emit(ComboboxValuesChanged{ID: props.ID, Values: values, Labels: labels})
 	case ComboboxCleared:
-		m.Value = ""
-		m.Label = ""
 		m.Query = ""
 		m.Open = false
+		if m.Multi {
+			m.Selected = nil
+			m.SelectedSet = map[string]bool{}
+			return m, gothic.Emit(ComboboxValuesChanged{ID: props.ID})
+		}
+		m.Value = ""
+		m.Label = ""
+		m.SelectedSet = map[string]bool{}
 		return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: "", Label: ""})
 	}
 	return m, nil
@@ -164,9 +291,25 @@ view Combobox(model ComboboxModel, props ComboboxProps) {
 		data-part="combobox"
 		data-open={ dom.If(model.Open, "true", "") }
 		data-invalid={ dom.If(props.Invalid != nil && *props.Invalid, "true", "") }
+		data-multiple={ dom.If(model.Multi, "true", "") }
 	>
 		if props.FieldLabel != nil {
 			<label data-part="combobox-label" for={ props.ID }>{ *props.FieldLabel }</label>
+		}
+		if model.Multi && len(model.Selected) > 0 {
+			<div data-part="combobox-chips">
+				for _, item := range model.Selected {
+					<span data-part="combobox-chip" key={ item.Value }>
+						<span data-part="combobox-chip-label">{ item.Label }</span>
+						<button
+							data-part="combobox-chip-remove"
+							type="button"
+							aria-label={ "Remove " + item.Label }
+							onclick={ ComboboxRemove{Value: item.Value} }
+						>×</button>
+					</span>
+				}
+			</div>
 		}
 		<div data-part="combobox-control">
 			<input
@@ -189,12 +332,12 @@ view Combobox(model ComboboxModel, props ComboboxProps) {
 				onblur={ ComboboxClosed{} }
 				onkeynav={ ComboboxKey{Key: event.key} }
 			/>
-			if props.Clearable != nil && *props.Clearable && model.Value != "" {
+			if props.Clearable != nil && *props.Clearable && ((model.Multi && len(model.Selected) > 0) || (!model.Multi && model.Value != "")) {
 				<button data-part="combobox-clear" type="button" aria-label={ dom.StrOr(props.ClearLabel, "Clear") } onclick={ ComboboxCleared{} }>×</button>
 			}
 		</div>
 		if model.Open {
-			<ul data-part="combobox-listbox" id={ props.ID + "-listbox" } role="listbox">
+			<ul data-part="combobox-listbox" id={ props.ID + "-listbox" } role="listbox" aria-multiselectable={ dom.If(model.Multi, "true", "false") }>
 				if len(model.Visible) == 0 {
 					<li data-part="combobox-empty">{ dom.StrOr(props.EmptyText, "No results") }</li>
 				}
@@ -203,16 +346,25 @@ view Combobox(model ComboboxModel, props ComboboxProps) {
 						data-part="combobox-option"
 						id={ dom.ID(props.ID + "-option", i) }
 						role="option"
-						aria-selected={ dom.If(item.Value == model.Value, "true", "false") }
+						aria-selected={ dom.If(model.SelectedSet[item.Value], "true", "false") }
 						data-highlighted={ dom.If(i == model.Active, "true", "") }
+						data-hovered={ dom.If(i == model.Hovered, "true", "") }
 						scroll={ i == model.Active }
+						onmouseenter={ ComboboxHovered{Index: i} }
+						onmouseleave={ ComboboxUnhovered{Index: i} }
 						onmousedown={ ComboboxSelected{Index: i} }
 					>{ item.Label }</li>
 				}
 			</ul>
 		}
 		if props.Name != nil {
-			<input type="hidden" name={ *props.Name } value={ model.Value } />
+			if model.Multi {
+				for _, item := range model.Selected {
+					<input type="hidden" name={ *props.Name } value={ item.Value } />
+				}
+			} else {
+				<input type="hidden" name={ *props.Name } value={ model.Value } />
+			}
 		}
 	</div>
 }

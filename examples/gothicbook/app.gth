@@ -37,9 +37,11 @@ type Model struct {
 	ActiveTab     string
 	Accordion     []AccordionEntry
 	OpenAccordion string
-	Fruits        []ui.ComboboxItem
-	FruitValue    string
-	FruitLabel    string
+	Fruits            []ui.ComboboxItem
+	FruitValue        string
+	FruitLabel        string
+	FruitValues       []string
+	FruitValueLabels  []string
 }
 
 type LocationChanged struct {
@@ -72,8 +74,10 @@ func NewModelAt(path string, count int) Model {
 		Name:          "Ada",
 		ActiveTab:     "profile",
 		OpenAccordion: "one",
-		FruitValue:    "banana",
-		FruitLabel:    "Banana",
+		FruitValue:       "banana",
+		FruitLabel:       "Banana",
+		FruitValues:      []string{"apple", "fig"},
+		FruitValueLabels: []string{"Apple", "Fig"},
 		Tabs: []TabEntry{
 			{ID: "profile", Label: "Profile", Panel: "Profile settings. The App owns the active tab."},
 			{ID: "notifications", Label: "Notifications", Panel: "Notification settings. Keyboard navigation is handled with onkeynav."},
@@ -191,6 +195,9 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	case ui.ComboboxValueChanged:
 		m.FruitValue = msg.Value
 		m.FruitLabel = msg.Label
+	case ui.ComboboxValuesChanged:
+		m.FruitValues = msg.Values
+		m.FruitValueLabels = msg.Labels
 	}
 	return m, nil
 }
@@ -318,12 +325,26 @@ view App(model Model) {
 						fieldlabel={ dom.Ptr("Fruit") }
 						value={ dom.Ptr(model.FruitValue) }
 						label={ dom.Ptr(model.FruitLabel) }
+						values={ nil }
 						placeholder={ dom.Ptr("Pick a fruit") }
 						name={ dom.Ptr("fruit") }
 						clearable={ dom.BoolPtr(true) }
 						clearLabel={ dom.Ptr("Clear fruit") }
 					/>
 					<p class="server-count">Selected: { model.FruitLabel } ({ model.FruitValue })</p>
+
+					<h2>Multiple</h2>
+					<ui.Combobox
+						id="fruits-multi"
+						items={ model.Fruits }
+						fieldlabel={ dom.Ptr("Favourite fruits") }
+						values={ model.FruitValues }
+						multiple={ dom.BoolPtr(true) }
+						placeholder={ dom.Ptr("Pick several fruits") }
+						name={ dom.Ptr("fruits") }
+						clearable={ dom.BoolPtr(true) }
+						clearLabel={ dom.Ptr("Clear fruits") }
+					/>
 				}
 
 				if model.Page == "notfound" {

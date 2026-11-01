@@ -543,7 +543,7 @@ renderList2(model.Accordion);
     e58.appendChild(document.createTextNode("Combobox"));
     e56.appendChild(e58);
   frag.appendChild(e56);
-  const e59 = createCombobox("c0", {ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"});
+  const e59 = createCombobox("c0", {ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, Values: null, Multiple: null, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"});
   frag.appendChild(e59);
     const e60 = document.createElement("p");
     e60.setAttribute("class", "server-count");
@@ -557,41 +557,54 @@ renderList2(model.Accordion);
     e60.appendChild(document.createComment("g:text:13:close"));
     e60.appendChild(document.createTextNode(")"));
   frag.appendChild(e60);
+    const e61 = document.createElement("h2");
+    e61.appendChild(document.createTextNode("Multiple"));
+  frag.appendChild(e61);
+  const e62 = createCombobox("c1", {ID: "fruits-multi", Items: model.Fruits, FieldLabel: "Favourite fruits", Value: null, Label: null, Values: model.FruitValues, Multiple: true, AriaLabel: null, Placeholder: "Pick several fruits", EmptyText: null, Name: "fruits", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruits"});
+  frag.appendChild(e62);
   return frag; },
     () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   const gc1Node = region.querySelector('[data-gothic-component-id="c0"]');
 let gc1Inst = gc1Node && gc1Node.__gothicInstances && gc1Node.__gothicInstances["c0"];
 if (!gc1Inst) {
-  gc1Inst = mountCombobox(gc1Node, {ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"}, dispatch);
+  gc1Inst = mountCombobox(gc1Node, {ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, Values: null, Multiple: null, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"}, dispatch);
   gc1Node.__gothicInstances = { "c0": gc1Inst };
 } else {
-  gc1Inst.updateProps({ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"});
+  gc1Inst.updateProps({ID: "fruit", Items: model.Fruits, FieldLabel: "Fruit", Value: model.FruitValue, Label: model.FruitLabel, Values: null, Multiple: null, AriaLabel: null, Placeholder: "Pick a fruit", EmptyText: null, Name: "fruit", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruit"});
 }
   text(region, "12", model.FruitLabel);
   text(region, "13", model.FruitValue);
+  const gc2Node = region.querySelector('[data-gothic-component-id="c1"]');
+let gc2Inst = gc2Node && gc2Node.__gothicInstances && gc2Node.__gothicInstances["c1"];
+if (!gc2Inst) {
+  gc2Inst = mountCombobox(gc2Node, {ID: "fruits-multi", Items: model.Fruits, FieldLabel: "Favourite fruits", Value: null, Label: null, Values: model.FruitValues, Multiple: true, AriaLabel: null, Placeholder: "Pick several fruits", EmptyText: null, Name: "fruits", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruits"}, dispatch);
+  gc2Node.__gothicInstances = { "c1": gc2Inst };
+} else {
+  gc2Inst.updateProps({ID: "fruits-multi", Items: model.Fruits, FieldLabel: "Favourite fruits", Value: null, Label: null, Values: model.FruitValues, Multiple: true, AriaLabel: null, Placeholder: "Pick several fruits", EmptyText: null, Name: "fruits", Disabled: null, Required: null, Invalid: null, Clearable: true, ClearLabel: "Clear fruits"});
+}
  },
     (region) => {  });
   ifBlock(root, "9",
     model.Page == "notfound",
     () => { const frag = document.createDocumentFragment();
-    const e61 = document.createElement("header");
-    e61.setAttribute("class", "page-head");
-    const e62 = document.createElement("p");
-    e62.setAttribute("class", "eyebrow");
-    e62.appendChild(document.createTextNode("404"));
-    e61.appendChild(e62);
-    const e63 = document.createElement("h1");
-    e63.appendChild(document.createTextNode("Not found"));
-    e61.appendChild(e63);
-  frag.appendChild(e61);
+    const e63 = document.createElement("header");
+    e63.setAttribute("class", "page-head");
     const e64 = document.createElement("p");
-    e64.appendChild(document.createTextNode("No page matches"));
-    e64.appendChild(document.createComment("g:text:14:open"));
-    e64.appendChild(document.createTextNode(String(model.Path)));
-    e64.appendChild(document.createComment("g:text:14:close"));
-    e64.appendChild(document.createTextNode("."));
-  frag.appendChild(e64);
+    e64.setAttribute("class", "eyebrow");
+    e64.appendChild(document.createTextNode("404"));
+    e63.appendChild(e64);
+    const e65 = document.createElement("h1");
+    e65.appendChild(document.createTextNode("Not found"));
+    e63.appendChild(e65);
+  frag.appendChild(e63);
+    const e66 = document.createElement("p");
+    e66.appendChild(document.createTextNode("No page matches"));
+    e66.appendChild(document.createComment("g:text:14:open"));
+    e66.appendChild(document.createTextNode(String(model.Path)));
+    e66.appendChild(document.createComment("g:text:14:close"));
+    e66.appendChild(document.createTextNode("."));
+  frag.appendChild(e66);
   return frag; },
     () => { const frag = document.createDocumentFragment();
   return frag; },
@@ -739,6 +752,12 @@ function update(m, msg) {
   {
     m.FruitValue = msg.Value;
     m.FruitLabel = msg.Label;
+    break;
+  }
+  case "ComboboxValuesChanged":
+  {
+    m.FruitValues = msg.Values;
+    m.FruitValueLabels = msg.Labels;
     break;
   }
   }

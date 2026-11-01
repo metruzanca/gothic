@@ -81,6 +81,28 @@ case ui.ComboboxValueChanged:
 	m.FruitLabel = msg.Label
 ```
 
+### Multiple mode
+
+Set `multiple` and pass `values`:
+
+```templ
+<ui.Combobox
+	id="fruits"
+	items={ model.Fruits }
+	fieldlabel={ dom.Ptr("Favourite fruits") }
+	values={ model.FruitValues }
+	multiple={ dom.BoolPtr(true) }
+	name={ dom.Ptr("fruits") }
+	clearable={ dom.BoolPtr(true) }
+/>
+```
+
+Multiple mode renders selected chips and submits one hidden input per
+selected value. It emits `ui.ComboboxValuesChanged` with `Values` and `Labels`.
+
+Both modes expose `data-hovered="true"` on the option under the pointer and
+`data-highlighted="true"` on the keyboard-active option.
+
 ## Styling contract
 
 - `data-part` identifies the part.

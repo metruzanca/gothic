@@ -12,7 +12,7 @@ function readComponentState(root) {
   try { return JSON.parse(el.textContent || 'null'); } catch (_) { return null; }
 }
 
-const INITIAL_Combobox = {"Query":"","Value":"","Label":"","Open":false,"Active":0,"Visible":[]};
+const INITIAL_Combobox = {"Query":"","Value":"","Label":"","Multi":false,"Selected":[],"SelectedSet":{},"Open":false,"Active":0,"Hovered":0,"Visible":[]};
 
 export function mountCombobox(root, props, __gothicParentDispatch) {
   const saved = readComponentState(root);
@@ -22,29 +22,30 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
   }
-  onLocal(root, "0", "input", (event) => dispatch({tag: "ComboboxInput", Text: event.target.value}));
-  onLocal(root, "1", "focus", (event) => dispatch({tag: "ComboboxOpened"}));
-  onLocal(root, "2", "blur", (event) => dispatch({tag: "ComboboxClosed"}));
-  onLocal(root, "3", "keydown", (event) => { if (event.ctrlKey || event.metaKey || event.altKey) return; if (!["ArrowUp","ArrowDown","Home","End","PageUp","PageDown","Enter","Escape"].includes(event.key)) return; event.preventDefault(); dispatch({tag: "ComboboxKey", Key: event.key}); });
+  onLocal(root, "1", "input", (event) => dispatch({tag: "ComboboxInput", Text: event.target.value}));
+  onLocal(root, "2", "focus", (event) => dispatch({tag: "ComboboxOpened"}));
+  onLocal(root, "3", "blur", (event) => dispatch({tag: "ComboboxClosed"}));
+  onLocal(root, "4", "keydown", (event) => { if (event.ctrlKey || event.metaKey || event.altKey) return; if (!["ArrowUp","ArrowDown","Home","End","PageUp","PageDown","Enter","Escape"].includes(event.key)) return; event.preventDefault(); dispatch({tag: "ComboboxKey", Key: event.key}); });
   function render(model) {
     attrLocal(root, "0", (model.Open ? "true" : ""));
     attrLocal(root, "1", (props.Invalid != null && props.Invalid ? "true" : ""));
-    attrLocal(root, "3", props.ID);
-    attrLocal(root, "4", (model.Open ? "true" : "false"));
-    attrLocal(root, "5", props.ID + "-listbox");
-    attrLocal(root, "6", (model.Open && len(model.Visible) > 0 ? (props.ID + "-option" + "-" + model.Active) : ""));
-    attrLocal(root, "7", (props.AriaLabel ?? ""));
-    attrLocal(root, "8", (props.Invalid ? "true" : "false"));
-    attrLocal(root, "9", (props.Placeholder ?? ""));
-    attrLocal(root, "10", model.Query);
-    attrLocal(root, "11", props.Disabled != null && props.Disabled);
-    attrLocal(root, "12", props.Required != null && props.Required);
+    attrLocal(root, "2", (model.Multi ? "true" : ""));
+    attrLocal(root, "5", props.ID);
+    attrLocal(root, "6", (model.Open ? "true" : "false"));
+    attrLocal(root, "7", props.ID + "-listbox");
+    attrLocal(root, "8", (model.Open && len(model.Visible) > 0 ? (props.ID + "-option" + "-" + model.Active) : ""));
+    attrLocal(root, "9", (props.AriaLabel ?? ""));
+    attrLocal(root, "10", (props.Invalid ? "true" : "false"));
+    attrLocal(root, "11", (props.Placeholder ?? ""));
+    attrLocal(root, "12", model.Query);
+    attrLocal(root, "13", props.Disabled != null && props.Disabled);
+    attrLocal(root, "14", props.Required != null && props.Required);
     ifBlockLocal(root, "0",
       props.FieldLabel != null,
       () => { const frag = document.createDocumentFragment();
       const e0 = document.createElement("label");
       e0.setAttribute("data-part", "combobox-label");
-      e0.setAttribute("data-gothic-attr-2", "for");
+      e0.setAttribute("data-gothic-attr-3", "for");
       e0.appendChild(document.createComment("g:text:0:open"));
       e0.appendChild(document.createTextNode(String(props.FieldLabel)));
       e0.appendChild(document.createComment("g:text:0:close"));
@@ -52,101 +53,175 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     return frag; },
       () => { const frag = document.createDocumentFragment();
     return frag; },
-      (region) => {   attrLocal(region, "2", props.ID);
+      (region) => {   attrLocal(region, "3", props.ID);
     textLocal(region, "0", props.FieldLabel);
    },
       (region) => {  });
     ifBlockLocal(root, "1",
-      props.Clearable != null && props.Clearable && model.Value != "",
+      model.Multi && len(model.Selected) > 0,
       () => { const frag = document.createDocumentFragment();
-      const e1 = document.createElement("button");
-      e1.setAttribute("data-part", "combobox-clear");
-      e1.setAttribute("type", "button");
-      e1.setAttribute("data-gothic-attr-13", "aria-label");
-      e1.setAttribute("data-gothic-on", "4");
-      e1.appendChild(document.createTextNode("×"));
+      const e1 = document.createElement("div");
+      e1.setAttribute("data-part", "combobox-chips");
+      e1.appendChild(document.createComment("g:each:0:open"));
+      e1.appendChild(document.createComment("g:each:0:close"));
     frag.appendChild(e1);
     return frag; },
       () => { const frag = document.createDocumentFragment();
     return frag; },
-      (region) => {   attrLocal(region, "13", (props.ClearLabel ?? "Clear"));
-    onLocal(region, "4", "click", (event) => dispatch({tag: "ComboboxCleared"}));
+      (region) => {   const renderList0 = listLocal(region, "0", (item, __i0) => {
+    const e0 = document.createElement("span");
+    e0.setAttribute("data-gothic-key", String(item.Value));
+    e0.setAttribute("data-part", "combobox-chip");
+    const e1 = document.createElement("span");
+    e1.setAttribute("data-part", "combobox-chip-label");
+    e1.appendChild(document.createComment("g:text:1:open"));
+    e1.appendChild(document.createTextNode(String(item.Label)));
+    e1.appendChild(document.createComment("g:text:1:close"));
+    e0.appendChild(e1);
+    const e2 = document.createElement("button");
+    e2.setAttribute("data-part", "combobox-chip-remove");
+    e2.setAttribute("type", "button");
+    e2.setAttribute("data-gothic-attr-4", "aria-label");
+    e2.setAttribute("data-gothic-on", "0");
+    e2.appendChild(document.createTextNode("×"));
+    e0.appendChild(e2);
+    textLocal(e0, "1", item.Label);
+    attrLocal(e0, "4", "Remove " + item.Label);
+    onLocal(e0, "0", "click", (event) => dispatch({tag: "ComboboxRemove", Value: item.Value}));
+    return e0;
+  }, (node, item, __i0) => {
+    textLocal(node, "1", item.Label);
+    attrLocal(node, "4", "Remove " + item.Label);
+    onLocal(node, "0", "click", (event) => dispatch({tag: "ComboboxRemove", Value: item.Value}));
+  }, (item, __i0) => String(item.Value));
+  renderList0(model.Selected);
    },
       (region) => {  });
     ifBlockLocal(root, "2",
-      model.Open,
+      props.Clearable != null && props.Clearable && ((model.Multi && len(model.Selected) > 0) || (!model.Multi && model.Value != "")),
       () => { const frag = document.createDocumentFragment();
-      const e2 = document.createElement("ul");
-      e2.setAttribute("data-part", "combobox-listbox");
-      e2.setAttribute("data-gothic-attr-14", "id");
-      e2.setAttribute("role", "listbox");
-      e2.appendChild(document.createComment("g:if:3:open"));
-      e2.appendChild(document.createComment("g:if:3:close"));
-      e2.appendChild(document.createComment("g:each:0:open"));
-      e2.appendChild(document.createComment("g:each:0:close"));
+      const e2 = document.createElement("button");
+      e2.setAttribute("data-part", "combobox-clear");
+      e2.setAttribute("type", "button");
+      e2.setAttribute("data-gothic-attr-15", "aria-label");
+      e2.setAttribute("data-gothic-on", "5");
+      e2.appendChild(document.createTextNode("×"));
     frag.appendChild(e2);
     return frag; },
       () => { const frag = document.createDocumentFragment();
     return frag; },
-      (region) => {   attrLocal(region, "14", props.ID + "-listbox");
-    ifBlockLocal(region, "3",
-      len(model.Visible) == 0,
+      (region) => {   attrLocal(region, "15", (props.ClearLabel ?? "Clear"));
+    onLocal(region, "5", "click", (event) => dispatch({tag: "ComboboxCleared"}));
+   },
+      (region) => {  });
+    ifBlockLocal(root, "3",
+      model.Open,
       () => { const frag = document.createDocumentFragment();
-      const e3 = document.createElement("li");
-      e3.setAttribute("data-part", "combobox-empty");
-      e3.appendChild(document.createComment("g:text:1:open"));
-      e3.appendChild(document.createTextNode(String((props.EmptyText ?? "No results"))));
-      e3.appendChild(document.createComment("g:text:1:close"));
+      const e3 = document.createElement("ul");
+      e3.setAttribute("data-part", "combobox-listbox");
+      e3.setAttribute("data-gothic-attr-16", "id");
+      e3.setAttribute("role", "listbox");
+      e3.setAttribute("data-gothic-attr-17", "aria-multiselectable");
+      e3.appendChild(document.createComment("g:if:4:open"));
+      e3.appendChild(document.createComment("g:if:4:close"));
+      e3.appendChild(document.createComment("g:each:1:open"));
+      e3.appendChild(document.createComment("g:each:1:close"));
     frag.appendChild(e3);
     return frag; },
       () => { const frag = document.createDocumentFragment();
     return frag; },
-      (region) => {   textLocal(region, "1", (props.EmptyText ?? "No results"));
-   },
-      (region) => {  });
-    const renderList0 = listLocal(region, "0", (item, i) => {
-    const e0 = document.createElement("li");
-    e0.setAttribute("data-part", "combobox-option");
-    e0.setAttribute("data-gothic-attr-15", "id");
-    e0.setAttribute("role", "option");
-    e0.setAttribute("data-gothic-attr-16", "aria-selected");
-    e0.setAttribute("data-gothic-attr-17", "data-highlighted");
-    e0.setAttribute("data-gothic-scroll", "0");
-    e0.setAttribute("data-gothic-on", "5");
-    e0.appendChild(document.createComment("g:text:2:open"));
-    e0.appendChild(document.createTextNode(String(item.Label)));
-    e0.appendChild(document.createComment("g:text:2:close"));
-    attrLocal(e0, "15", (props.ID + "-option" + "-" + i));
-    attrLocal(e0, "16", (item.Value == model.Value ? "true" : "false"));
-    attrLocal(e0, "17", (i == model.Active ? "true" : ""));
-    scrollLocal(e0, "0", i == model.Active);
-    onLocal(e0, "5", "mousedown", (event) => dispatch({tag: "ComboboxSelected", Index: i}));
-    textLocal(e0, "2", item.Label);
-    return e0;
-  }, (node, item, i) => {
-    attrLocal(node, "15", (props.ID + "-option" + "-" + i));
-    attrLocal(node, "16", (item.Value == model.Value ? "true" : "false"));
-    attrLocal(node, "17", (i == model.Active ? "true" : ""));
-    scrollLocal(node, "0", i == model.Active);
-    onLocal(node, "5", "mousedown", (event) => dispatch({tag: "ComboboxSelected", Index: i}));
-    textLocal(node, "2", item.Label);
-  });
-  renderList0(model.Visible);
-   },
-      (region) => {  });
-    ifBlockLocal(root, "4",
-      props.Name != null,
+      (region) => {   attrLocal(region, "16", props.ID + "-listbox");
+    attrLocal(region, "17", (model.Multi ? "true" : "false"));
+    ifBlockLocal(region, "4",
+      len(model.Visible) == 0,
       () => { const frag = document.createDocumentFragment();
-      const e4 = document.createElement("input");
-      e4.setAttribute("type", "hidden");
-      e4.setAttribute("data-gothic-attr-18", "name");
-      e4.setAttribute("data-gothic-attr-19", "value");
+      const e4 = document.createElement("li");
+      e4.setAttribute("data-part", "combobox-empty");
+      e4.appendChild(document.createComment("g:text:2:open"));
+      e4.appendChild(document.createTextNode(String((props.EmptyText ?? "No results"))));
+      e4.appendChild(document.createComment("g:text:2:close"));
     frag.appendChild(e4);
     return frag; },
       () => { const frag = document.createDocumentFragment();
     return frag; },
-      (region) => {   attrLocal(region, "18", props.Name);
-    attrLocal(region, "19", model.Value);
+      (region) => {   textLocal(region, "2", (props.EmptyText ?? "No results"));
+   },
+      (region) => {  });
+    const renderList1 = listLocal(region, "1", (item, i) => {
+    const e0 = document.createElement("li");
+    e0.setAttribute("data-part", "combobox-option");
+    e0.setAttribute("data-gothic-attr-18", "id");
+    e0.setAttribute("role", "option");
+    e0.setAttribute("data-gothic-attr-19", "aria-selected");
+    e0.setAttribute("data-gothic-attr-20", "data-highlighted");
+    e0.setAttribute("data-gothic-attr-21", "data-hovered");
+    e0.setAttribute("data-gothic-scroll", "0");
+    e0.setAttribute("data-gothic-on", "6 7 8");
+    e0.appendChild(document.createComment("g:text:3:open"));
+    e0.appendChild(document.createTextNode(String(item.Label)));
+    e0.appendChild(document.createComment("g:text:3:close"));
+    attrLocal(e0, "18", (props.ID + "-option" + "-" + i));
+    attrLocal(e0, "19", (model.SelectedSet[item.Value] ? "true" : "false"));
+    attrLocal(e0, "20", (i == model.Active ? "true" : ""));
+    attrLocal(e0, "21", (i == model.Hovered ? "true" : ""));
+    scrollLocal(e0, "0", i == model.Active);
+    onLocal(e0, "6", "mouseenter", (event) => dispatch({tag: "ComboboxHovered", Index: i}));
+    onLocal(e0, "7", "mouseleave", (event) => dispatch({tag: "ComboboxUnhovered", Index: i}));
+    onLocal(e0, "8", "mousedown", (event) => dispatch({tag: "ComboboxSelected", Index: i}));
+    textLocal(e0, "3", item.Label);
+    return e0;
+  }, (node, item, i) => {
+    attrLocal(node, "18", (props.ID + "-option" + "-" + i));
+    attrLocal(node, "19", (model.SelectedSet[item.Value] ? "true" : "false"));
+    attrLocal(node, "20", (i == model.Active ? "true" : ""));
+    attrLocal(node, "21", (i == model.Hovered ? "true" : ""));
+    scrollLocal(node, "0", i == model.Active);
+    onLocal(node, "6", "mouseenter", (event) => dispatch({tag: "ComboboxHovered", Index: i}));
+    onLocal(node, "7", "mouseleave", (event) => dispatch({tag: "ComboboxUnhovered", Index: i}));
+    onLocal(node, "8", "mousedown", (event) => dispatch({tag: "ComboboxSelected", Index: i}));
+    textLocal(node, "3", item.Label);
+  });
+  renderList1(model.Visible);
+   },
+      (region) => {  });
+    ifBlockLocal(root, "5",
+      props.Name != null,
+      () => { const frag = document.createDocumentFragment();
+    frag.appendChild(document.createComment("g:if:6:open"));
+    frag.appendChild(document.createComment("g:if:6:close"));
+    return frag; },
+      () => { const frag = document.createDocumentFragment();
+    return frag; },
+      (region) => {   ifBlockLocal(region, "6",
+      model.Multi,
+      () => { const frag = document.createDocumentFragment();
+    frag.appendChild(document.createComment("g:each:2:open"));
+    frag.appendChild(document.createComment("g:each:2:close"));
+    return frag; },
+      () => { const frag = document.createDocumentFragment();
+      const e5 = document.createElement("input");
+      e5.setAttribute("type", "hidden");
+      e5.setAttribute("data-gothic-attr-24", "name");
+      e5.setAttribute("data-gothic-attr-25", "value");
+    frag.appendChild(e5);
+    return frag; },
+      (region) => {   const renderList2 = listLocal(region, "2", (item, __i2) => {
+    const e0 = document.createElement("input");
+    e0.setAttribute("type", "hidden");
+    e0.setAttribute("data-gothic-attr-22", "name");
+    e0.setAttribute("data-gothic-attr-23", "value");
+    attrLocal(e0, "22", props.Name);
+    attrLocal(e0, "23", item.Value);
+    return e0;
+  }, (node, item, __i2) => {
+    attrLocal(node, "22", props.Name);
+    attrLocal(node, "23", item.Value);
+  });
+  renderList2(model.Selected);
+   },
+      (region) => {   attrLocal(region, "24", props.Name);
+    attrLocal(region, "25", model.Value);
+   });
    },
       (region) => {  });
   }
@@ -156,18 +231,33 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     case "PropsChanged":
     {
       if (msg.Initial) {
-        if (props.Value != null) {
-          m.Value = props.Value;
-        }
-        if (props.Label != null) {
-          m.Label = props.Label;
-        }
-        m.Query = m.Label;
-        if (m.Query == "") {
-          m.Query = m.Value;
-        }
+        m.Multi = props.Multiple != null && props.Multiple;
+        m.Hovered = -1;
         m.Visible = props.Items;
         m.Active = 0;
+        m.SelectedSet = {};
+        if (m.Multi) {
+          for (const [_, item] of entries(props.Items)) {
+            for (const [_, value] of entries(props.Values)) {
+              if (item.Value == value) {
+                (m.Selected = m.Selected || []).push(item);
+                m.SelectedSet[item.Value] = true;
+              }
+            }
+          }
+        } else {
+          if (props.Value != null) {
+            m.Value = props.Value;
+            m.SelectedSet[m.Value] = true;
+          }
+          if (props.Label != null) {
+            m.Label = props.Label;
+          }
+          m.Query = m.Label;
+          if (m.Query == "") {
+            m.Query = m.Value;
+          }
+        }
       }
       break;
     }
@@ -188,7 +278,7 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     case "ComboboxOpened":
     {
       m.Open = true;
-      if (m.Query == m.Label) {
+      if (m.Multi) {
         m.Query = "";
       }
       m.Visible = props.Items;
@@ -198,7 +288,26 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     case "ComboboxClosed":
     {
       m.Open = false;
-      m.Query = m.Label;
+      if (m.Multi) {
+        m.Query = "";
+      } else {
+        m.Query = m.Label;
+      }
+      break;
+    }
+    case "ComboboxHovered":
+    {
+      if (msg.Index >= 0) {
+        m.Hovered = msg.Index;
+        m.Active = msg.Index;
+      }
+      break;
+    }
+    case "ComboboxUnhovered":
+    {
+      if (m.Hovered == msg.Index) {
+        m.Hovered = -1;
+      }
       break;
     }
     case "ComboboxKey":
@@ -246,17 +355,49 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
         break;
       case "Enter":
         if (len(m.Visible) > 0 && m.Active >= 0 && m.Active < len(m.Visible)) {
+          if (m.Multi) {
+            const item = m.Visible[m.Active];
+            if (m.SelectedSet[item.Value]) {
+              const next = [];
+              for (const [_, selected] of entries(m.Selected)) {
+                if (selected.Value != item.Value) {
+                  (next = next || []).push(selected);
+                }
+              }
+              m.Selected = next;
+              delete (m.SelectedSet)[item.Value];
+            } else {
+              (m.Selected = m.Selected || []).push(item);
+              m.SelectedSet[item.Value] = true;
+            }
+            m.Query = "";
+            m.Open = true;
+            m.Visible = props.Items;
+            m.Active = 0;
+            const values = [];
+            const labels = [];
+            for (const [_, selected] of entries(m.Selected)) {
+              (values = values || []).push(selected.Value);
+              (labels = labels || []).push(selected.Label);
+            }
+            return [m, () => emit({tag: "ComboboxValuesChanged", ID: props.ID, Values: values, Labels: labels})];
+          }
           const item = m.Visible[m.Active];
           m.Value = item.Value;
           m.Label = item.Label;
           m.Query = item.Label;
           m.Open = false;
+          m.SelectedSet = {[item.Value]: true};
           return [m, () => emit({tag: "ComboboxValueChanged", ID: props.ID, Value: m.Value, Label: m.Label})];
         }
         break;
       case "Escape":
         m.Open = false;
-        m.Query = m.Label;
+        if (m.Multi) {
+          m.Query = "";
+        } else {
+          m.Query = m.Label;
+        }
         break;
       }
       break;
@@ -264,21 +405,74 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     case "ComboboxSelected":
     {
       if (msg.Index >= 0 && msg.Index < len(m.Visible)) {
+        if (m.Multi) {
+          const item = m.Visible[msg.Index];
+          if (m.SelectedSet[item.Value]) {
+            const next = [];
+            for (const [_, selected] of entries(m.Selected)) {
+              if (selected.Value != item.Value) {
+                (next = next || []).push(selected);
+              }
+            }
+            m.Selected = next;
+            delete (m.SelectedSet)[item.Value];
+          } else {
+            (m.Selected = m.Selected || []).push(item);
+            m.SelectedSet[item.Value] = true;
+          }
+          m.Query = "";
+          m.Open = true;
+          m.Visible = props.Items;
+          m.Active = 0;
+          const values = [];
+          const labels = [];
+          for (const [_, selected] of entries(m.Selected)) {
+            (values = values || []).push(selected.Value);
+            (labels = labels || []).push(selected.Label);
+          }
+          return [m, () => emit({tag: "ComboboxValuesChanged", ID: props.ID, Values: values, Labels: labels})];
+        }
         const item = m.Visible[msg.Index];
         m.Value = item.Value;
         m.Label = item.Label;
         m.Query = item.Label;
         m.Open = false;
+        m.SelectedSet = {[item.Value]: true};
         return [m, () => emit({tag: "ComboboxValueChanged", ID: props.ID, Value: m.Value, Label: m.Label})];
       }
       break;
     }
+    case "ComboboxRemove":
+    {
+      const next = [];
+      for (const [_, item] of entries(m.Selected)) {
+        if (item.Value != msg.Value) {
+          (next = next || []).push(item);
+        }
+      }
+      m.Selected = next;
+      delete (m.SelectedSet)[msg.Value];
+      const values = [];
+      const labels = [];
+      for (const [_, selected] of entries(m.Selected)) {
+        (values = values || []).push(selected.Value);
+        (labels = labels || []).push(selected.Label);
+      }
+      return [m, () => emit({tag: "ComboboxValuesChanged", ID: props.ID, Values: values, Labels: labels})];
+      break;
+    }
     case "ComboboxCleared":
     {
-      m.Value = "";
-      m.Label = "";
       m.Query = "";
       m.Open = false;
+      if (m.Multi) {
+        m.Selected = null;
+        m.SelectedSet = {};
+        return [m, () => emit({tag: "ComboboxValuesChanged", ID: props.ID})];
+      }
+      m.Value = "";
+      m.Label = "";
+      m.SelectedSet = {};
       return [m, () => emit({tag: "ComboboxValueChanged", ID: props.ID, Value: "", Label: ""})];
       break;
     }
@@ -325,6 +519,8 @@ export function mountCombobox(root, props, __gothicParentDispatch) {
     if (!Object.is(props.FieldLabel, nextProps.FieldLabel)) changed = true;
     if (!Object.is(props.Value, nextProps.Value)) changed = true;
     if (!Object.is(props.Label, nextProps.Label)) changed = true;
+    if (!Object.is(props.Values, nextProps.Values)) changed = true;
+    if (!Object.is(props.Multiple, nextProps.Multiple)) changed = true;
     if (!Object.is(props.AriaLabel, nextProps.AriaLabel)) changed = true;
     if (!Object.is(props.Placeholder, nextProps.Placeholder)) changed = true;
     if (!Object.is(props.EmptyText, nextProps.EmptyText)) changed = true;
@@ -347,34 +543,37 @@ export function createCombobox(id, props) {
     e0.setAttribute("data-part", "combobox");
     e0.setAttribute("data-gothic-attr-0", "data-open");
     e0.setAttribute("data-gothic-attr-1", "data-invalid");
+    e0.setAttribute("data-gothic-attr-2", "data-multiple");
     e0.appendChild(document.createComment("g:if:0:open"));
     e0.appendChild(document.createComment("g:if:0:close"));
-    const e2 = document.createElement("div");
-    e2.setAttribute("data-part", "combobox-control");
-    const e3 = document.createElement("input");
-    e3.setAttribute("data-part", "combobox-input");
-    e3.setAttribute("data-gothic-attr-3", "id");
-    e3.setAttribute("role", "combobox");
-    e3.setAttribute("data-gothic-attr-4", "aria-expanded");
-    e3.setAttribute("data-gothic-attr-5", "aria-controls");
-    e3.setAttribute("aria-autocomplete", "list");
-    e3.setAttribute("data-gothic-attr-6", "aria-activedescendant");
-    e3.setAttribute("data-gothic-attr-7", "aria-label");
-    e3.setAttribute("data-gothic-attr-8", "aria-invalid");
-    e3.setAttribute("autocomplete", "off");
-    e3.setAttribute("data-gothic-attr-9", "placeholder");
-    e3.setAttribute("data-gothic-attr-10", "value");
-    e3.setAttribute("data-gothic-attr-11", "disabled");
-    e3.setAttribute("data-gothic-attr-12", "required");
-    e3.setAttribute("data-gothic-on", "0 1 2 3");
-    e2.appendChild(e3);
-    e2.appendChild(document.createComment("g:if:1:open"));
-    e2.appendChild(document.createComment("g:if:1:close"));
-    e0.appendChild(e2);
-    e0.appendChild(document.createComment("g:if:2:open"));
-    e0.appendChild(document.createComment("g:if:2:close"));
-    e0.appendChild(document.createComment("g:if:4:open"));
-    e0.appendChild(document.createComment("g:if:4:close"));
+    e0.appendChild(document.createComment("g:if:1:open"));
+    e0.appendChild(document.createComment("g:if:1:close"));
+    const e3 = document.createElement("div");
+    e3.setAttribute("data-part", "combobox-control");
+    const e4 = document.createElement("input");
+    e4.setAttribute("data-part", "combobox-input");
+    e4.setAttribute("data-gothic-attr-5", "id");
+    e4.setAttribute("role", "combobox");
+    e4.setAttribute("data-gothic-attr-6", "aria-expanded");
+    e4.setAttribute("data-gothic-attr-7", "aria-controls");
+    e4.setAttribute("aria-autocomplete", "list");
+    e4.setAttribute("data-gothic-attr-8", "aria-activedescendant");
+    e4.setAttribute("data-gothic-attr-9", "aria-label");
+    e4.setAttribute("data-gothic-attr-10", "aria-invalid");
+    e4.setAttribute("autocomplete", "off");
+    e4.setAttribute("data-gothic-attr-11", "placeholder");
+    e4.setAttribute("data-gothic-attr-12", "value");
+    e4.setAttribute("data-gothic-attr-13", "disabled");
+    e4.setAttribute("data-gothic-attr-14", "required");
+    e4.setAttribute("data-gothic-on", "1 2 3 4");
+    e3.appendChild(e4);
+    e3.appendChild(document.createComment("g:if:2:open"));
+    e3.appendChild(document.createComment("g:if:2:close"));
+    e0.appendChild(e3);
+    e0.appendChild(document.createComment("g:if:3:open"));
+    e0.appendChild(document.createComment("g:if:3:close"));
+    e0.appendChild(document.createComment("g:if:5:open"));
+    e0.appendChild(document.createComment("g:if:5:close"));
   wrapper.appendChild(e0);
   return wrapper;
 }
