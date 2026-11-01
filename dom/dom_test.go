@@ -45,4 +45,10 @@ func TestStringHelpers(t *testing.T) {
 	if got := ID("tab", 3); got != "tab-3" {
 		t.Fatalf("ID = %q", got)
 	}
+	if got := Ptr("x"); got == nil || *got != "x" {
+		t.Fatalf("Ptr = %v", got)
+	}
+	if got := BoolPtr(true); got == nil || *got != true {
+		t.Fatalf("BoolPtr = %v", got)
+	}
 }

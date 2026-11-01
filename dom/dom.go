@@ -11,6 +11,17 @@ func Px(n int) string {
 	return strconv.Itoa(n) + "px"
 }
 
+// Ptr returns a pointer to value. Use it to pass optional pointer props from a
+// view, where address-of expressions are not supported.
+func Ptr[T any](value T) *T {
+	return &value
+}
+
+// BoolPtr returns a pointer to value.
+func BoolPtr(value bool) *bool {
+	return &value
+}
+
 // Str returns the string behind value, or an empty string when it is nil.
 func Str(value *string) string {
 	if value == nil {
