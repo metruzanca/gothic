@@ -3,7 +3,7 @@ module github.com/metruzanca/gothic/examples/router
 go 1.26.0
 
 require (
-	github.com/metruzanca/gothic v0.4.0
+	github.com/metruzanca/gothic v0.5.0
 	github.com/metruzanca/gothic/browser v0.1.0
 )
 

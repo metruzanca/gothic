@@ -3,7 +3,7 @@ module github.com/metruzanca/gothic/auth
 go 1.26.0
 
 require (
-	github.com/metruzanca/gothic v0.4.0
+	github.com/metruzanca/gothic v0.5.0
 	github.com/metruzanca/gothic/session v0.1.0
 	golang.org/x/crypto v0.58.0
 	modernc.org/sqlite v1.61.0
