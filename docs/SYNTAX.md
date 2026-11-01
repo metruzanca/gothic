@@ -529,40 +529,6 @@ Rules:
 - components in separate app `.gth` files are pure; declare app-owned stateful
   components in the app file.
 
-#### Parent-local child actions
-
-`emit` bubbles to the App. `emitLocal` sends the action to the immediate parent
-component instead:
-
-```templ
-<button onclick={ emitLocal(PickedChild{Label: props.Label}) }>Pick</button>
-```
-
-The parent receives it as `gothic.ChildMessage`:
-
-```go
-case gothic.ChildMessage:
-	inner := msg.Inner
-	switch child := inner.(type) {
-	case PickedChild:
-		m.LastPick = child.Label
-		return m, func() gothic.Msg {
-			return gothic.Bubble{Msg: child}
-		}
-	}
-```
-
-- `Source` identifies the child component instance.
-- The parent can handle the action and stop it.
-- Returning a `gothic.Bubble` command forwards the message to the parent's
-  parent.
-- If the parent does nothing, the action stops.
-- At App level, `emitLocal` falls back to App dispatch.
-- The parent can transform the message before bubbling.
-
-List children should include their own item identity in local messages, because
-`Source` is the component instance id.
-
 #### Children on stateful components
 
 Inline stateful components use the same `gothic.Children` props field:
@@ -1274,8 +1240,6 @@ The proof of concept supports:
 - request-scoped app models and catch-all app mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,
-- parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
-  `gothic.Bubble`,
 - children on inline stateful components in static App positions through
   `gothic.Children`,
 - App-owned procedures passed to components as action props,

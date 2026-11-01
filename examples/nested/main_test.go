@@ -51,10 +51,10 @@ func TestNestedApp(t *testing.T) {
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	for _, want := range []string{
-		`const c0 = mountCounter(c0Node, {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}}, emit, (msg) => dispatch({tag: "ChildMessage"`,
+		`const c0 = mountCounter(c0Node, {Label: "static", OnPick: {tag: "PickedChild", Label: "static"}}, emit);`,
 		`createCounter("c1", {Label: "branch", OnPick: {tag: "PickedChild", Label: "branch"}})`,
 		`listLocal(root, "0",`,
-		`mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit, (msg) => dispatch({tag: "ChildMessage"`,
+		`mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit);`,
 		`export function mountPanel`,
 		`data-gothic-slot`,
 		`panel-toggle`,

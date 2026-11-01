@@ -261,7 +261,7 @@ view App(model Model) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`export function mountCounter(root, props, __gothicParentDispatch, __gothicLocalDispatch)`,
+		`export function mountCounter(root, props, __gothicParentDispatch)`,
 		`export function createCounter(id, props)`,
 		`readComponentState`,
 		`cloneInitial`,
@@ -405,7 +405,7 @@ view App(model Model) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`const c0 = mountChild(c0Node, {Label: "nested"}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c0", Inner: msg}));`,
+		`const c0 = mountChild(c0Node, {Label: "nested"}, emit);`,
 		`if (c0Node) c0Node.__gothicInstances = { "c0": c0 };`,
 		`c0.updateProps({Label: "nested"});`,
 		`createChild("c0", {Label: "nested"})`,

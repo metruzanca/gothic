@@ -130,7 +130,6 @@ The ping/pong proof of concept runs end to end.
 - Components are destroyed on unmount, so late command results cannot update them.
 - The separately versioned UI kit ships pure Button/Card/Field components and stateful Tabs/Accordion/Counter/Disclosure components.
 - Components can emit action messages to the parent app; the app owns server procedures.
-- Nested children can send local actions to their parent with `emitLocal`, and the parent can handle, transform, or bubble them with `gothic.Bubble`.
 - Inline stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.

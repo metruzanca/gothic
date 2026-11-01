@@ -260,8 +260,6 @@ Supported now:
 - request-scoped app models and catch-all mounting for deep links,
 - curated browser interop through the `js` package,
 - component-to-parent action messages through `emit`,
-- parent-local child actions through `emitLocal`, `gothic.ChildMessage`, and
-  `gothic.Bubble`,
 - children on inline stateful components in static App positions through
   `gothic.Children`,
 - App-owned procedures passed to components as action props,

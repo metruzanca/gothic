@@ -14,16 +14,11 @@ function readComponentState(root) {
 
 const INITIAL_Accordion = {"Open":0};
 
-export function mountAccordion(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
+export function mountAccordion(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Accordion);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  function emitLocal(msg) {
-    if (msg == null) return;
-    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
-    if (__gothicParentDispatch) __gothicParentDispatch(msg);
   }
   function render(model) {
     const renderList0 = listLocal(root, "0", (item, i) => {
@@ -107,11 +102,7 @@ export function mountAccordion(root, props, __gothicParentDispatch, __gothicLoca
     }
     const msg = await cmd();
     if (alive && msg) {
-      if (msg.tag === "Bubble") {
-        emit(msg.Msg);
-      } else {
-        dispatch(msg);
-      }
+      dispatch(msg);
     }
   }
   render(model);
@@ -139,16 +130,11 @@ export function createAccordion(id, props) {
 
 const INITIAL_Counter = {"Count":0};
 
-export function mountCounter(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
+export function mountCounter(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Counter);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  function emitLocal(msg) {
-    if (msg == null) return;
-    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
-    if (__gothicParentDispatch) __gothicParentDispatch(msg);
   }
   onLocal(root, "0", "click", (event) => dispatch(({Label: props.Label, Primary: true, Onclick: {tag: "CounterClicked", By: 1}}).Onclick));
   function render(model) {
@@ -194,11 +180,7 @@ export function mountCounter(root, props, __gothicParentDispatch, __gothicLocalD
     }
     const msg = await cmd();
     if (alive && msg) {
-      if (msg.tag === "Bubble") {
-        emit(msg.Msg);
-      } else {
-        dispatch(msg);
-      }
+      dispatch(msg);
     }
   }
   render(model);
@@ -238,16 +220,11 @@ export function createCounter(id, props) {
 
 const INITIAL_Disclosure = {"Expanded":false,"ItemID":0};
 
-export function mountDisclosure(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
+export function mountDisclosure(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || cloneInitial(INITIAL_Disclosure);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  function emitLocal(msg) {
-    if (msg == null) return;
-    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
-    if (__gothicParentDispatch) __gothicParentDispatch(msg);
   }
   onLocal(root, "0", "click", (event) => dispatch({tag: "DisclosureToggled"}));
   function render(model) {
@@ -325,11 +302,7 @@ export function mountDisclosure(root, props, __gothicParentDispatch, __gothicLoc
     }
     const msg = await cmd();
     if (alive && msg) {
-      if (msg.tag === "Bubble") {
-        emit(msg.Msg);
-      } else {
-        dispatch(msg);
-      }
+      dispatch(msg);
     }
   }
   render(model);
@@ -379,16 +352,11 @@ function newTabs(props) {
   return m;
 }
 
-export function mountTabs(root, props, __gothicParentDispatch, __gothicLocalDispatch) {
+export function mountTabs(root, props, __gothicParentDispatch) {
   let model = readComponentState(root) || newTabs(props);
   let alive = true;
   function emit(msg) {
     if (__gothicParentDispatch && msg != null) __gothicParentDispatch(msg);
-  }
-  function emitLocal(msg) {
-    if (msg == null) return;
-    if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }
-    if (__gothicParentDispatch) __gothicParentDispatch(msg);
   }
   function render(model) {
     const renderList0 = listLocal(root, "0", (item, i) => {
@@ -475,11 +443,7 @@ export function mountTabs(root, props, __gothicParentDispatch, __gothicLocalDisp
     }
     const msg = await cmd();
     if (alive && msg) {
-      if (msg.tag === "Bubble") {
-        emit(msg.Msg);
-      } else {
-        dispatch(msg);
-      }
+      dispatch(msg);
     }
   }
   render(model);

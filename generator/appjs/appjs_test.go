@@ -1785,11 +1785,11 @@ func TestGenerateNestedStatefulComponent(t *testing.T) {
 	src := string(out)
 	for _, want := range []string{
 		`const c0Node = root.querySelector('[data-gothic-component-id="c0"]');`,
-		`const c0 = mountChild(c0Node, {Label: "hi"}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c0", Inner: msg}));`,
+		`const c0 = mountChild(c0Node, {Label: "hi"}, emit);`,
 		`if (c0Node) c0Node.__gothicInstances = { "c0": c0 };`,
 		`c0.updateProps({Label: "hi"});`,
 		`createChild("c0", {Label: "hi"});`,
-		`export function mountChild(root, props, __gothicParentDispatch, __gothicLocalDispatch) {`,
+		`export function mountChild(root, props, __gothicParentDispatch) {`,
 		`export function createChild(id, props) {`,
 	} {
 		if !strings.Contains(src, want) {
@@ -1820,7 +1820,7 @@ func TestGenerateNestedExternalComponentImport(t *testing.T) {
 	src := string(out)
 	for _, want := range []string{
 		`import { createCounter, mountCounter } from "/_gothic/modules/ui.js";`,
-		`const c0 = mountCounter(c0Node, {Label: "hi"}, emit, (msg) => dispatch({tag: "ChildMessage", Source: "c0", Inner: msg}));`,
+		`const c0 = mountCounter(c0Node, {Label: "hi"}, emit);`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -1864,7 +1864,7 @@ view Parent(model ParentModel) {
 		`ifBlockLocal(root, "0",`,
 		`createChild("c0", {Label: "hi"})`,
 		`mountChild(`,
-		`, emit, (msg) => dispatch({tag: "ChildMessage"`,
+		`, emit);`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -1907,7 +1907,7 @@ view Parent(model ParentModel) {
 	for _, want := range []string{
 		`listLocal(root, "0",`,
 		`createChild("c0", {Label: label})`,
-		`mountChild(node, {Label: label}, emit, (msg) => dispatch({tag: "ChildMessage"`,
+		`mountChild(node, {Label: label}, emit);`,
 		`inst.updateProps({Label: label})`,
 	} {
 		if !strings.Contains(src, want) {
@@ -2322,117 +2322,6 @@ func (m Model) Update(msg Msg) (Model, Cmd) {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
 		}
-	}
-}
-
-func TestGenerateEmitLocal(t *testing.T) {
-	view, err := parser.ParseViews("box.gth", []byte(`package ui
-
-view Box(model BoxModel, props BoxProps) {
-	<button onclick={ emitLocal(props.OnClick) }>Go</button>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseComponents("box.go", []byte(`package ui
-
-type BoxProps struct{ OnClick gothic.Msg }
-type BoxModel struct{}
-
-func (m BoxModel) Init() Cmd { return nil }
-func (m BoxModel) Update(msg Msg, props BoxProps) (BoxModel, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := appjs.GenerateComponents([]*generator.Stateful{{
-		Name: "Box", View: view.Templates[0], App: app.ComponentApp("BoxModel"), ModelJSON: `{}`, ModelType: "BoxModel",
-		PropsType: "BoxProps", Props: []parser.Param{{Name: "OnClick", Type: "gothic.Msg"}},
-		MountFunc: "mountBox", CreateFunc: "createBox",
-	}}, appjs.Options{FileName: "box.gth"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`(event) => emitLocal(props.OnClick)`,
-		`function emitLocal(msg) {`,
-		`if (__gothicLocalDispatch) { __gothicLocalDispatch(msg); return; }`,
-		`__gothicLocalDispatch) {`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated JS missing %q\n\n%s", want, src)
-		}
-	}
-}
-
-func TestGenerateBubbleCommand(t *testing.T) {
-	view, err := parser.ParseViews("box.gth", []byte(`package ui
-
-view Box(model BoxModel) {
-	<div></div>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseComponents("box.go", []byte(`package ui
-
-type BoxModel struct{}
-
-func (m BoxModel) Init() Cmd { return nil }
-func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
-	inner := msg
-	return m, func() Msg {
-		return gothic.Bubble{Msg: inner}
-	}
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := appjs.GenerateComponents([]*generator.Stateful{{
-		Name: "Box", View: view.Templates[0], App: app.ComponentApp("BoxModel"), ModelJSON: `{}`, ModelType: "BoxModel",
-		MountFunc: "mountBox", CreateFunc: "createBox",
-	}}, appjs.Options{FileName: "box.gth"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`return {tag: "Bubble", Msg: inner};`,
-		`if (msg.tag === "Bubble") {`,
-		`emit(msg.Msg);`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated JS missing %q\n\n%s", want, src)
-		}
-	}
-}
-
-func TestRejectEmitLocalInAppView(t *testing.T) {
-	view, err := parser.ParseViews("app.gth", []byte(`package app
-
-view App(model Model) {
-	<button onclick={ emitLocal(Clicked{}) }>Go</button>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseSource("app.go", []byte(`package app
-
-type Model struct{}
-func (m Model) Init() Cmd { return nil }
-func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = appjs.Generate(view, app, appjs.Options{FileName: "app.gth"})
-	if err == nil || !strings.Contains(err.Error(), "emitLocal is only available in component views") {
-		t.Fatalf("error = %v", err)
 	}
 }
 

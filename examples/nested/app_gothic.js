@@ -77,7 +77,7 @@ async function run(cmd) {
   }
   const msg = await cmd();
   if (msg) {
-    if (msg.tag === "Bubble") dispatch(msg.Msg); else dispatch(msg);
+    dispatch(msg);
   }
 }
 
