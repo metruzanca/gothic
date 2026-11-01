@@ -365,9 +365,6 @@ func (p *parser) parseElement() (Node, error) {
 	if isComponentName(name) {
 		return p.parseComponent(name, pos)
 	}
-	if name == "slot" {
-		return p.parseSlot(pos)
-	}
 	el := &Element{NodePosition: pos, Name: name}
 
 	for {
@@ -425,37 +422,6 @@ func (p *parser) parseElement() (Node, error) {
 		return nil, p.errf("expected > to close </%s>", name)
 	}
 	return el, nil
-}
-
-func (p *parser) parseSlot(pos NodePosition) (Node, error) {
-	for {
-		p.skipSpace()
-		if p.eof() {
-			return nil, p.errf("unexpected end of file in <slot>")
-		}
-		if p.consume("/>") {
-			return &Slot{NodePosition: pos}, nil
-		}
-		if p.consume(">") {
-			break
-		}
-		return nil, p.errh("write <slot /> with no attributes", "slot does not take attributes")
-	}
-	p.skipSpace()
-	if p.startsWith("</") {
-		if !p.consume("</") {
-			return nil, p.errf("expected </slot>")
-		}
-		if closing := p.readTagName(); closing != "slot" {
-			return nil, p.errf("expected </slot>, got </%s>", closing)
-		}
-		p.skipSpace()
-		if !p.consume(">") {
-			return nil, p.errf("expected > to close </slot>")
-		}
-		return &Slot{NodePosition: pos}, nil
-	}
-	return nil, p.errh("put fallback content in the caller, not inside <slot />", "slot cannot have children")
 }
 
 func (p *parser) parseComponent(name string, pos NodePosition) (Node, error) {

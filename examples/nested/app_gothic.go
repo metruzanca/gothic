@@ -15,12 +15,10 @@ import (
 type Model struct {
 	ShowDashboard bool
 	Picked        string
-	SlotText      string
 }
 
 type ToggleDashboard struct{}
 type PickedChild struct{ Label string }
-type SlotTextChanged struct{ Text string }
 
 func NewModel() Model {
 	return Model{ShowDashboard: true}
@@ -36,8 +34,6 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.ShowDashboard = !m.ShowDashboard
 	case PickedChild:
 		m.Picked = msg.Label
-	case SlotTextChanged:
-		m.SlotText = msg.Text
 	}
 	return m, nil
 }
@@ -92,22 +88,6 @@ func (m CounterModel) Update(msg gothic.Msg, props CounterProps) (CounterModel, 
 	switch msg.(type) {
 	case CounterClicked:
 		m.Count++
-	}
-	return m, nil
-}
-
-type PanelProps struct {
-	gothic.Children
-	Title string
-}
-type PanelModel struct{ Open bool }
-type PanelToggled struct{}
-
-func (m PanelModel) Init() gothic.Cmd { return nil }
-func (m PanelModel) Update(msg gothic.Msg) (PanelModel, gothic.Cmd) {
-	switch msg.(type) {
-	case PanelToggled:
-		m.Open = !m.Open
 	}
 	return m, nil
 }
@@ -209,60 +189,6 @@ func App(model Model) gothic.Component {
 		if err := write("</button>"); err != nil {
 			return err
 		}
-		slotc0 := gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-			if err := write("<input data-gothic-attr-0=\"value\""); err != nil {
-				return err
-			}
-			if err := write(" value=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-on=\"1\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"slot-input"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<p"); err != nil {
-				return err
-			}
-			if err := write(" class=\"slot-text"); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:2:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:2:close-->"); err != nil {
-				return err
-			}
-			if err := write("</p>"); err != nil {
-				return err
-			}
-			return nil
-		})
-		if err := __gothicPanelComponent("c0", "", PanelProps{Title: "Slotted panel"}, slotc0).Render(ctx, w); err != nil {
-			return err
-		}
 		if err := write("<!--g:if:0:open-->"); err != nil {
 			return err
 		}
@@ -270,7 +196,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:if:0:then-->"); err != nil {
 				return err
 			}
-			if err := __gothicDashboardComponent("c1", "", DashboardProps{Title: "Nested dashboard", Items: []string{"alpha", "beta"}}).Render(ctx, w); err != nil {
+			if err := __gothicDashboardComponent("c0", "", DashboardProps{Title: "Nested dashboard", Items: []string{"alpha", "beta"}}).Render(ctx, w); err != nil {
 				return err
 			}
 		} else {
@@ -294,150 +220,6 @@ func App(model Model) gothic.Component {
 // View implements gothic.Model for Model.
 func (m Model) View() gothic.Component {
 	return App(m)
-}
-
-func __gothicPanelView(model PanelModel, props PanelProps, slot gothic.Component) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<section"); err != nil {
-			return err
-		}
-		if err := write(" class=\"panel"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<h2>"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(props.Title))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</h2>"); err != nil {
-			return err
-		}
-		if err := write("<button data-gothic-on=\"0\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"panel-toggle"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("Toggle panel"); err != nil {
-			return err
-		}
-		if err := write("</button>"); err != nil {
-			return err
-		}
-		if err := write("<p"); err != nil {
-			return err
-		}
-		if err := write(" class=\"panel-open"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(model.Open))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:close-->"); err != nil {
-			return err
-		}
-		if err := write("</p>"); err != nil {
-			return err
-		}
-		if err := write("<div data-gothic-slot=\"default\">"); err != nil {
-			return err
-		}
-		if slot != nil {
-			if err := slot.Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		if err := write("</section>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func __gothicPanelComponent(id string, key string, props PanelProps, slot gothic.Component) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model PanelModel
-		model, _ = model.Update(gothic.PropsChanged{Initial: true})
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Panel\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicPanelView(model, props, slot).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
 }
 
 func __gothicCounterView(model CounterModel, props CounterProps) gothic.Component {

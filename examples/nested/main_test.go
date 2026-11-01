@@ -34,10 +34,6 @@ func TestNestedApp(t *testing.T) {
 		`>beta<`,
 		`"Count":0`,
 		`Nested dashboard`,
-		`data-gothic-slot="default"`,
-		`Slotted panel`,
-		`class="slot-input"`,
-		`class="slot-text"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("SSR missing %q\n\n%s", want, html)
@@ -55,9 +51,6 @@ func TestNestedApp(t *testing.T) {
 		`createCounter("c1", {Label: "branch", OnPick: {tag: "PickedChild", Label: "branch"}})`,
 		`listLocal(root, "0",`,
 		`mountCounter(node, {Label: item, OnPick: {tag: "PickedChild", Label: item}}, emit);`,
-		`export function mountPanel`,
-		`data-gothic-slot`,
-		`panel-toggle`,
 	} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("component JS missing %q\n\n%s", want, js)
@@ -74,8 +67,6 @@ func TestNestedApp(t *testing.T) {
 		`from "./app_components_gothic.js"`,
 		`mountDashboard`,
 		`createDashboard`,
-		`data-gothic-slot`,
-		`SlotTextChanged`,
 	} {
 		if !strings.Contains(string(appJS), want) {
 			t.Errorf("app JS missing %q\n\n%s", want, appJS)

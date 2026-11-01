@@ -66,7 +66,6 @@ type libraryComponent struct {
 	Create    string        `json:"create"`
 	PropsType string        `json:"props_type,omitempty"`
 	Props     []libraryProp `json:"props"`
-	Children  bool          `json:"children,omitempty"`
 }
 
 type libraryProp struct {
@@ -242,7 +241,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
 	for _, ext := range external {
-		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, AcceptsChildren: ext.Children, ParamList: ext.Props}
+		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, ParamList: ext.Props}
 	}
 	for name, t := range externalPure {
 		if _, exists := registry[name]; exists {
@@ -290,14 +289,6 @@ func addAppComponents(registry viewparser.ComponentSet, s *source) ([]*viewparse
 			comp := s.app.Components[t.ParamList[0].Type]
 			if comp != nil && comp.Init != nil && comp.Update != nil {
 				t.Stateful = true
-				t.Inline = true
-				if len(t.ParamList) == 2 {
-					for _, f := range s.app.Messages[t.ParamList[1].Type] {
-						if f.Type == "gothic.Children" {
-							t.AcceptsChildren = true
-						}
-					}
-				}
 				if err := addComponent(registry, t); err != nil {
 					return nil, err
 				}
@@ -396,42 +387,40 @@ func validateApp(f *viewparser.File) error {
 	return nil
 }
 
-func statefulProps(t *viewparser.Template, messages map[string][]goapp.Field) (string, []viewparser.Param, bool, error) {
+func statefulProps(t *viewparser.Template, messages map[string][]goapp.Field) (string, []viewparser.Param, error) {
 	if len(t.ParamList) == 1 {
-		return "", nil, false, nil
+		return "", nil, nil
 	}
 	if len(t.ParamList) != 2 {
-		return "", nil, false, viewparser.PosError(t.NodePosition, "declare only a model and an optional props struct", "stateful component %s must take a model and one props struct", t.Name)
+		return "", nil, viewparser.PosError(t.NodePosition, "declare only a model and an optional props struct", "stateful component %s must take a model and one props struct", t.Name)
 	}
 	p := t.ParamList[1]
 	if p.Name != "props" {
-		return "", nil, false, viewparser.PosError(t.NodePosition, "name the props parameter props", "stateful component %s: props parameter must be named props, got %s", t.Name, p.Name)
+		return "", nil, viewparser.PosError(t.NodePosition, "name the props parameter props", "stateful component %s: props parameter must be named props, got %s", t.Name, p.Name)
 	}
 	fields, ok := messages[p.Type]
 	if !ok {
-		return "", nil, false, viewparser.PosError(t.NodePosition, "define type "+p.Type+" struct{...} above the component", "stateful component %s: props type %s not found", t.Name, p.Type)
+		return "", nil, viewparser.PosError(t.NodePosition, "define type "+p.Type+" struct{...} above the component", "stateful component %s: props type %s not found", t.Name, p.Type)
 	}
 	var props []viewparser.Param
-	children := false
 	for _, f := range fields {
 		if f.Type == "gothic.Children" {
-			children = true
-			continue
+			return "", nil, viewparser.PosError(t.NodePosition, "remove gothic.Children; stateful components cannot accept children", "stateful component %s cannot accept children", t.Name)
 		}
 		if f.Embedded {
-			return "", nil, false, viewparser.PosError(t.NodePosition, "only gothic.Children may be embedded in props", "stateful component %s: unsupported embedded props field %s", t.Name, f.Type)
+			return "", nil, viewparser.PosError(t.NodePosition, "embedded fields are only supported on pure component props", "stateful component %s: unsupported embedded props field %s", t.Name, f.Type)
 		}
 		if strings.EqualFold(f.Name, "key") {
-			return "", nil, false, viewparser.PosError(t.NodePosition, "rename the Key field", "stateful component %s: props field Key is reserved for list keys", t.Name)
+			return "", nil, viewparser.PosError(t.NodePosition, "rename the Key field", "stateful component %s: props field Key is reserved for list keys", t.Name)
 		}
 		for _, prev := range props {
 			if strings.EqualFold(prev.Name, f.Name) {
-				return "", nil, false, viewparser.PosError(t.NodePosition, "rename one of the ambiguous fields", "stateful component %s: props fields %s and %s differ only by case", t.Name, prev.Name, f.Name)
+				return "", nil, viewparser.PosError(t.NodePosition, "rename one of the ambiguous fields", "stateful component %s: props fields %s and %s differ only by case", t.Name, prev.Name, f.Name)
 			}
 		}
 		props = append(props, viewparser.Param{Name: f.Name, Type: f.Type})
 	}
-	return p.Type, props, children, nil
+	return p.Type, props, nil
 }
 
 func buildStateful(s *source, views []*viewparser.Template, registry viewparser.ComponentSet) ([]*generator.Stateful, error) {
@@ -445,22 +434,12 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 		if app == nil {
 			return nil, viewparser.PosError(t.NodePosition, "add Init and Update methods to the model", "stateful component %s: model %s has no Init/Update", t.Name, modelType)
 		}
-		propsType, props, children, err := statefulProps(t, s.app.Messages)
+		propsType, props, err := statefulProps(t, s.app.Messages)
 		if err != nil {
 			return nil, err
 		}
-		if err := viewparser.RejectSlots(t.Children); err != nil {
-			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
-		}
-		hasChildren, err := viewparser.MarkChildren(t)
-		if err != nil {
-			return nil, fmt.Errorf("stateful component %s: %w", t.Name, err)
-		}
-		if children && !hasChildren {
-			return nil, fmt.Errorf("stateful component %s declares gothic.Children; render { props.Children } in its view", t.Name)
-		}
-		if hasChildren && !children {
-			return nil, fmt.Errorf("stateful component %s renders props.Children but its props struct does not declare gothic.Children", t.Name)
+		if viewparser.MarkChildContent(t) {
+			return nil, viewparser.PosError(t.NodePosition, "remove { props.Children }; stateful components cannot accept children", "stateful component %s cannot render children", t.Name)
 		}
 		expanded, err := viewparser.ExpandTemplateWithProps(t, registry, propsTypesFromMessages(s.app.Messages))
 		if err != nil {
@@ -489,8 +468,6 @@ func buildStateful(s *source, views []*viewparser.Template, registry viewparser.
 			Props:      props,
 			View:       expanded,
 			App:        app,
-			Children:   children,
-			Slot:       hasChildren,
 			ModuleURL:  generator.ComponentsModuleURL(s.base),
 		})
 	}
@@ -652,7 +629,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
 		}
-		propsType, props, children, err := statefulProps(t, sv.app.Messages)
+		propsType, props, err := statefulProps(t, sv.app.Messages)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -679,7 +656,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			Props:      props,
 			View:       expanded,
 			App:        sv.app.ComponentApp(t.ParamList[0].Type),
-			Children:   children,
 			ModuleURL:  cfg.ModuleURL,
 		})
 	}
@@ -717,7 +693,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		manifest.Components = append(manifest.Components, libraryComponent{
 			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
-			PropsType: comp.PropsType, Props: props, Children: comp.Children,
+			PropsType: comp.PropsType, Props: props,
 		})
 	}
 	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")

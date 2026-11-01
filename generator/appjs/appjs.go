@@ -362,11 +362,8 @@ func (g *gen) emitElementBindings(b *strings.Builder, el *parser.Element) error 
 				return err
 			}
 			g.ifCalls = append(g.ifCalls, fmt.Sprintf("%s(root, %s);", g.helper("ifBlock"), args))
-		case *parser.Slot:
-			if g.componentModule {
-				continue
-			}
-			return parser.NodeError(c, "slots are only supported in pure components and inline stateful components", "slot is only supported in pure and inline stateful components")
+		case *parser.ChildContent:
+			return parser.NodeError(c, "stateful components cannot render children", "stateful components cannot accept children")
 		case *parser.ComponentCall:
 			if err := g.emitStaticComponent(b, c, exprCtx{pos: c.NodePosition}); err != nil {
 				return err
@@ -401,23 +398,7 @@ func (g *gen) emitStaticComponent(b *strings.Builder, call *parser.ComponentCall
 	}
 	g.componentUpdates = append(g.componentUpdates, fmt.Sprintf("%s.updateProps(%s);", inst, props))
 	if len(call.Children) > 0 {
-		if !comp.Slot {
-			return parser.NodeError(call, "add a slot to the component view", "stateful component %s does not accept children", call.Name)
-		}
-		if !g.appModule {
-			return parser.NodeError(call, "move the slotted component to the App view", "children on stateful components are only supported in static App positions")
-		}
-		build, bind, err := g.ifBranch(call.Children, ctx)
-		if err != nil {
-			return err
-		}
-		slotVar := "slot" + id
-		fmt.Fprintf(b, "const %s = root.querySelector('[data-gothic-component-id=\"%s\"] [data-gothic-slot=\"default\"]');\n", slotVar, id)
-		fmt.Fprintf(b, "if (%s && %s.childNodes.length === 0) {\n  %s.appendChild((() => { %s })());\n}\n", slotVar, slotVar, slotVar, build)
-		if bind != "" {
-			bind = strings.ReplaceAll(bind, "region", slotVar)
-			g.bindingCalls = append(g.bindingCalls, fmt.Sprintf("const %s = root.querySelector('[data-gothic-component-id=\"%s\"] [data-gothic-slot=\"default\"]');\nif (%s) {\n%s\n}", slotVar, id, slotVar, bind))
-		}
+		return parser.NodeError(call, "stateful components cannot accept children", "stateful component %s does not accept children", call.Name)
 	}
 	return nil
 }
@@ -558,7 +539,7 @@ func (g *gen) forCall(rootExpr string, f *parser.For, idx int) (string, error) {
 
 func (g *gen) forComponentCall(rootExpr string, f *parser.For, call *parser.ComponentCall, idx int) (string, error) {
 	if len(call.Children) > 0 {
-		return "", parser.NodeError(call, "move the slotted component to a static position", "children on stateful components are only supported in static App positions")
+		return "", parser.NodeError(call, "stateful components cannot accept children", "stateful component %s does not accept children", call.Name)
 	}
 	comp := g.stateful[call.Name]
 	if comp == nil {
@@ -691,7 +672,7 @@ func (g *gen) ifArgs(idx int, n *parser.If, ctx exprCtx) (string, error) {
 func (g *gen) componentCallCode(call *parser.ComponentCall, ctx exprCtx) (string, string, string, error) {
 	ctx.pos = call.NodePosition
 	if len(call.Children) > 0 {
-		return "", "", "", parser.NodeError(call, "move the slotted component to a static position", "children on stateful components are only supported in static App positions")
+		return "", "", "", parser.NodeError(call, "stateful components cannot accept children", "stateful component %s does not accept children", call.Name)
 	}
 	if !g.allowNested {
 		return "", "", "", parser.NodeError(call, "move the component to the App view", "stateful component %s cannot be nested inside another stateful component yet", call.Name)
@@ -791,8 +772,8 @@ func (g *gen) ifBranch(nodes []parser.Node, ctx exprCtx) (string, string, error)
 				return "", "", err
 			}
 			bindings = append(bindings, itemBinding{kind: "code", expr: call})
-		case *parser.Slot:
-			return "", "", parser.NodeError(c, "move the slot to a static position", "slots inside conditionals or lists are not supported yet")
+		case *parser.ChildContent:
+			return "", "", parser.NodeError(c, "stateful components cannot render children", "stateful components cannot accept children")
 		case *parser.ComponentCall:
 			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, ctx)
 			if err != nil {
@@ -933,15 +914,8 @@ func (g *gen) emitDOM(sb *strings.Builder, el *parser.Element, locals map[string
 				return "", err
 			}
 			*bindings = append(*bindings, itemBinding{kind: "code", expr: fmt.Sprintf("%s(__ROOT__, %s);", g.helper("ifBlock"), args)})
-		case *parser.Slot:
-			if !g.componentModule {
-				return "", parser.NodeError(c, "slots are only supported in pure components and inline stateful components", "slot is only supported in pure and inline stateful components")
-			}
-			slotVar := fmt.Sprintf("e%d", g.varN)
-			g.varN++
-			fmt.Fprintf(sb, "  const %s = document.createElement(\"div\");\n", slotVar)
-			fmt.Fprintf(sb, "  %s.setAttribute(\"data-gothic-slot\", \"default\");\n", slotVar)
-			fmt.Fprintf(sb, "  %s.appendChild(%s);\n", v, slotVar)
+		case *parser.ChildContent:
+			return "", parser.NodeError(c, "stateful components cannot render children", "stateful components cannot accept children")
 		case *parser.ComponentCall:
 			nodeVar, buildStmt, bindStmt, err := g.componentCallCode(c, exprCtx{locals: locals, pos: c.NodePosition})
 			if err != nil {

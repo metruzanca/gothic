@@ -365,8 +365,8 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	}
 }
 
-func TestGenerateComponentSlot(t *testing.T) {
-	f, err := parser.ParseViews("slot.gth", []byte(`package app
+func TestGenerateComponentChildren(t *testing.T) {
+	f, err := parser.ParseViews("children.gth", []byte(`package app
 
 view Card(props CardProps) {
 	<section class="card">
@@ -378,7 +378,7 @@ view Card(props CardProps) {
 view App(model Model) {
 	<div>
 		<Card title="Hello">
-			<p class="body">Slotted body</p>
+			<p class="body">Child body</p>
 		</Card>
 	</div>
 }
@@ -417,8 +417,8 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 		t.Fatal(err)
 	}
 	out, err := generator.GenerateSingle(expanded, app, generator.Options{
-		FileName:   "slot.gth",
-		ModuleBase: "slot",
+		FileName:   "children.gth",
+		ModuleBase: "children",
 		App:        app,
 	})
 	if err != nil {
@@ -428,7 +428,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	for _, want := range []string{
 		`write("<section")`,
 		`write(" class=\"card")`,
-		`write("Slotted body")`,
+		`write("Child body")`,
 		`write("<p")`,
 	} {
 		if !strings.Contains(src, want) {
@@ -624,79 +624,5 @@ view App(model Model) {
 	}
 	if strings.Contains(generated, `disabled=\"`) {
 		t.Errorf("generated Go should not render disabled with a value\n\n%s", generated)
-	}
-}
-
-func TestGenerateStatefulSlot(t *testing.T) {
-	appFile, err := parser.ParseViews("app.gth", []byte(`package app
-
-view App(model Model) {
-	<main>
-		<Panel title={ model.Title }>
-			<p>Hello</p>
-		</Panel>
-	</main>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	panelFile, err := parser.ParseViews("panel.gth", []byte(`package app
-
-view Panel(model PanelModel, props PanelProps) {
-	<section>
-		<h2>{ props.Title }</h2>
-		{ props.Children }
-	</section>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := goapp.ParseSource("app.go", []byte(`package app
-
-import "github.com/metruzanca/gothic"
-
-type Model struct{ Title string }
-type PanelProps struct {
-	gothic.Children
-	Title string
-}
-type PanelModel struct{}
-func (m Model) Init() Cmd { return nil }
-func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
-func (m PanelModel) Init() Cmd { return nil }
-func (m PanelModel) Update(msg Msg) (PanelModel, Cmd) { return m, nil }
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := parser.MarkChildren(panelFile.Templates[0]); err != nil {
-		t.Fatal(err)
-	}
-	out, err := generator.GenerateSingle(appFile, app, generator.Options{
-		FileName:   "app.gth",
-		ModuleBase: "app",
-		App:        app,
-		Stateful: []*generator.Stateful{{
-			Name: "Panel", GoName: "__gothicPanelComponent", ViewName: "__gothicPanelView",
-			ModelType: "PanelModel", ModelJSON: `{}`, PropsType: "PanelProps",
-			Props: []parser.Param{{Name: "Title", Type: "string"}}, View: panelFile.Templates[0], Children: true, Slot: true,
-		}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(out)
-	for _, want := range []string{
-		`slotc0 := gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {`,
-		`__gothicPanelComponent("c0", "", PanelProps{Title: model.Title}, slotc0)`,
-		`func __gothicPanelView(model PanelModel, props PanelProps, slot gothic.Component) gothic.Component {`,
-		`if slot != nil {`,
-		`slot.Render(ctx, w)`,
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("generated Go missing %q\n\n%s", want, src)
-		}
 	}
 }

@@ -24,10 +24,6 @@ type Template struct {
 	Children  []Node
 	// Stateful is set by the compiler for component roots with their own model.
 	Stateful bool
-	// Inline marks a library stateful component compiled into the app.
-	Inline bool
-	// AcceptsChildren is set when the props type declares gothic.Children.
-	AcceptsChildren bool
 }
 
 // NodePosition is the source location of a view node.
@@ -103,13 +99,12 @@ type If struct {
 
 func (*If) node() {}
 
-// Slot marks where a pure component's children are inserted.
-type Slot struct {
+// ChildContent marks where a pure component's children are inserted.
+type ChildContent struct {
 	NodePosition
-	Internal bool
 }
 
-func (*Slot) node() {}
+func (*ChildContent) node() {}
 
 // ComponentCall invokes a component view with named props and optional children.
 type ComponentCall struct {

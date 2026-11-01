@@ -439,7 +439,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f := parseViews(t, "slot.gth", src)
+	f := parseViews(t, "children.gth", src)
 	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 		{Name: "Text", Type: "string"},
@@ -474,7 +474,7 @@ view App(model Model) {
 	</div>
 }
 `
-	f := parseViews(t, "slot.gth", src)
+	f := parseViews(t, "children.gth", src)
 	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 	}}}
@@ -504,7 +504,7 @@ view App(model Model) {
 	<div><Card text="x"><span>hi</span></Card></div>
 }
 `
-	f := parseViews(t, "slot.gth", src)
+	f := parseViews(t, "children.gth", src)
 	props := parser.PropsTypes{"CardProps": {Name: "CardProps", Fields: []parser.Param{
 		{Name: "Text", Type: "string"},
 	}}}
@@ -524,7 +524,7 @@ view App(model Model) {
 	<div><Box><p>x</p></Box></div>
 }
 `
-	f := parseViews(t, "slot.gth", src)
+	f := parseViews(t, "children.gth", src)
 	props := parser.PropsTypes{"BoxProps": {Name: "BoxProps", Fields: []parser.Param{
 		{Name: "Children", Type: "gothic.Children"},
 	}}}
@@ -544,24 +544,10 @@ view App(model Model) {
 	<div><Tabs><p>x</p></Tabs></div>
 }
 `
-	f := parseViews(t, "slot.gth", src)
+	f := parseViews(t, "children.gth", src)
 	components := componentsOf(f)
 	components["Tabs"].Stateful = true
-	components["Tabs"].Inline = true
-	if _, err := parser.ExpandApp(f, components); err == nil || !strings.Contains(err.Error(), "does not accept children") {
-		t.Fatalf("error = %v", err)
-	}
-}
-
-func TestExpandRejectsAppSlot(t *testing.T) {
-	src := `package views
-
-view App(model Model) {
-	<div><slot /></div>
-}
-`
-	f := parseViews(t, "slot.gth", src)
-	if _, err := parser.ExpandApp(f, map[string]*parser.Template{}); err == nil || !strings.Contains(err.Error(), "children are placed with { props.Children }") {
+	if _, err := parser.ExpandApp(f, components); err == nil || !strings.Contains(err.Error(), "stateful component Tabs cannot accept children") {
 		t.Fatalf("error = %v", err)
 	}
 }

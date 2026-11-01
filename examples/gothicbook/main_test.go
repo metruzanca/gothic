@@ -104,7 +104,7 @@ func TestGothicbookNavigation(t *testing.T) {
 		t.Errorf("button page missing the button demo\n\n%s", button)
 	}
 	field := getPage(t, ts.URL+"/field")
-	if !strings.Contains(field, "Your name") || !strings.Contains(field, "slot-input") {
+	if !strings.Contains(field, "Your name") || !strings.Contains(field, "field-input") {
 		t.Errorf("field page missing the field demo\n\n%s", field)
 	}
 	tabs := getPage(t, ts.URL+"/tabs")
@@ -156,7 +156,7 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 		`mountDisclosure`,
 		`createDisclosure`,
 		`model.Visible`,
-		`SlotTextChanged`,
+		`FieldTextChanged`,
 		`IncrementClicked`,
 		`ButtonClicked`,
 		`window.alert("Hello from Gothicbook")`,

@@ -71,10 +71,10 @@ func Sequence(cmds ...Cmd) Cmd {
 	return func() Msg { panic(commandOnly) }
 }
 
-// Children marks a props field that receives child content.
+// Children marks a pure component props field that receives child content.
 //
-// Embed it in a props struct to let a component accept children, then render
-// the children with { props.Children } in the view.
+// Embed it in a pure component props struct to let the component accept
+// children, then render them with { props.Children } in the view.
 type Children struct{}
 
 // PropsChanged is dispatched to a stateful component when its props change.

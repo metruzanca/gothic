@@ -37,7 +37,7 @@ type Model struct {
 	StatefulListsCode string
 	ServerCode        string
 	DisclosureCode    string
-	SlotText          string
+	FieldText         string
 	ShowExample       bool
 	ListPage          int
 	PageLabel         string
@@ -97,15 +97,15 @@ type CardProps struct {
 	}`,
 		FieldCode: `// Page
 <ui.Field label="Your name">
-	<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
+	<input class="field-input" value={ model.FieldText } oninput={ FieldTextChanged{Text: event.target.value} } />
 </ui.Field>
-<p class="server-count">Hello, { model.SlotText }!</p>
+<p class="server-count">Hello, { model.FieldText }!</p>
 
 // Message and update
-type SlotTextChanged struct{ Text string }
+type FieldTextChanged struct{ Text string }
 
-case SlotTextChanged:
-	m.SlotText = msg.Text`,
+case FieldTextChanged:
+	m.FieldText = msg.Text`,
 		TabsCode: `// Page
 <ui.Tabs items={ model.Tabs } active={ model.TabStart } />
 <div class="row">
@@ -220,7 +220,7 @@ case IncrementClicked:
 func (p procedures) Increment(ctx context.Context) (int, error) {
 	return p.counter.increment(), nil
 }`,
-		SlotText:    "friend",
+		FieldText:   "friend",
 		ShowExample: true,
 		FeatureDisclosure: ui.DisclosureItem{
 			ID:    999,
@@ -303,7 +303,7 @@ type FewerTabs struct{}
 type MoreTabs struct{}
 type NextPage struct{}
 type PrevPage struct{}
-type SlotTextChanged struct{ Text string }
+type FieldTextChanged struct{ Text string }
 type LocationChanged struct {
 	Path  string
 	Query string
@@ -376,8 +376,8 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.ListPage = 0
 		m.Visible = m.PageOne
 		m.PageLabel = "Showing 1-10 of 20"
-	case SlotTextChanged:
-		m.SlotText = msg.Text
+	case FieldTextChanged:
+		m.FieldText = msg.Text
 	}
 	return m, nil
 }
@@ -1776,7 +1776,7 @@ func App(model Model) gothic.Component {
 			if err := write(" value=\""); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(model.FieldText))); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -1785,7 +1785,7 @@ func App(model Model) gothic.Component {
 			if err := write(" data-gothic-on=\"22\""); err != nil {
 				return err
 			}
-			if err := write(" class=\"slot-input"); err != nil {
+			if err := write(" class=\"field-input"); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -1824,7 +1824,7 @@ func App(model Model) gothic.Component {
 			if err := write("<!--g:text:10:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(model.SlotText))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(model.FieldText))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:10:close-->"); err != nil {

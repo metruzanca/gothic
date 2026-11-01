@@ -18,55 +18,33 @@ type PropsType struct {
 // PropsTypes maps props type names to their fields.
 type PropsTypes map[string]PropsType
 
-// MarkChildren replaces { props.Children } in a component view with an
-// internal children slot and reports whether one was found.
-func MarkChildren(t *Template) (bool, error) {
-	found, err := markChildren(t.Children)
-	if err != nil {
-		return false, err
-	}
-	return found, nil
+// MarkChildContent replaces { props.Children } in a component view with an
+// internal marker and reports whether one was found.
+func MarkChildContent(t *Template) bool {
+	return markChildContent(t.Children)
 }
 
-func markChildren(nodes []Node) (bool, error) {
+func markChildContent(nodes []Node) bool {
 	found := false
 	for i, node := range nodes {
 		switch n := node.(type) {
 		case *Interpolation:
 			if isChildrenExpr(n.Expr) {
-				nodes[i] = &Slot{NodePosition: n.NodePosition, Internal: true}
+				nodes[i] = &ChildContent{NodePosition: n.NodePosition}
 				found = true
 			}
-		case *Slot:
-			if n.Internal {
-				found = true
-			}
+		case *ChildContent:
+			found = true
 		case *Element:
-			ok, err := markChildren(n.Children)
-			if err != nil {
-				return false, err
-			}
-			found = found || ok
+			found = markChildContent(n.Children) || found
 		case *For:
-			ok, err := markChildren(n.Children)
-			if err != nil {
-				return false, err
-			}
-			found = found || ok
+			found = markChildContent(n.Children) || found
 		case *If:
-			ok, err := markChildren(n.Then)
-			if err != nil {
-				return false, err
-			}
-			found = found || ok
-			ok, err = markChildren(n.Else)
-			if err != nil {
-				return false, err
-			}
-			found = found || ok
+			found = markChildContent(n.Then) || found
+			found = markChildContent(n.Else) || found
 		}
 	}
-	return found, nil
+	return found
 }
 
 func isChildrenExpr(e ast.Expr) bool {
@@ -101,9 +79,6 @@ func ExpandAppWithProps(f *File, components ComponentSet, propsTypes PropsTypes)
 	}
 	expanded, err := expandTemplate(app, nil, nil, components, propsTypes)
 	if err != nil {
-		return nil, err
-	}
-	if err := RejectSlots(expanded.Children); err != nil {
 		return nil, err
 	}
 	return &File{
@@ -183,8 +158,8 @@ func expandNode(n Node, env map[string]ast.Expr, stack []string, components Comp
 			}
 		}
 		return loop, nil
-	case *Slot:
-		return &Slot{NodePosition: n.NodePosition, Internal: n.Internal}, nil
+	case *ChildContent:
+		return &ChildContent{NodePosition: n.NodePosition}, nil
 	case *If:
 		out := &If{NodePosition: n.NodePosition, Cond: substExpr(n.Cond, env)}
 		for _, child := range n.Then {
@@ -220,25 +195,13 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	}
 	if component.Stateful {
 		if len(call.Children) > 0 {
-			if !component.Inline {
-				return nil, fmt.Errorf("stateful component %s cannot accept children; mark it inline or move it to the app view", call.Name)
-			}
-			if !component.AcceptsChildren {
-				return nil, fmt.Errorf("component %s does not accept children; add gothic.Children to its props struct", call.Name)
-			}
+			return nil, fmt.Errorf("stateful component %s cannot accept children; use a pure component for layout", call.Name)
 		}
 		props := make([]Prop, len(call.Props))
 		for i, prop := range call.Props {
 			props[i] = Prop{Name: prop.Name, Value: substExpr(prop.Value, env)}
 		}
-		children, err := expandNodes(call.Children, env, stack, components, propsTypes)
-		if err != nil {
-			return nil, err
-		}
-		if err := RejectSlots(children); err != nil {
-			return nil, err
-		}
-		return &ComponentCall{NodePosition: call.NodePosition, Name: call.Name, Key: substExpr(call.Key, env), Props: props, Children: children}, nil
+		return &ComponentCall{NodePosition: call.NodePosition, Name: call.Name, Key: substExpr(call.Key, env), Props: props}, nil
 	}
 	for _, name := range stack {
 		if name == call.Name {
@@ -266,22 +229,13 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	if err != nil {
 		return nil, err
 	}
-	if err := RejectSlots(children); err != nil {
-		return nil, err
-	}
 	childrenAllowed := false
 	for _, field := range spec.Fields {
 		if field.Type == "gothic.Children" {
 			childrenAllowed = true
 		}
 	}
-	if err := RejectSlots(component.Children); err != nil {
-		return nil, fmt.Errorf("component %s: %w", call.Name, err)
-	}
-	found, err := MarkChildren(component)
-	if err != nil {
-		return nil, err
-	}
+	found := MarkChildContent(component)
 	if found && !childrenAllowed {
 		return nil, fmt.Errorf("component %s renders props.Children but its props struct does not declare gothic.Children", call.Name)
 	}
@@ -295,15 +249,12 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	if err != nil {
 		return nil, err
 	}
-	slots := 0
-	nodes, err := insertSlots(expanded.Children, children, &slots)
-	if err != nil {
-		return nil, err
+	childCount := 0
+	nodes := insertChildren(expanded.Children, children, &childCount)
+	if childCount > 1 {
+		return nil, fmt.Errorf("component %s must render { props.Children } once, found %d", call.Name, childCount)
 	}
-	if slots > 1 {
-		return nil, fmt.Errorf("component %s must render { props.Children } once, found %d", call.Name, slots)
-	}
-	if slots == 0 && len(children) > 0 {
+	if childCount == 0 && len(children) > 0 {
 		return nil, fmt.Errorf("component %s does not accept children; add gothic.Children and { props.Children }", call.Name)
 	}
 	expanded.Children = nodes
@@ -382,74 +333,28 @@ func expandNodes(nodes []Node, env map[string]ast.Expr, stack []string, componen
 	return out, nil
 }
 
-func insertSlots(nodes []Node, children []Node, slots *int) ([]Node, error) {
+func insertChildren(nodes []Node, children []Node, count *int) []Node {
 	out := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *Slot:
-			*slots = *slots + 1
+		case *ChildContent:
+			*count = *count + 1
 			out = append(out, children...)
 		case *Element:
-			replaced, err := insertSlots(n.Children, children, slots)
-			if err != nil {
-				return nil, err
-			}
-			n.Children = replaced
+			n.Children = insertChildren(n.Children, children, count)
 			out = append(out, n)
 		case *For:
-			replaced, err := insertSlots(n.Children, children, slots)
-			if err != nil {
-				return nil, err
-			}
-			n.Children = replaced
+			n.Children = insertChildren(n.Children, children, count)
 			out = append(out, n)
 		case *If:
-			thenNodes, err := insertSlots(n.Then, children, slots)
-			if err != nil {
-				return nil, err
-			}
-			elseNodes, err := insertSlots(n.Else, children, slots)
-			if err != nil {
-				return nil, err
-			}
-			n.Then = thenNodes
-			n.Else = elseNodes
+			n.Then = insertChildren(n.Then, children, count)
+			n.Else = insertChildren(n.Else, children, count)
 			out = append(out, n)
 		default:
 			out = append(out, node)
 		}
 	}
-	return out, nil
-}
-
-// RejectSlots rejects user-written <slot /> nodes. Internal children slots are
-// allowed.
-func RejectSlots(nodes []Node) error {
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *Slot:
-			if n.Internal {
-				continue
-			}
-			return fmt.Errorf("children are placed with { props.Children }; remove <slot />")
-		case *Element:
-			if err := RejectSlots(n.Children); err != nil {
-				return err
-			}
-		case *For:
-			if err := RejectSlots(n.Children); err != nil {
-				return err
-			}
-		case *If:
-			if err := RejectSlots(n.Then); err != nil {
-				return err
-			}
-			if err := RejectSlots(n.Else); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return out
 }
 
 func componentCycle(stack []string, name string) string {

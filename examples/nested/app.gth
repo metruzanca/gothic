@@ -5,12 +5,10 @@ import "github.com/metruzanca/gothic"
 type Model struct {
 	ShowDashboard bool
 	Picked        string
-	SlotText      string
 }
 
 type ToggleDashboard struct{}
 type PickedChild struct{ Label string }
-type SlotTextChanged struct{ Text string }
 
 func NewModel() Model {
 	return Model{ShowDashboard: true}
@@ -26,8 +24,6 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 		m.ShowDashboard = !m.ShowDashboard
 	case PickedChild:
 		m.Picked = msg.Label
-	case SlotTextChanged:
-		m.SlotText = msg.Text
 	}
 	return m, nil
 }
@@ -86,44 +82,15 @@ func (m CounterModel) Update(msg gothic.Msg, props CounterProps) (CounterModel, 
 	return m, nil
 }
 
-type PanelProps struct {
-	gothic.Children
-	Title string
-}
-type PanelModel struct{ Open bool }
-type PanelToggled struct{}
-
-func (m PanelModel) Init() gothic.Cmd { return nil }
-func (m PanelModel) Update(msg gothic.Msg) (PanelModel, gothic.Cmd) {
-	switch msg.(type) {
-	case PanelToggled:
-		m.Open = !m.Open
-	}
-	return m, nil
-}
-
 view App(model Model) {
 	<main class="app">
 		<h1>Nested stateful components</h1>
 		<p class="picked">Picked:{ " " }{ model.Picked }</p>
 		<button class="toggle-dashboard" onclick={ ToggleDashboard{} }>Toggle dashboard</button>
-		<Panel title="Slotted panel">
-			<input class="slot-input" value={ model.SlotText } oninput={ SlotTextChanged{Text: event.target.value} } />
-			<p class="slot-text">{ model.SlotText }</p>
-		</Panel>
 		if model.ShowDashboard {
 			<Dashboard title="Nested dashboard" items={ []string{"alpha", "beta"} } />
 		}
 	</main>
-}
-
-view Panel(model PanelModel, props PanelProps) {
-	<section class="panel">
-		<h2>{ props.Title }</h2>
-		<button class="panel-toggle" onclick={ PanelToggled{} }>Toggle panel</button>
-		<p class="panel-open">{ model.Open }</p>
-		{ props.Children }
-	</section>
 }
 
 view Counter(model CounterModel, props CounterProps) {

@@ -313,7 +313,7 @@ function render(model) {
     e62.appendChild(document.createComment("g:text:8:close"));
     e61.appendChild(e62);
     const e63 = document.createElement("input");
-    e63.setAttribute("class", "slot-input");
+    e63.setAttribute("class", "field-input");
     e63.setAttribute("data-gothic-attr-1", "value");
     e63.setAttribute("data-gothic-on", "22");
     e61.appendChild(e63);
@@ -325,7 +325,7 @@ function render(model) {
     e64.appendChild(document.createTextNode(String(" ")));
     e64.appendChild(document.createComment("g:text:9:close"));
     e64.appendChild(document.createComment("g:text:10:open"));
-    e64.appendChild(document.createTextNode(String(model.SlotText)));
+    e64.appendChild(document.createTextNode(String(model.FieldText)));
     e64.appendChild(document.createComment("g:text:10:close"));
     e64.appendChild(document.createTextNode("!"));
     e60.appendChild(e64);
@@ -349,10 +349,10 @@ function render(model) {
     () => { const frag = document.createDocumentFragment();
   return frag; },
     (region) => {   text(region, "8", ({Label: "Your name"}).Label);
-  attr(region, "1", model.SlotText);
-  on(region, "22", "input", (event) => dispatch({tag: "SlotTextChanged", Text: event.target.value}));
+  attr(region, "1", model.FieldText);
+  on(region, "22", "input", (event) => dispatch({tag: "FieldTextChanged", Text: event.target.value}));
   text(region, "9", " ");
-  text(region, "10", model.SlotText);
+  text(region, "10", model.FieldText);
   text(region, "11", ({Title: "Page code", Code: model.FieldCode}).Title);
   text(region, "12", ({Title: "Page code", Code: model.FieldCode}).Code);
  },
@@ -949,9 +949,9 @@ function update(m, msg) {
     m.PageLabel = "Showing 1-10 of 20";
     break;
   }
-  case "SlotTextChanged":
+  case "FieldTextChanged":
   {
-    m.SlotText = msg.Text;
+    m.FieldText = msg.Text;
     break;
   }
   }
