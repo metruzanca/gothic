@@ -637,7 +637,27 @@ function update(m, msg) {
   case "LocationChanged":
   {
     m.Path = msg.Path;
-    m.Page = pageForPath(msg.Path);
+    m.Page = "notfound";
+    switch (msg.Path) {
+    case "/":
+      m.Page = "overview";
+      break;
+    case "/button":
+      m.Page = "button";
+      break;
+    case "/field":
+      m.Page = "field";
+      break;
+    case "/tabs":
+      m.Page = "tabs";
+      break;
+    case "/accordion":
+      m.Page = "accordion";
+      break;
+    case "/combobox":
+      m.Page = "combobox";
+      break;
+    }
     break;
   }
   case "IncrementClicked":

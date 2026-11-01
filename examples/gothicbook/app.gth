@@ -124,7 +124,21 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case LocationChanged:
 		m.Path = msg.Path
-		m.Page = pageForPath(msg.Path)
+		m.Page = "notfound"
+		switch msg.Path {
+		case "/":
+			m.Page = "overview"
+		case "/button":
+			m.Page = "button"
+		case "/field":
+			m.Page = "field"
+		case "/tabs":
+			m.Page = "tabs"
+		case "/accordion":
+			m.Page = "accordion"
+		case "/combobox":
+			m.Page = "combobox"
+		}
 	case IncrementClicked:
 		return m, func() gothic.Msg {
 			count, err := Increment()
