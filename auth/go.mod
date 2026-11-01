@@ -3,8 +3,8 @@ module github.com/metruzanca/gothic/auth
 go 1.26.0
 
 require (
-	github.com/metruzanca/gothic v0.0.0
-	github.com/metruzanca/gothic/session v0.0.0
+	github.com/metruzanca/gothic v0.4.0
+	github.com/metruzanca/gothic/session v0.1.0
 	golang.org/x/crypto v0.58.0
 	modernc.org/sqlite v1.61.0
 )
@@ -21,7 +21,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
-
-replace github.com/metruzanca/gothic => ..
-
-replace github.com/metruzanca/gothic/session => ../session
