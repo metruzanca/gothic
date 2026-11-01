@@ -32,15 +32,11 @@ func TestDocumentDefaults(t *testing.T) {
 		`<meta charset="utf-8">`,
 		`<meta name="viewport" content="width=device-width, initial-scale=1">`,
 		`<title>Gothic App</title>`,
-		`<link rel="icon" href="/_gothic/icon.svg" type="image/svg+xml">`,
-		`<link rel="icon" href="/_gothic/icon-512.png" type="image/png" sizes="512x512">`,
-		`<link rel="apple-touch-icon" href="/_gothic/apple-touch-icon.png" type="image/png" sizes="180x180">`,
 		`<meta property="og:type" content="website">`,
 		`<meta property="og:title" content="Gothic App">`,
 		`<meta property="og:site_name" content="Gothic App">`,
 		`<meta property="og:url" content="https://example.com/about">`,
-		`<meta property="og:image" content="https://example.com/_gothic/og.png">`,
-		`<meta name="twitter:card" content="summary_large_image">`,
+		`<meta name="twitter:card" content="summary">`,
 		"<main>app</main>",
 	} {
 		if !strings.Contains(out, want) {
@@ -50,22 +46,25 @@ func TestDocumentDefaults(t *testing.T) {
 	if strings.Contains(out, "x=1") {
 		t.Errorf("og:url should not include the query string\n\n%s", out)
 	}
+	if strings.Contains(out, `property="og:image"`) {
+		t.Errorf("document should not invent an og:image\n\n%s", out)
+	}
+	if strings.Contains(out, `<link rel="icon"`) {
+		t.Errorf("document should not invent icons\n\n%s", out)
+	}
 }
 
-func TestDocumentOptions(t *testing.T) {
-	doc := Document{}
-	for _, opt := range []AppOption{
-		WithTitle("Gothicbook"),
-		WithDescription("A design system demo."),
-		WithSiteName("Gothic"),
-		WithLanguage("es"),
-		WithThemeColor("#f7f7f5"),
-		WithImage("/og.png"),
-		WithStyles("/gothic-ui.css", "/style.css"),
-		WithIcon("/favicon.ico"),
-		WithExtraHead(`<script src="/extra.js"></script>`),
-	} {
-		opt(&doc)
+func TestDocumentValues(t *testing.T) {
+	doc := Document{
+		Title:       "Gothicbook",
+		Description: "A design system demo.",
+		SiteName:    "Gothic",
+		Lang:        "es",
+		ThemeColor:  "#f7f7f5",
+		Image:       "/og.png",
+		Styles:      []string{"/gothic-ui.css", "/style.css"},
+		Icons:       []Icon{{Href: "/favicon.ico"}},
+		ExtraHead:   `<script src="/extra.js"></script>`,
 	}
 
 	r := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
@@ -86,9 +85,6 @@ func TestDocumentOptions(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("document missing %q\n\n%s", want, out)
 		}
-	}
-	if strings.Contains(out, DefaultIconPath) {
-		t.Errorf("WithIcon should replace the default icon set\n\n%s", out)
 	}
 }
 
@@ -118,7 +114,6 @@ func TestDocumentForwardedHeaders(t *testing.T) {
 	out := writeTestDocument(t, r, Document{})
 	for _, want := range []string{
 		`<meta property="og:url" content="https://gothic.example.com/page">`,
-		`<meta property="og:image" content="https://gothic.example.com/_gothic/og.png">`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("document missing %q\n\n%s", want, out)
@@ -136,48 +131,12 @@ func TestDocumentAbsoluteImagePassesThrough(t *testing.T) {
 
 func TestDocumentNoImage(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
-	for name, doc := range map[string]Document{
-		"flag":   {NoImage: true},
-		"option": applyOptions(WithImage("")),
-	} {
-		out := writeTestDocument(t, r, doc)
-		if strings.Contains(out, `property="og:image"`) {
-			t.Errorf("%s: unexpected og:image\n\n%s", name, out)
-		}
-		if !strings.Contains(out, `<meta name="twitter:card" content="summary">`) {
-			t.Errorf("%s: want summary twitter card\n\n%s", name, out)
-		}
+	out := writeTestDocument(t, r, Document{})
+	if strings.Contains(out, `property="og:image"`) {
+		t.Errorf("unexpected og:image\n\n%s", out)
 	}
-}
-
-func applyOptions(opts ...AppOption) Document {
-	doc := Document{}
-	for _, opt := range opts {
-		opt(&doc)
-	}
-	return doc
-}
-
-func TestDocumentFuncMergesOverBase(t *testing.T) {
-	doc := applyOptions(
-		WithTitle("Base"),
-		WithSiteName("Gothic"),
-		WithStyles("/base.css"),
-		WithDocumentFunc(func(r *http.Request) Document {
-			return Document{Title: "About", Description: "About page"}
-		}),
-	)
-	r := httptest.NewRequest(http.MethodGet, "https://example.com/about", nil)
-	out := writeTestDocument(t, r, doc)
-	for _, want := range []string{
-		`<title>About</title>`,
-		`<meta name="description" content="About page">`,
-		`<meta property="og:site_name" content="Gothic">`,
-		`<link rel="stylesheet" href="/base.css">`,
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("document missing %q\n\n%s", want, out)
-		}
+	if !strings.Contains(out, `<meta name="twitter:card" content="summary">`) {
+		t.Errorf("want summary twitter card\n\n%s", out)
 	}
 }
 

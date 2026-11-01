@@ -1,6 +1,7 @@
 package gothic
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -82,9 +83,18 @@ func (s *Server) MountApp(pattern string, app *App, opts ...AppOption) {
 		opt(&doc)
 	}
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if err := app.RenderDocument(w, r, doc); err != nil {
+		view, err := app.view(r)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+		var page bytes.Buffer
+		if err := WriteDocument(&page, r, doc, view); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(page.Bytes())
 	}
 	s.Get(pattern, handler)
 	if strings.Contains(pattern, "*") {
@@ -127,14 +137,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/_gothic/runtime.js":
 		serveJS(w, runtimeclient.RuntimeJS)
-	case r.URL.Path == DefaultIconPath:
-		serveAsset(w, "image/svg+xml", defaultIconSVG)
-	case r.URL.Path == DefaultIconPNGPath:
-		serveAsset(w, "image/png", defaultIconPNG)
-	case r.URL.Path == DefaultTouchPath:
-		serveAsset(w, "image/png", defaultAppleTouchIcon)
-	case r.URL.Path == DefaultImagePath:
-		serveAsset(w, "image/png", defaultOGImage)
 	case strings.HasPrefix(r.URL.Path, "/_gothic/modules/"):
 		data, ok := lookupModule(r.URL.Path)
 		if !ok {

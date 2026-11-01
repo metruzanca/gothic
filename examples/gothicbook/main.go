@@ -94,12 +94,15 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		return NewModelAt(r.URL.Path, int(counter.count.Load()))
 	}),
-		gothic.WithTitle("Gothicbook"),
-		gothic.WithSiteName("Gothic"),
-		gothic.WithDescription("A tiny design system demo for the installable gothic UI kit."),
-		gothic.WithImage(ogImageHref),
-		gothic.WithStyles(uiStyleHref, styleHref),
-		gothic.WithExtraHead(themeScript),
+		gothic.WithDocument(gothic.Document{
+			Title:       "Gothicbook",
+			SiteName:    "Gothic",
+			Description: "A tiny design system demo for the installable gothic UI kit.",
+			Image:       ogImageHref,
+			Icons:       []gothic.Icon{{Href: "/gothic-mark.svg", Type: "image/svg+xml"}},
+			Styles:      []string{uiStyleHref, styleHref},
+			ExtraHead:   themeScript,
+		}),
 	)
 }
 

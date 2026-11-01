@@ -16,8 +16,10 @@ func main() {
 	}
 	s := gothic.NewServer()
 	s.MountApp("/", gothic.NewApp(NewModel()),
-		gothic.WithTitle("Gothic components"),
-		gothic.WithDescription("Stateful components and client-side actions in gothic."),
+		gothic.WithDocument(gothic.Document{
+			Title:       "Gothic components",
+			Description: "Stateful components and client-side actions in gothic.",
+		}),
 	)
 	log.Fatal(s.ListenAndServe(addr))
 }

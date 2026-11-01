@@ -16,11 +16,6 @@ const (
 	DefaultLang  = "en"
 	DefaultTitle = "Gothic App"
 	DefaultType  = "website"
-
-	DefaultIconPath    = "/_gothic/icon.svg"
-	DefaultIconPNGPath = "/_gothic/icon-512.png"
-	DefaultTouchPath   = "/_gothic/apple-touch-icon.png"
-	DefaultImagePath   = "/_gothic/og.png"
 )
 
 // Icon is a document icon link.
@@ -39,7 +34,7 @@ type Icon struct {
 
 // Document describes the HTML shell around an app view: the head metadata,
 // icon links, and stylesheets. The zero value is usable and gets the framework
-// defaults, including a generated social card at DefaultImagePath.
+// defaults.
 type Document struct {
 	// Lang is the html lang attribute. It defaults to DefaultLang.
 	Lang string
@@ -54,23 +49,17 @@ type Document struct {
 	// ThemeColor becomes the theme-color meta tag when set.
 	ThemeColor string
 	// Image is og:image. Relative values are resolved to absolute URLs using
-	// the request. It defaults to DefaultImagePath. Set NoImage or use
-	// WithImage("") to suppress the default card.
+	// the request. Leave it empty to omit the image.
 	Image string
 	// URL is og:url. It defaults to the absolute request path.
 	URL string
-	// Icons are the favicon and touch icon links. A nil slice gets the
-	// framework default set. Use an empty non-nil slice to emit no icons.
+	// Icons are the favicon and touch icon links.
 	Icons []Icon
 	// Styles are stylesheet hrefs, in order.
 	Styles []string
 	// ExtraHead is inserted verbatim at the end of the head. Treat it as
 	// trusted markup.
 	ExtraHead string
-	// NoImage suppresses the default framework social card.
-	NoImage bool
-
-	docFunc func(*http.Request) Document
 }
 
 // DefaultDocument returns the framework document defaults.
@@ -79,16 +68,6 @@ func DefaultDocument() Document {
 		Lang:  DefaultLang,
 		Title: DefaultTitle,
 		Type:  DefaultType,
-		Image: DefaultImagePath,
-		Icons: defaultIcons(),
-	}
-}
-
-func defaultIcons() []Icon {
-	return []Icon{
-		{Href: DefaultIconPath, Type: "image/svg+xml"},
-		{Href: DefaultIconPNGPath, Type: "image/png", Sizes: "512x512"},
-		{Href: DefaultTouchPath, Rel: "apple-touch-icon", Sizes: "180x180"},
 	}
 }
 
@@ -101,83 +80,6 @@ func WithDocument(doc Document) AppOption {
 	return func(d *Document) {
 		*d = doc
 	}
-}
-
-// WithDocumentFunc returns a per-request document that is merged over the
-// server and mount configuration. Non-zero fields and non-nil slices win.
-func WithDocumentFunc(fn func(*http.Request) Document) AppOption {
-	return func(d *Document) {
-		d.docFunc = fn
-	}
-}
-
-// WithTitle sets the page title and og:title.
-func WithTitle(title string) AppOption {
-	return func(d *Document) { d.Title = title }
-}
-
-// WithDescription sets the meta description and og:description.
-func WithDescription(description string) AppOption {
-	return func(d *Document) { d.Description = description }
-}
-
-// WithSiteName sets og:site_name.
-func WithSiteName(name string) AppOption {
-	return func(d *Document) { d.SiteName = name }
-}
-
-// WithLanguage sets the html lang attribute.
-func WithLanguage(lang string) AppOption {
-	return func(d *Document) { d.Lang = lang }
-}
-
-// WithThemeColor sets the theme-color meta tag.
-func WithThemeColor(color string) AppOption {
-	return func(d *Document) { d.ThemeColor = color }
-}
-
-// WithIcon replaces the icon set with a single icon. The MIME type is inferred
-// from the extension.
-func WithIcon(href string) AppOption {
-	return func(d *Document) {
-		d.Icons = []Icon{{Href: href}}
-	}
-}
-
-// WithIcons replaces the icon set.
-func WithIcons(icons ...Icon) AppOption {
-	return func(d *Document) {
-		d.Icons = append([]Icon(nil), icons...)
-	}
-}
-
-// WithStyles replaces the stylesheet list.
-func WithStyles(hrefs ...string) AppOption {
-	return func(d *Document) {
-		d.Styles = append([]string(nil), hrefs...)
-	}
-}
-
-// WithImage sets og:image. Relative paths are resolved against the request.
-// An empty value suppresses the image.
-func WithImage(src string) AppOption {
-	return func(d *Document) {
-		d.Image = src
-		d.NoImage = src == ""
-	}
-}
-
-// WithNoImage suppresses og:image, including the framework default card.
-func WithNoImage() AppOption {
-	return func(d *Document) {
-		d.Image = ""
-		d.NoImage = true
-	}
-}
-
-// WithExtraHead appends trusted markup to the head.
-func WithExtraHead(markup string) AppOption {
-	return func(d *Document) { d.ExtraHead = markup }
 }
 
 // WriteDocument writes a full HTML document around body. The document is
@@ -282,12 +184,8 @@ func iconMIME(href string) string {
 	}
 }
 
-// resolveDocument applies the framework defaults, per-request overrides, and
-// absolute URLs.
+// resolveDocument applies the framework defaults and absolute URLs.
 func resolveDocument(doc Document, r *http.Request) Document {
-	if doc.docFunc != nil {
-		doc = mergeDocument(doc, doc.docFunc(r))
-	}
 	if doc.Lang == "" {
 		doc.Lang = DefaultLang
 	}
@@ -299,14 +197,6 @@ func resolveDocument(doc Document, r *http.Request) Document {
 	}
 	if doc.SiteName == "" {
 		doc.SiteName = doc.Title
-	}
-	if doc.Icons == nil {
-		doc.Icons = defaultIcons()
-	}
-	if doc.NoImage {
-		doc.Image = ""
-	} else if doc.Image == "" {
-		doc.Image = DefaultImagePath
 	}
 	if r != nil {
 		if doc.Image != "" {
@@ -323,47 +213,6 @@ func resolveDocument(doc Document, r *http.Request) Document {
 		}
 	}
 	return doc
-}
-
-func mergeDocument(base, over Document) Document {
-	if over.Lang != "" {
-		base.Lang = over.Lang
-	}
-	if over.Title != "" {
-		base.Title = over.Title
-	}
-	if over.Description != "" {
-		base.Description = over.Description
-	}
-	if over.SiteName != "" {
-		base.SiteName = over.SiteName
-	}
-	if over.Type != "" {
-		base.Type = over.Type
-	}
-	if over.ThemeColor != "" {
-		base.ThemeColor = over.ThemeColor
-	}
-	if over.URL != "" {
-		base.URL = over.URL
-	}
-	if over.Icons != nil {
-		base.Icons = over.Icons
-	}
-	if over.Styles != nil {
-		base.Styles = over.Styles
-	}
-	if over.ExtraHead != "" {
-		base.ExtraHead = over.ExtraHead
-	}
-	if over.NoImage {
-		base.NoImage = true
-		base.Image = ""
-	} else if over.Image != "" {
-		base.NoImage = false
-		base.Image = over.Image
-	}
-	return base
 }
 
 func absoluteURL(r *http.Request, ref string) string {

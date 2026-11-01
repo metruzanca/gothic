@@ -16,8 +16,10 @@ func main() {
 	}
 	s := gothic.NewServer()
 	s.MountApp("/", gothic.NewApp(NewModel()),
-		gothic.WithTitle("Nested stateful components"),
-		gothic.WithDescription("Nested stateful components with local and shared state in gothic."),
+		gothic.WithDocument(gothic.Document{
+			Title:       "Nested stateful components",
+			Description: "Nested stateful components with local and shared state in gothic.",
+		}),
 	)
 	log.Fatal(s.ListenAndServe(addr))
 }

@@ -815,45 +815,38 @@ s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 mount reach the app. The server renders the model for the request, then the
 client hydrates it and dispatches `LocationChanged` on load.
 
-#### Documents and social previews
+#### Documents and previews
 
 `MountApp` renders a full HTML document: doctype, `lang`, charset, viewport,
-title, description, icons, stylesheets, and OpenGraph tags. The defaults are
-usable without configuration. They include a title of `Gothic App` and a
-framework social card at `/_gothic/og.png`.
+title, description, icons, stylesheets, and OpenGraph tags. The zero
+`Document` gets a title of `Gothic App`, no icons, and no image.
+
+Set server-wide defaults with `SetDocument`, then override them for a mount with
+`WithDocument`:
 
 ```go
 s := gothic.NewServer()
 s.SetDocument(gothic.Document{SiteName: "Gothic"})
 s.MountApp("/", gothic.NewApp(NewModel()),
-	gothic.WithTitle("Gothicbook"),
-	gothic.WithDescription("A tiny design system demo."),
-	gothic.WithImage("/og.png"),
-	gothic.WithStyles("/gothic-ui.css", "/style.css"),
+	gothic.WithDocument(gothic.Document{
+		Title:       "Gothicbook",
+		Description: "A tiny design system demo.",
+		Image:       "/og.png",
+		Icons:       []gothic.Icon{{Href: "/favicon.svg"}},
+		Styles:      []string{"/gothic-ui.css", "/style.css"},
+	}),
 )
 ```
 
-- `s.SetDocument` changes the defaults for every mount on that server.
-- Mount options override the server defaults.
-- `WithDocumentFunc(func(*http.Request) Document)` merges a document chosen
-  from the request, which is how per-route titles work. Non-zero fields win.
-- `WithIcon` replaces the default icon set. `WithImage("")` or `WithNoImage()`
-  removes `og:image` and falls back to a compact `summary` card.
+- `WithDocument` replaces the server document for that mount. Zero fields fall
+  back to the built-in defaults.
+- Leave `Image` empty to omit `og:image`. Leave `Icons` nil to omit icons.
 - Relative `og:image` and `og:url` values become absolute using the request
   host and forwarding headers.
 - `gothic.WriteDocument(w, r, doc, body)` renders the same shell around any
   component, without a Model.
-
-The `/_gothic/` prefix is reserved for the framework assets:
-
-- `/_gothic/icon.svg`
-- `/_gothic/icon-512.png`
-- `/_gothic/apple-touch-icon.png`
-- `/_gothic/og.png`
-
-A custom social card is served from an app path and selected with
-`WithImage`. The full set of options is in
-[ITERATION_21.md](ITERATION_21.md).
+- The `/_gothic/` prefix is reserved for the runtime and generated modules. The
+  framework ships no default icon or social image.
 
 #### Path parameters
 

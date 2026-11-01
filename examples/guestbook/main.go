@@ -50,8 +50,10 @@ func main() {
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		return NewModel(g.Messages())
 	}),
-		gothic.WithTitle("Gothic guestbook"),
-		gothic.WithDescription("A tiny guestbook with typed server procedures in gothic."),
+		gothic.WithDocument(gothic.Document{
+			Title:       "Gothic guestbook",
+			Description: "A tiny guestbook with typed server procedures in gothic.",
+		}),
 	)
 	log.Fatal(s.ListenAndServe(addr))
 }

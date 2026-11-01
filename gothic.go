@@ -2,7 +2,6 @@
 package gothic
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,11 +21,6 @@ type ComponentFunc func(ctx context.Context, w io.Writer) error
 // Render implements Component.
 func (f ComponentFunc) Render(ctx context.Context, w io.Writer) error {
 	return f(ctx, w)
-}
-
-// Render writes c to the response.
-func Render(w http.ResponseWriter, r *http.Request, c Component) error {
-	return c.Render(r.Context(), w)
 }
 
 // RPCService is a marker interface. Embed it in an interface to declare the
@@ -113,15 +107,6 @@ func NewAppFunc[M Model](model func(*http.Request) M) *App {
 	return &App{model: func(r *http.Request) Model { return model(r) }}
 }
 
-// RenderTo writes the application's static initial view to w. It requires an
-// app created with NewApp. Request-scoped apps render through Render.
-func (a *App) RenderTo(ctx context.Context, w io.Writer) error {
-	if a.initial == nil {
-		return fmt.Errorf("gothic: RenderTo requires NewApp; use Render for NewAppFunc")
-	}
-	return a.initial.View().Render(ctx, w)
-}
-
 func (a *App) view(r *http.Request) (Component, error) {
 	model := a.initial
 	if a.model != nil {
@@ -131,31 +116,6 @@ func (a *App) view(r *http.Request) (Component, error) {
 		return nil, fmt.Errorf("gothic: app model is nil")
 	}
 	return model.View(), nil
-}
-
-// Render writes the application view for the request to the response.
-func (a *App) Render(w http.ResponseWriter, r *http.Request) error {
-	view, err := a.view(r)
-	if err != nil {
-		return err
-	}
-	return view.Render(r.Context(), w)
-}
-
-// RenderDocument writes a full HTML document around the application view.
-// MountApp uses it with the server and mount document configuration.
-func (a *App) RenderDocument(w http.ResponseWriter, r *http.Request, doc Document) error {
-	view, err := a.view(r)
-	if err != nil {
-		return err
-	}
-	var page bytes.Buffer
-	if err := WriteDocument(&page, r, doc, view); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, err = w.Write(page.Bytes())
-	return err
 }
 
 var (

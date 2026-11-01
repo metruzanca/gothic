@@ -32,7 +32,9 @@ func mountApp(s *gothic.Server) {
 	s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 		return NewModel(r.URL.Path)
 	}),
-		gothic.WithTitle("Gothic router"),
-		gothic.WithDescription("Client-side routing and server-rendered deep links in gothic."),
+		gothic.WithDocument(gothic.Document{
+			Title:       "Gothic router",
+			Description: "Client-side routing and server-rendered deep links in gothic.",
+		}),
 	)
 }
