@@ -1,4 +1,4 @@
-package gothic
+package gothic_test
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	. "github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 )
 
 func testLogger() *slog.Logger {
@@ -39,7 +41,7 @@ func TestUseMiddlewareCoversFrameworkPaths(t *testing.T) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	ts.Body(ts.Get(RuntimePath))
 	ts.Body(ts.Get(ModulesPrefix + "mw.js"))
@@ -55,7 +57,7 @@ func TestRPCRequiresJSONContentType(t *testing.T) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res, err := ts.Client().Post(ts.URL+RPCPrefix+"Ping", "text/plain", strings.NewReader(`{"args":[]}`))
 	if err != nil {
@@ -75,7 +77,7 @@ func TestRPCCrossOriginRejected(t *testing.T) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	req := mustRequest(t, http.MethodPost, ts.URL+RPCPrefix+"Ping", map[string]string{
 		"Content-Type": "application/json",
@@ -107,7 +109,7 @@ func TestRPCBodyLimit(t *testing.T) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.PostJSON(RPCPrefix+"Ping", map[string]any{"args": []any{}})
 	body := ts.Body(res)
@@ -124,7 +126,7 @@ func TestTypedProcedureError(t *testing.T) {
 	s.RegisterProcedure("Boom", func(ctx context.Context, body []byte) (any, error) {
 		return nil, io.ErrUnexpectedEOF
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	_, err := ts.Call("Create")
 	var gothicErr *Error
@@ -161,7 +163,7 @@ func TestRouterVerbsAndParams(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		})
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	if body := ts.Body(ts.Get("/api/items/42")); body != "42" {
 		t.Fatalf("GET = %q", body)
@@ -177,7 +179,7 @@ func TestRouterVerbsAndParams(t *testing.T) {
 func TestAsset(t *testing.T) {
 	s := NewServer(WithLogger(testLogger()))
 	s.Asset("/style.css", []byte("body{color:red}"))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.Get("/style.css")
 	body := ts.Body(res)
@@ -191,7 +193,7 @@ func TestAsset(t *testing.T) {
 	if etag == "" {
 		t.Fatal("missing ETag")
 	}
-	if got := res.Header.Get("Cache-Control"); got != defaultAssetCacheControl {
+	if got := res.Header.Get("Cache-Control"); got != "public, max-age=3600" {
 		t.Fatalf("cache control = %q", got)
 	}
 
@@ -248,7 +250,7 @@ func TestPanicRecovery(t *testing.T) {
 	s.RegisterProcedure("Boom", func(ctx context.Context, body []byte) (any, error) {
 		panic("kaboom")
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.Get("/boom")
 	body := ts.Body(res)
@@ -271,7 +273,7 @@ func TestUseAfterFirstRequest(t *testing.T) {
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "ok")
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 	ts.Body(ts.Get("/"))
 
 	var hits atomic.Int32
@@ -292,7 +294,7 @@ func TestRPCTrustedProxyOrigin(t *testing.T) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	req := mustRequest(t, http.MethodPost, ts.URL+RPCPrefix+"Ping", map[string]string{
 		"Content-Type":      "application/json",

@@ -13,6 +13,7 @@ import (
 
 	"github.com/metruzanca/gothic"
 	"github.com/metruzanca/gothic/auth"
+	"github.com/metruzanca/gothic/gothicest"
 	"github.com/metruzanca/gothic/session"
 	_ "modernc.org/sqlite"
 )
@@ -39,7 +40,7 @@ func TestPasswordHashing(t *testing.T) {
 	}
 }
 
-func authServer(t *testing.T) (*auth.Manager, *gothic.TestServer) {
+func authServer(t *testing.T) (*auth.Manager, *gothicest.TestServer) {
 	t.Helper()
 	sessions := session.NewManager(session.NewMemoryStore(), session.WithSecret([]byte("test-secret")))
 	store := auth.NewMemoryStore()
@@ -80,10 +81,10 @@ func authServer(t *testing.T) (*auth.Manager, *gothic.TestServer) {
 	s.Handle("/private", redirect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "private")
 	})))
-	return manager, gothic.NewTestServer(t, s)
+	return manager, gothicest.NewTestServer(t, s)
 }
 
-func postForm(t *testing.T, ts *gothic.TestServer, path string, values url.Values) *http.Response {
+func postForm(t *testing.T, ts *gothicest.TestServer, path string, values url.Values) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, ts.URL+path, strings.NewReader(values.Encode()))
 	if err != nil {

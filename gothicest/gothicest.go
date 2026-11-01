@@ -1,4 +1,4 @@
-package gothic
+package gothicest
 
 import (
 	"bytes"
@@ -8,18 +8,20 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/metruzanca/gothic"
 )
 
 // TestServer wraps a Server behind httptest.Server and closes it with the test.
 type TestServer struct {
 	*httptest.Server
-	Gothic *Server
+	Gothic *gothic.Server
 
 	t testing.TB
 }
 
 // NewTestServer starts s on a random port and closes it when the test ends.
-func NewTestServer(t testing.TB, s *Server) *TestServer {
+func NewTestServer(t testing.TB, s *gothic.Server) *TestServer {
 	t.Helper()
 	ts := httptest.NewServer(s)
 	t.Cleanup(ts.Close)
@@ -75,7 +77,7 @@ func (ts *TestServer) Call(name string, args ...any) (json.RawMessage, error) {
 	if args == nil {
 		args = []any{}
 	}
-	res := ts.PostJSON(RPCPrefix+name, map[string]any{"args": args})
+	res := ts.PostJSON(gothic.RPCPrefix+name, map[string]any{"args": args})
 	defer res.Body.Close()
 
 	var payload struct {
@@ -90,7 +92,7 @@ func (ts *TestServer) Call(name string, args ...any) (json.RawMessage, error) {
 		return nil, err
 	}
 	if payload.Error != nil {
-		return nil, &Error{
+		return nil, &gothic.Error{
 			Status:  res.StatusCode,
 			Code:    payload.Error.Code,
 			Message: payload.Error.Message,
@@ -98,7 +100,7 @@ func (ts *TestServer) Call(name string, args ...any) (json.RawMessage, error) {
 		}
 	}
 	if res.StatusCode >= 400 {
-		return nil, Errorf(res.StatusCode, "", "procedure %s failed with status %d", name, res.StatusCode)
+		return nil, gothic.Errorf(res.StatusCode, "", "procedure %s failed with status %d", name, res.StatusCode)
 	}
 	return payload.Result, nil
 }

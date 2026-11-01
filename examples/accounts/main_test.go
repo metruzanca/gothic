@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 	_ "modernc.org/sqlite"
 )
 
-func newTestServer(t *testing.T) *gothic.TestServer {
+func newTestServer(t *testing.T) *gothicest.TestServer {
 	t.Helper()
 	db, err := openDB(":memory:")
 	if err != nil {
@@ -22,7 +22,7 @@ func newTestServer(t *testing.T) *gothic.TestServer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return gothic.NewTestServer(t, s)
+	return gothicest.NewTestServer(t, s)
 }
 
 var tokenPattern = regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
@@ -36,7 +36,7 @@ func tokenFrom(t *testing.T, body string) string {
 	return match[1]
 }
 
-func postForm(t *testing.T, ts *gothic.TestServer, path string, values url.Values) *http.Response {
+func postForm(t *testing.T, ts *gothicest.TestServer, path string, values url.Values) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, ts.URL+path, strings.NewReader(values.Encode()))
 	if err != nil {

@@ -1,7 +1,9 @@
-package gothic
+package gothic_test
 
 import (
 	"context"
+	. "github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 	"io"
 	"net/http"
 	"strings"
@@ -28,7 +30,7 @@ func TestScopeIsolatesProcedures(t *testing.T) {
 	admin.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "admin", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	root, err := ts.Call("Ping")
 	if err != nil {
@@ -53,7 +55,7 @@ func TestScopeBasePathReachesViews(t *testing.T) {
 	s := NewServer(WithLogger(testLogger()))
 	admin := s.Scope("/admin")
 	admin.MountApp("/", NewApp(baseModel{}))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	for _, path := range []string{"/admin/", "/admin/deep/link"} {
 		body := ts.Body(ts.Get(path))
@@ -70,7 +72,7 @@ func TestScopeDocumentDefaults(t *testing.T) {
 	admin.SetDocument(Document{Title: "Admin"})
 	s.MountApp("/", NewApp(baseModel{}))
 	admin.MountApp("/", NewApp(baseModel{}))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	if body := ts.Body(ts.Get("/admin/")); !strings.Contains(body, "<title>Admin</title>") {
 		t.Fatalf("admin document missing title\n%s", body)
@@ -87,7 +89,7 @@ func TestScopeRoutesAndAssets(t *testing.T) {
 		_, _ = io.WriteString(w, "users")
 	})
 	admin.Asset("/app.css", []byte("body{}"))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	if body := ts.Body(ts.Get("/admin/users")); body != "users" {
 		t.Fatalf("GET users = %q", body)
@@ -108,7 +110,7 @@ func TestNestedScopes(t *testing.T) {
 	v1.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "v1", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.PostJSON("/api/v1"+RPCPrefix+"Ping", map[string]any{"args": []any{}})
 	body := ts.Body(res)
@@ -135,7 +137,7 @@ func TestScopeMiddlewareIsScoped(t *testing.T) {
 	admin.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "admin")
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.Get("/admin/")
 	ts.Body(res)

@@ -1,9 +1,11 @@
-package gothic
+package gothic_test
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	. "github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -100,7 +102,7 @@ func TestUnmarshalArgsReportsBadRequest(t *testing.T) {
 		}
 		return "hello " + name, nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.PostJSON(RPCPrefix+"Greet", map[string]any{"args": []any{}})
 	body := ts.Body(res)

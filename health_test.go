@@ -1,8 +1,10 @@
-package gothic
+package gothic_test
 
 import (
 	"context"
 	"errors"
+	. "github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -17,7 +19,7 @@ func TestHealthEndpoints(t *testing.T) {
 		WithReadiness(ReadyPath, nil),
 	)
 	s.MountApp("/", NewApp(baseModel{}))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	for _, path := range []string{HealthPath, ReadyPath} {
 		res := ts.Get(path)
@@ -57,7 +59,7 @@ func TestReadinessFailure(t *testing.T) {
 			return errors.New("database is down")
 		}),
 	)
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	res := ts.Get("/readyz")
 	body := ts.Body(res)
@@ -76,7 +78,7 @@ func TestHealthConfigurablePaths(t *testing.T) {
 		WithHealth("/health"),
 		WithReadiness("/ready", nil),
 	)
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	if res := ts.Get("/health"); res.StatusCode != http.StatusOK {
 		ts.Body(res)
@@ -87,7 +89,7 @@ func TestHealthConfigurablePaths(t *testing.T) {
 		t.Fatalf("custom ready = %d", res.StatusCode)
 	}
 	plain := NewServer(WithLogger(testLogger()))
-	plainServer := NewTestServer(t, plain)
+	plainServer := gothicest.NewTestServer(t, plain)
 	if res := plainServer.Get(HealthPath); res.StatusCode != http.StatusNotFound {
 		plainServer.Body(res)
 		t.Fatalf("health without options = %d, want 404", res.StatusCode)
@@ -104,7 +106,7 @@ func TestHealthBypassesMiddleware(t *testing.T) {
 		})
 	})
 	s.MountApp("/", NewApp(baseModel{}))
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	if res := ts.Get(HealthPath); res.StatusCode != http.StatusOK {
 		ts.Body(res)
@@ -152,7 +154,7 @@ func TestHealthDoesNotLogRequests(t *testing.T) {
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 
 	ts.Body(ts.Get(HealthPath))
 	ts.Body(ts.Get("/"))
@@ -175,7 +177,7 @@ func TestReadinessPanicIsContained(t *testing.T) {
 			panic("boom")
 		}),
 	)
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 	res := ts.Get("/readyz")
 	body := ts.Body(res)
 	if res.StatusCode != http.StatusServiceUnavailable {

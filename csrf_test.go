@@ -1,7 +1,9 @@
-package gothic
+package gothic_test
 
 import (
 	"context"
+	. "github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/gothicest"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,7 +11,7 @@ import (
 	"testing"
 )
 
-func csrfTestServer(t *testing.T, opts ...CSRFOption) (*TestServer, *url.URL) {
+func csrfTestServer(t *testing.T, opts ...CSRFOption) (*gothicest.TestServer, *url.URL) {
 	t.Helper()
 	s := NewServer(WithLogger(testLogger()), WithCSRF(opts...))
 	s.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +29,7 @@ func csrfTestServer(t *testing.T, opts ...CSRFOption) (*TestServer, *url.URL) {
 	s.RegisterProcedure("Ping", func(ctx context.Context, body []byte) (any, error) {
 		return "pong", nil
 	})
-	ts := NewTestServer(t, s)
+	ts := gothicest.NewTestServer(t, s)
 	parsed, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +37,7 @@ func csrfTestServer(t *testing.T, opts ...CSRFOption) (*TestServer, *url.URL) {
 	return ts, parsed
 }
 
-func csrfTokenFromJar(t *testing.T, ts *TestServer, u *url.URL) string {
+func csrfTokenFromJar(t *testing.T, ts *gothicest.TestServer, u *url.URL) string {
 	t.Helper()
 	for _, cookie := range ts.Client().Jar.Cookies(u) {
 		if cookie.Name == DefaultCSRFCookieName {
