@@ -148,8 +148,8 @@ rendering, hydration, the update loop, typed procedures, pure and stateful
 components, conditionals, keyed lists, routing, an installable UI kit, and
 server-rendered documents with OpenGraph metadata. Browser interop ships as the
 separate `browser` module, and long-list windowing as the separate `virtual`
-module. Current syntax and limits
-live in [SYNTAX.md](docs/SYNTAX.md) and [PLAN.md](docs/PLAN.md).
+module. The [guide](docs/guide/01-quickstart.md) covers the whole loop, and
+[SYNTAX.md](docs/SYNTAX.md) is the full reference.
 
 ## Credits
 
@@ -158,39 +158,20 @@ The gothic logo mark and wordmark are by [Mackenzie Child](https://mackenziechil
 
 ## Learn more
 
+Start with the [quickstart guide](docs/guide/01-quickstart.md).
+
+Guide:
+
+- [State and commands](docs/guide/02-state.md)
+- [Components](docs/guide/03-components.md)
+- [Routing and documents](docs/guide/04-routing.md)
+- [Browser interop](docs/guide/05-browser.md)
+- [Long lists](docs/guide/06-long-lists.md)
+- [Architecture](docs/guide/07-architecture.md)
+
+Reference:
+
 - [Syntax](docs/SYNTAX.md)
 - [Roadmap](docs/PLAN.md)
-- [Proof of concept](docs/ITERATION_1.md)
-- [Components](docs/ITERATION_2.md)
-- [TodoMVC on SQLite](docs/ITERATION_3.md)
-- [Stateful components and UI kit](docs/ITERATION_4.md)
-- [App-owned actions](docs/ITERATION_5.md)
-- [Conditional rendering](docs/ITERATION_6.md)
-- [Stateful branches and lists](docs/ITERATION_7.md)
-- [Component children and slots](docs/ITERATION_8.md)
-- [Browser interop and URL state](docs/ITERATION_9.md)
-- [Actionable diagnostics](docs/ITERATION_10.md)
-- [Component props and Init](docs/ITERATION_11.md)
-- [Component commands and destroy](docs/ITERATION_12.md)
-- [Component props structs](docs/ITERATION_13.md)
-- [Prop-seeded component state](docs/ITERATION_14.md)
-- [Broader client Go subset](docs/ITERATION_15.md)
-- [Path parameters](docs/ITERATION_16.md)
-- [Nested stateful components](docs/ITERATION_17.md)
-- [Virtualized list](docs/ITERATION_18.md)
-- [Virtual list package and component](docs/ITERATION_19.md)
-- [App-defined row views](docs/ITERATION_20.md)
-- [One row view per virtual list call](docs/ITERATION_23.md)
-- [Batch and Sequence commands](docs/ITERATION_24.md)
-- [Responsive and variable-height virtual lists](docs/ITERATION_25.md)
-- [Route tables](docs/ITERATION_26.md)
-- [Parent-local child messages](docs/ITERATION_27.md)
-- [Slots on stateful components](docs/ITERATION_28.md)
-- [Children as a prop](docs/ITERATION_29.md)
-- [Documents and social previews](docs/ITERATION_21.md)
-- [Gothicbook navigation and theme](docs/ITERATION_22.md)
 - [Pitch](docs/PITCH.md)
-
-Iteration notes are historical records of the state at that time. Current
-syntax and limits live in [SYNTAX.md](docs/SYNTAX.md) and
-[PLAN.md](docs/PLAN.md).
+- [Releasing](docs/RELEASING.md)

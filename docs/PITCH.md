@@ -90,23 +90,22 @@ One binary. One build. The generated JavaScript ships from your Go server, embed
 
 ## Why no virtual DOM
 
-Generated code creates static DOM once and binds only the dynamic slots. State changes patch the exact text node, attribute, or list that depends on them. There is no tree diff to read around, no reconciliation to debug. The output is small, readable, and close to the DOM you already know.
+Generated code creates static DOM once and binds only the dynamic parts. State changes patch the exact text node, attribute, or list that depends on them. There is no tree diff to read around, no reconciliation to debug. The output is small, readable, and close to the DOM you already know.
 
-The client runtime stays tiny: signals, effects, list adoption, event binding, and a JSON transport for procedures.
+The client runtime stays tiny: text, list, branch, attribute, event, and RPC helpers.
 
 ## How it fits together
 
-- **Go-first syntax.** State initializers, loop headers, interpolations, and event handler bodies are parsed with Go's own parser. Embedded code reads like Go, not JavaScript.
+- **Go-first syntax.** Loop headers, interpolations, and event expressions are parsed with Go's own parser. Embedded code reads like Go, not JavaScript.
 - **Shared AST, two walkers.** The Go backend and the JavaScript backend consume the same parse tree, so server and client output cannot drift apart.
-- **Signals with auto-tracking.** Component state compiles to signals. Reads register dependencies. Writes schedule surgical updates. `append` on state lowers to a reactive push.
+- **Compiled DOM bindings.** The compiler knows which expression feeds which text node, which condition owns which branch, and which key owns which list item. Updates patch those directly.
 - **Full hydration.** The server emits markers. The client adopts the existing DOM instead of rebuilding it, so first paint is server HTML and interactivity attaches without a flash.
 - **Typed procedures.** Server functions become generated Go registrars and typed client calls. Same-origin JSON by default, with a no-JS form fallback planned.
 - **`net/http` at the core.** chi v5 is the blessed router; `http.Handler` compatibility means no lock-in.
-- **External API is separate.** huma generates OpenAPI 3.1 for integrators, and internal procedures are never exposed by accident.
 
 ## What already works
 
-The ping/pong proof of concept runs end to end.
+Every example runs end to end.
 
 - `gothic generate` emits Go and JavaScript.
 - The application is Bubble Tea-style MVU: `Model`, `Msg`, `Cmd`, `Init`, `Update`, and a generated `View`.
@@ -116,7 +115,7 @@ The ping/pong proof of concept runs end to end.
 - Pure components compose views with typed props, in the app file or separate files.
 - Pure components accept children through `gothic.Children`; child events and state stay in the App.
 - Stateful components own their model, Init, Update, and view, and work in static positions, conditional branches, and keyed lists.
-- Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions bubble to the App.
+- Stateful components can nest other stateful components in static positions, branches, and keyed lists; child actions go straight to the App.
 - Components unmount when their branch or list item leaves, so state resets on remount.
 - Components use props structs, read props in Init and Update, react to `PropsChanged`, and support optional pointer fields.
 - Components seed their initial state from props through `PropsChanged{Initial: true}`.
@@ -131,7 +130,7 @@ The ping/pong proof of concept runs end to end.
 - Stateful components can take children through `gothic.Children`, so containers keep state while the App owns the child content.
 - Gothicbook is a small design system demo for the UI kit, including form fields with App children, a server-backed action, and a scrollable, paginated list of expandable disclosures.
 - Procedures accept JSON arguments, and keyed lists update in place.
-- A curated `js` package covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
+- A curated `browser` module covers alerts, logging, titles, localStorage, clipboard, focus, reload, and navigation.
 - `LocationChanged` and `route` links provide path-based URL state with pushState, back, and forward.
 - The router example renders deep links on the server and navigates on the client without a reload.
 - Parse and compiler errors show the file, line, source excerpt, caret, and a hint.

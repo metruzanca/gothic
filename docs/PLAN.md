@@ -189,7 +189,8 @@ from the server and reconciled. There is no virtual DOM.
 | `route/` | Path pattern matching shared by the server and client. |
 | `dom/` | Pixel and DOM attribute formatting shared by the server and client. |
 | `virtual/` | Headless list windowing, shipped as its own module. |
-| `server.go` | chi server, assets, procedures, and `MountApp`. |
+| `server.go` | chi server, procedures, modules, and `MountApp`. |
+| `document.go` | HTML document, metadata, icons, stylesheets, and previews. |
 | `examples/guestbook/` | The introductory app: state, a typed procedure, a list, and a component. |
 | `examples/components/` | The pure-component demo. |
 | `examples/todo/` | The SQLite todo demo. |
@@ -271,7 +272,7 @@ Not supported yet:
 - Go-callable component functions,
 - `switch` in views,
 - multiple `App` parameters,
-- message serialization or logging,
+- message serialization beyond JSON,
 - `go/packages` type information,
 - typed procedure argument validation,
 - arbitrary browser globals outside the `browser` module,
@@ -302,10 +303,11 @@ These will be planned in detail after the proof of concept is evaluated:
 - Pure components are compile-time expanded, so reuse duplicates generated
   markup and components are not callable from Go.
 - Stateful component support is still narrow: no declared procedures, and
-  children are supported only on inline components in static App positions.
-  Prop change detection is reference-based. Constructors must be deterministic
-  and client-compilable. Commands are guarded after unmount, but there is no
-  general cancellation.
+  children on stateful components are supported only in static App positions.
+  Precompiled library components cannot accept children. Prop change detection
+  is reference-based. Props seed state through `PropsChanged{Initial: true}`,
+  not a constructor. Commands are guarded after unmount, but there is no general
+  cancellation.
 - The external UI manifest and generated UI module must stay in sync.
 - Conditional branches and keyed list removal rebuild DOM, destroy component
   instances, and reset component state. State held only in the DOM, such as

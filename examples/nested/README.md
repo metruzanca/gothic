@@ -7,8 +7,8 @@ A stateful `Dashboard` component contains three stateful `Counter` children:
 - keyed children in a `for` list.
 
 Each counter keeps its own state. The branch child resets when the branch
-closes. List children keep their state while items update. A counter can emit a
-message that bubbles through the dashboard to the App.
+closes. List children keep their state while items update. A counter emits its
+message straight to the App.
 
 Run it:
 

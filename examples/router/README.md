@@ -15,6 +15,7 @@ Open <http://localhost:8080>. Set `PORT` to change the port.
 
 - `LocationChanged` with `Path`, `Query`, and `Hash`
 - `route` links for client-side navigation
+- path parameters through `route.Params` for `/hello/:name`
 - request-scoped models through `gothic.NewAppFunc`
 - deep links rendered by the server before hydration
 - `browser.Navigate`, `browser.Back`, `browser.SetTitle`, and localStorage
@@ -24,5 +25,5 @@ The server seeds the model from `r.URL.Path`, so `/about` and `/settings`
 render correctly on a direct load. The client intercepts route links, pushes
 history, and dispatches `LocationChanged` without a full reload.
 
-Unknown paths render the not-found page. There are no path parameters or route
-matching helpers yet.
+Unknown paths render the not-found page. The `/hello/:name` page reads the
+captured name with `route.Params` in both `NewModel` and `LocationChanged`.

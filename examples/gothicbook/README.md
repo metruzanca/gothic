@@ -11,8 +11,9 @@ go run .
 
 Open <http://localhost:8080>. Set `PORT` to change the port.
 
-The example has local `replace` directives for the core and UI modules so it
-builds against this checkout. A consumer would use tagged module versions.
+The example has local `replace` directives for the core, UI, and browser
+modules so it builds against this checkout. A consumer would use tagged module
+versions.
 
 ## Shows
 
@@ -45,8 +46,7 @@ No database, auth, or interactive playground.
 The sidebar links to flat, deep-linkable paths:
 
 - `/` overview
-- `/button`, `/card`, `/field`, `/tabs`, `/accordion`, `/disclosure`,
-  `/virtual-list`
+- `/button`, `/card`, `/field`, `/tabs`, `/accordion`, `/disclosure`
 - `/conditionals`, `/stateful-lists`, `/server-state`
 
 `NewModelAt` maps the request path to the initial page on the server, and a
@@ -56,7 +56,7 @@ attribute, and the active item is marked with `class:active`.
 The theme follows `prefers-color-scheme`. The sidebar toggle only sets a
 `data-theme` attribute for the current page load. It is not stored anywhere, so
 a reload returns to the system setting. The toggle is registered by a small
-script injected with `gothic.WithExtraHead`.
+script set through the `ExtraHead` field of `gothic.WithDocument`.
 
 ## Social preview
 
@@ -81,8 +81,9 @@ Railway deploys this folder as the `Gothic UI` service:
 - no dashboard build or start command
 
 `railpack.json` owns the build. It installs `git`, then the build step drops
-the local replaces from `go.mod` and fetches `github.com/metruzanca/gothic` and
-`github.com/metruzanca/gothic/ui` at the deployed commit
+the local replaces from `go.mod` and fetches `github.com/metruzanca/gothic`,
+`github.com/metruzanca/gothic/ui`, and `github.com/metruzanca/gothic/browser`
+at the deployed commit
 (`RAILWAY_GIT_COMMIT_SHA`, falling back to `main`). The module edits run in the
 build step because the install step only receives `go.mod` and `go.sum`, while
 the build step has the full source. The install step is intentionally a no-op.

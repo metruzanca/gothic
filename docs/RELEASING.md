@@ -1,17 +1,33 @@
 # Releasing
 
-Release tags are the published versions. Gothic and the UI are separate Go
-modules with independent versions, so each gets its own tag:
+Release tags are the published versions. Gothic is split into four Go modules
+with independent versions:
 
-- Gothic: `vX.Y.Z` (for example `v0.3.0`)
-- UI: `ui/vX.Y.Z` (for example `ui/v0.1.0`)
+| Module | Path | Tag |
+|---|---|---|
+| Gothic | `github.com/metruzanca/gothic` | `vX.Y.Z` |
+| UI kit | `github.com/metruzanca/gothic/ui` | `ui/vX.Y.Z` |
+| Browser | `github.com/metruzanca/gothic/browser` | `browser/vX.Y.Z` |
+| Virtual | `github.com/metruzanca/gothic/virtual` | `virtual/vX.Y.Z` |
 
-Release the core first, then the UI. `ui/go.mod` requires a tagged core
-version, so the UI tag must point at a commit made after the core tag exists.
+Only release the modules that changed. Tags are never moved or deleted. If a
+release is wrong, publish a new patch version.
 
 Releases are initiated by the user only. Run the verification commands in
 [AGENT.md](../AGENT.md) before tagging. Push `main` with each release, not only
 the tag, so the tagged commits are reachable from the default branch.
+
+## Dependency order
+
+- `ui` requires a tagged core version.
+- `browser` and `virtual` have no core dependency.
+- `virtual/example` requires core and `virtual`.
+- `examples/gothicbook` requires core, `ui`, and `browser`.
+- `examples/router` requires core and `browser`.
+
+Release core first when core changed. Then bump and tag the submodules that
+depend on it. The example modules are development apps, not published modules;
+bump their local requirements so the workspace builds.
 
 ## Core release
 
@@ -24,48 +40,49 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-The tag must not have a `ui/` prefix, and the version must be a valid semantic
-version understood by Go, such as `v1.2.3` or `v0.4.0`.
+The tag must not have a submodule prefix, and the version must be a valid
+semantic version understood by Go, such as `v1.2.3` or `v0.4.0`.
 
-## UI release
+## Submodule release
 
-The UI is the `github.com/metruzanca/gothic/ui` module in `ui/`. Go requires
-submodule tags to use the module's subdirectory as a prefix, so the tag is
-`ui/vX.Y.Z`, never `vX.Y.Z`.
+Each submodule tag uses the module directory as a prefix: `ui/vX.Y.Z`,
+`browser/vX.Y.Z`, or `virtual/vX.Y.Z`, never a plain `vX.Y.Z`.
 
-1. Remove `ui/go.work` in the release commit. It is a local development helper
-   and must not ship in the tagged tree:
+1. Bump the core requirement when the submodule depends on core:
+
+```sh
+cd ui
+go mod edit -require=github.com/metruzanca/gothic@vA.B.C
+go mod tidy
+```
+
+Repeat in any example module that requires core if you want the workspace to
+build against the new core release.
+
+2. Remove local workspace files from the release commit. They point at `..` and
+   are only for development:
 
 ```sh
 git rm ui/go.work
+git rm browser/go.work
+git rm virtual/go.work
 ```
 
-2. Bump the core requirement in `ui/go.mod` to the core release you are
-   publishing against, then run `go mod tidy` in `ui/`:
-
-```
-require github.com/metruzanca/gothic vA.B.C
-```
-
-3. Update every example module that replaces the UI module and requires the
-   core, currently `examples/gothicbook` and `examples/virtual`. Their
-   `require github.com/metruzanca/gothic` line must match `vA.B.C`. Otherwise
-   `go test` fails with `updates to go.mod needed`. Run `go mod tidy` in each.
-   Check any other module that reports the same error.
-
-4. Run the module checks:
+3. Run the module checks:
 
 ```sh
 (cd ui && go test ./...)
+(cd browser && go test ./...)
+(cd virtual && go test ./...)
+(cd virtual/example && go test ./...)
 (cd examples/gothicbook && go test ./...)
-(cd examples/virtual && go test ./...)
 (cd examples/router && go test ./...)
 ```
 
-5. Commit the version bump, tag, and push:
+4. Commit the version bump, tag, and push:
 
 ```sh
-git add ui/go.mod ui/go.sum examples/gothicbook/go.mod examples/virtual/go.mod
+git add ui/go.mod ui/go.sum
 git commit -m "chore(ui): release vX.Y.Z against gothic vA.B.C"
 git tag -a ui/vX.Y.Z -m ui/vX.Y.Z
 git push origin main
@@ -74,14 +91,16 @@ git push origin ui/vX.Y.Z
 
 ## Verify a release
 
-Check that consumers can fetch both modules from an empty module cache:
+Check that consumers can fetch the modules from an empty module cache:
 
 ```sh
 cd "$(mktemp -d)"
 go mod init example.com/releasecheck
 go get github.com/metruzanca/gothic@vX.Y.Z
 go get github.com/metruzanca/gothic/ui@vX.Y.Z
-go list -m github.com/metruzanca/gothic github.com/metruzanca/gothic/ui
+go get github.com/metruzanca/gothic/browser@vX.Y.Z
+go get github.com/metruzanca/gothic/virtual@vX.Y.Z
+go list -m github.com/metruzanca/gothic github.com/metruzanca/gothic/ui github.com/metruzanca/gothic/browser github.com/metruzanca/gothic/virtual
 ```
 
 Module proxies cache repository refs for up to about 30 minutes. A newly pushed
@@ -89,9 +108,6 @@ tag can return 404 from `proxy.golang.org` even when it is valid. Verify it with
 `GOPROXY=direct` and check `https://index.golang.org/index`, then retry the
 proxy before changing anything.
 
-Use the plain UI version in commands, for example
+Use the plain submodule version in commands, for example
 `go get github.com/metruzanca/gothic/ui@v0.1.0`. Go maps that to the
 `ui/v0.1.0` git tag itself.
-
-Do not move or delete a published tag. If a release is wrong, publish a new
-patch version instead.

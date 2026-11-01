@@ -1,14 +1,54 @@
 # gothic syntax
 
-gothic is currently a proof of concept. The application model follows
-[Bubble Tea](https://github.com/charmbracelet/bubbletea) and The Elm
-Architecture. A `.gth` file contains ordinary Go followed by one or more
-views. One view, `App`, is the root. The others are pure components.
-`main.go` remains the entrypoint.
+This is the reference for the gothic view language and the Go surface around it.
+For a guided tour, start with the [quickstart](guide/01-quickstart.md).
 
-## Model-View-Update
+A `.gth` file contains ordinary Go followed by one or more views. One view,
+`App`, is the root. The others are components. `main.go` remains the entrypoint.
 
-The application is a Go type that implements:
+## File layout
+
+A `.gth` app file has two sections:
+
+1. A Go prelude: package, imports, model, messages, `Init`, `Update`, commands,
+   and procedure interfaces.
+2. One or more views, starting with a line that begins with `view`.
+
+Everything before the first top-level `view` line is parsed as Go. Everything
+from that line onward is parsed as gothic markup.
+
+```templ
+package app
+
+import "github.com/metruzanca/gothic"
+
+type Model struct{ Count int }
+
+type Increment struct{}
+
+func (m Model) Init() gothic.Cmd { return nil }
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case Increment:
+		m.Count++
+	}
+	return m, nil
+}
+
+view App(model Model) {
+	<div>{ model.Count }</div>
+}
+```
+
+A component file contains only a package clause and views. It has no model and
+no `Init` or `Update`. Declare a separate component's props struct in the app
+prelude. Pure components may live in the app file or a separate `.gth` file in
+the same package. Stateful components live in the app file.
+
+## Application model
+
+The app follows Bubble Tea and the Elm Architecture. The model implements:
 
 ```go
 type Model interface {
@@ -18,155 +58,40 @@ type Model interface {
 }
 ```
 
-Following Bubble Tea:
-
-- `Msg` is `any`. Messages are ordinary Go values and are handled with a type
-  switch.
-- `Cmd` is `func() Msg`. A command performs work and returns a message.
-- `Update` is a method on the model and returns the next model and an optional
-  command.
+- `Msg` is `any`.
+- `Cmd` is `func() Msg`.
+- `Update` returns the next model and an optional command.
 - `Init` returns an optional command.
-- `View` is generated from the `.gth` view.
+- `View` is generated from the `App` view.
 
-## Example
-
-`pingpong.gth` holds the Go prelude, the view, and the procedure contract:
-
-```templ
-package pingpong
-
-import (
-	"context"
-
-	"github.com/metruzanca/gothic"
-)
-
-type Model struct {
-	Messages []string
-}
-
-func NewModel() Model {
-	return Model{Messages: []string{"ready"}}
-}
-
-type PingClicked struct{}
-type PongReceived struct{ Text string }
-type PingFailed struct{ Message string }
-
-type Procedures interface {
-	gothic.RPCService
-	Ping(ctx context.Context) (string, error)
-}
-
-func (m Model) Init() gothic.Cmd {
-	return nil
-}
-
-func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case PingClicked:
-		m.Messages = append(m.Messages, "ping")
-		return m, callPing
-	case PongReceived:
-		m.Messages = append(m.Messages, msg.Text)
-	case PingFailed:
-		m.Messages = append(m.Messages, msg.Message)
-	}
-	return m, nil
-}
-
-func callPing() gothic.Msg {
-	pong, err := Ping()
-	if err != nil {
-		return PingFailed{Message: err.Error()}
-	}
-	return PongReceived{Text: pong}
-}
-
-view App(model Model) {
-	<div class="app">
-		<button onclick={ PingClicked{} }>Ping</button>
-		<ul>
-			for _, m := range model.Messages {
-				<li>{ m }</li>
-			}
-		</ul>
-	</div>
-}
-```
-
-`main.go` stays the entrypoint:
+`main.go` mounts the app:
 
 ```go
-type procedures struct{}
-
-func (procedures) Ping(ctx context.Context) (string, error) {
-	return "pong", nil
-}
-
-func main() {
-	s := gothic.NewServer()
-	RegisterProcedures(s, procedures{})
-	s.MountApp("/", gothic.NewApp(NewModel()))
-	s.ListenAndServe(":8080")
-}
+s := gothic.NewServer()
+RegisterProcedures(s, procedures{})
+s.MountApp("/", gothic.NewApp(Model{}))
+s.ListenAndServe(":8080")
 ```
 
-The generator emits:
+## Views
 
-- `pingpong_gothic.go`: the Go prelude, the view, the generated `View` method,
-  the registrar, procedure client stubs, and the embedded module.
-- `pingpong_gothic.js`: the compiled app and view module.
-
-## File layout
-
-A `.gth` app file has two sections:
-
-1. A Go prelude: package, imports, model, messages, `Init`, `Update`,
-   commands, and procedure interfaces.
-2. One or more views, starting with a line that begins with `view`.
-
-Everything before the first top-level `view` line is parsed as Go. Everything
-from that line onward is parsed as gothic markup.
-
-The app view is named `App`:
+### App view
 
 ```templ
 view App(model Model) {
-	...
+	<div class="app">...</div>
 }
 ```
 
-Any other view is a component:
-
-```templ
-view Badge(text string) {
-	<span class="badge">{ text }</span>
-}
-```
-
-Components can live in the same app file or in a separate `.gth` file in the
-same directory. A separate component file contains only a package clause and
-views. It has no model and no `Init` or `Update`.
-
-## View language
-
-### View signature
-
-```templ
-view App(model Model) {
-	...
-}
-```
-
-The app view is a pure function of the model. The model parameter name and type
-are used to generate the Go `View` method and the JavaScript renderer.
+The App view takes one model parameter. Its name and type are used to generate
+the Go `View` method and the client renderer.
 
 ### Pure components
 
-Pure components can declare a props struct:
+A pure component takes exactly one parameter named `props`, backed by a props
+struct:
 
-```go
+```templ
 type BadgeProps struct {
 	Text   string
 	Hidden bool
@@ -177,87 +102,56 @@ view Badge(props BadgeProps) {
 }
 ```
 
-Invoke a component with a capitalized tag. Named tags map to exported struct
-fields case-insensitively:
+Call it with a capitalized tag:
 
 ```templ
-<Badge text={ model.Status } />
-<Badge text="ready" hidden />
+<Badge text={ model.Status } hidden />
 ```
 
-- `text` maps to `Text`.
-- `hidden` maps to `Hidden` and passes `true`.
+- Tag names map to fields case-insensitively.
+- A tag without a value passes `true`.
 - Non-pointer fields are required.
-- Pointer fields are optional. Omitting the tag leaves the field nil.
+- Pointer fields are optional. Omitting the tag leaves the field `nil`.
 
-Pure components take exactly one parameter named `props`:
+Pure components are stateless. They render exactly one root element and should
+reference only their props and package-level declarations. The compiler expands
+them into the caller before generating Go and JavaScript.
+
+### Children
+
+A component accepts children when its props struct embeds `gothic.Children`:
 
 ```templ
-view Badge(props BadgeProps) {
-	<span class="badge">{ props.Text }</span>
-}
-```
-
-The compiler expands components into the app before generating Go and
-JavaScript. Props from the struct are substituted as a struct literal.
-
-Rules for pure components:
-
-- They are stateless. They cannot declare `state`.
-- They render exactly one root element.
-- They should reference only their props and package-level declarations.
-- They may embed `gothic.Children` in their props struct to receive children.
-- Components cannot be called from Go code yet.
-- Capitalized tags are always components, so camelCase SVG tags are not
-  supported yet.
-
-#### Component children
-
-Children are a prop-gated capability. Add `gothic.Children` to the props struct
-and render `{ props.Children }` where the children belong:
-
-```go
-import "github.com/metruzanca/gothic"
-
 type FieldProps struct {
 	gothic.Children
 	Label string
 }
 
 view Field(props FieldProps) {
-	<div class="ui-field">
-		<span class="ui-field-label">{ props.Label }</span>
+	<div class="field">
+		<span class="field-label">{ props.Label }</span>
 		{ props.Children }
 	</div>
 }
 ```
 
 ```templ
-<ui.Field label="Your name">
+<Field label="Your name">
 	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
-</ui.Field>
+</Field>
 ```
 
-Children are expanded in the caller's scope, so they can use the App model,
-loop variables, events, conditionals, loops, and stateful components. The
-component supplies layout only. Children render nothing when the component is
-called without children.
-
-Rules:
-
-- a component accepts children only when its props type declares
-  `gothic.Children`,
-- either an embedded `gothic.Children` or a named `Children gothic.Children`
-  field works,
-- the view must render `{ props.Children }` exactly once,
-- named slots and fallback content are not supported yet,
-- precompiled stateful components cannot accept children; use an App-local
-  component.
+- Children are expanded in the caller's scope, so they can use the App model,
+  loop variables, events, conditionals, and stateful components.
+- The component must render `{ props.Children }` exactly once.
+- A named `Children gothic.Children` field works too.
+- Named slots and fallback content are not supported.
+- Precompiled library stateful components cannot accept children.
 
 ### Stateful components
 
-A stateful component is a view whose first parameter is a model with `Init` and
-`Update` methods. A second parameter is a props struct:
+A stateful component's first parameter is a model with `Init` and `Update`. A
+second parameter is an optional props struct:
 
 ```go
 type TabsProps struct {
@@ -268,19 +162,12 @@ type TabsModel struct {
 	Active int
 }
 
-func (m TabsModel) Init(props TabsProps) gothic.Cmd { return nil }
+func (m TabsModel) Init() gothic.Cmd { return nil }
 
 func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case TabClicked:
 		m.Active = msg.Index
-	case gothic.PropsChanged:
-		if msg.Initial && props.Active != nil {
-			m.Active = *props.Active
-		}
-	}
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
 	}
 	return m, nil
 }
@@ -298,55 +185,59 @@ view Tabs(model TabsModel, props TabsProps) {
 }
 ```
 
-Call sites still use named tags:
-
 ```templ
 <Tabs items={ model.Tabs } />
 ```
 
-Stateful components require a props struct when they take props. Components
-with no props keep `view Box(model BoxModel)`, `Init()`, and `Update(msg)`.
+A stateful component with no props uses `view Box(model BoxModel)`, `Init()`,
+and `Update(msg)`.
 
-Each instance owns its own state. The parent passes props but does not read or
-write child state. State starts at the model zero value. Props are passed to the
-view, `Init`, and `Update`.
+Each instance owns its own state. The parent passes props but cannot read or
+write child state. State starts at the zero value unless seeded from props.
 
 Stateful components can render in static positions, inside `if` branches, and
-as keyed list items. A list-created component may contain its own loops and
-conditionals, and must be the loop body root when used in a list.
+as keyed list items. Closing a branch or removing a keyed list item unmounts the
+component, so its state resets when it is created again.
 
-A component inside a conditional branch is unmounted when the branch leaves the
-DOM. Re-entering the branch creates a fresh instance, so component state resets.
-The same reset applies when a keyed list removes an item and later creates it
-again.
+#### Props and Init
 
-```templ
-if model.ShowDetails {
-	<ui.Disclosure item={ model.FeatureDisclosure } />
-}
+`Init` and `Update` may take the props struct:
 
-for _, item := range model.Items {
-	<ui.Disclosure key={ item.ID } item={ item } />
-}
+```go
+func (m TabsModel) Init(props TabsProps) gothic.Cmd
+func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd)
 ```
 
-Stateful components in this phase:
+Props changes dispatch `gothic.PropsChanged`:
 
-- support static positions, conditional branches, and keyed lists,
-- must be the loop body root when used in a list,
-- may contain their own loops and conditionals,
-- take a props struct in the view, `Init`, and `Update`,
-- run `Init` once on mount,
-- can run commands from `Init` and `Update`,
-- cannot declare procedures or call App procedures,
-- can emit messages to the parent from event attributes,
-- cannot contain other stateful components,
-- reset their state when unmounted by a branch swap or keyed list removal.
+```go
+case gothic.PropsChanged:
+	if m.Active >= len(props.Items) {
+		m.Active = len(props.Items) - 1
+	}
+```
 
-#### Props structs
+Comparison is by reference. Assign new slices or structs instead of mutating in
+place.
 
-A props struct uses exported Go fields. Tag names match fields
-case-insensitively.
+#### Seeding state from props
+
+On mount, `PropsChanged` arrives with `Initial: true`. Later changes use
+`Initial: false`. Seed local state only on the first message:
+
+```go
+case gothic.PropsChanged:
+	if msg.Initial && props.Active != nil {
+		m.Active = *props.Active
+	}
+```
+
+The server applies `PropsChanged{Initial: true}` before rendering, then
+serializes the resulting state. Client-created instances apply the same message
+before their first render. Hydration reads the server state first. There is no
+separate constructor.
+
+#### Optional pointer props
 
 ```go
 type TabsProps struct {
@@ -355,19 +246,12 @@ type TabsProps struct {
 }
 ```
 
-- Non-pointer fields are required.
-- Pointer fields are optional. If the tag is omitted, the field is nil in Go
-  and `null` in the client props object.
-- A pointer value is passed as its value or `null`, not as a pointer object.
-
 ```templ
 <Tabs items={ model.Tabs } active={ model.ActiveTab } />
 ```
 
-If `model.ActiveTab` is nil, the component sees `props.Active == nil` and can
-use a default.
-
-Use `*props.Active` after a nil check:
+If the tag is omitted, the pointer is `nil` in Go and `null` in the client props
+object. Use `*props.Active` after a nil check:
 
 ```templ
 if props.Active != nil {
@@ -375,67 +259,12 @@ if props.Active != nil {
 }
 ```
 
-Address-of expressions such as `&model.Field` are not supported in views. Store
-a pointer-valued field in the model or pass `nil`.
-
-#### Props in Init and Update
-
-`Init` and `Update` can take the props struct:
-
-```go
-func (m TabsModel) Init(props TabsProps) gothic.Cmd
-func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd)
-```
-
-Components with no props use `Init()` and `Update(msg)`.
-
-When any prop reference changes, the component dispatches
-`gothic.PropsChanged`. Handle it in `Update` to react:
-
-```go
-switch msg.(type) {
-case gothic.PropsChanged:
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
-	}
-}
-```
-
-Comparison is by reference, so assign new slices or structs instead of
-mutating in place.
-
-#### Initial state from props
-
-Props always arrive through `gothic.PropsChanged`. On mount the component
-receives it with `Initial: true`; later prop changes use `Initial: false`.
-
-```go
-type TabsModel struct {
-	Active int
-}
-
-func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case gothic.PropsChanged:
-		if msg.Initial && props.Active != nil {
-			m.Active = *props.Active
-		}
-	}
-	return m, nil
-}
-```
-
-- The server applies `PropsChanged{Initial: true}` before rendering, then
-  serializes the resulting state.
-- Client-created instances apply the same message before their first render.
-- Hydration reads the server-serialized state first.
-- There is no separate constructor. Seed local state only when `msg.Initial`,
-  so later prop changes do not reset it.
+Address-of expressions such as `&model.Field` are not supported in views.
 
 #### Component commands
 
-Component `Init` and `Update` can return commands. Generated commands run in the
-component's own loop and dispatch their result back to the component:
+`Init` and `Update` can return commands. Generated commands run in the
+component's own loop and dispatch back to the component:
 
 ```go
 func (m BoxModel) Update(msg gothic.Msg) (BoxModel, gothic.Cmd) {
@@ -451,13 +280,12 @@ func (m BoxModel) Update(msg gothic.Msg) (BoxModel, gothic.Cmd) {
 }
 ```
 
-Procedures remain App-owned. Component code cannot call an App procedure. Emit
-an action to the App instead, and let the App run the procedure.
+Unmounting destroys the component. Late command results and prop updates are
+ignored. Procedures remain App-owned; components cannot call them.
 
-Unmounting destroys the component. Command results that resolve after unmount
-are ignored, and prop updates are ignored.
+#### Actions
 
-Emit a parent message with `emit` in a component event:
+A component emits an action to the App with `emit`:
 
 ```go
 type ButtonProps struct {
@@ -472,37 +300,14 @@ view Button(model ButtonModel, props ButtonProps) {
 }
 ```
 
-The parent passes the message:
-
 ```templ
-<ui.Button label="Add todo" onclick={ AddClicked{} } />
+<Button label="Add todo" onclick={ AddClicked{} } />
 ```
 
-The App owns `AddClicked` in its `Update`, and runs any commands or server
-procedures there. Components do not own server procedures. `emit` is reserved
-and only available to component event expressions.
-
-The installable UI kit is precompiled and uses this model. Add component
-packages with a directive in the app prelude:
-
-```go
-//gothic:components github.com/metruzanca/gothic/ui
-```
-
-Use namespaced tags for external components:
-
-```templ
-<ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
-<ui.Tabs items={ model.Tabs } />
-```
-
-The compiler reads the package manifest and mounts each external component as a
-self-contained root.
+`emit` is reserved and only available in component event expressions. The App
+owns the message and any procedure it starts.
 
 #### Nested stateful components
-
-A stateful component view can render another stateful component in a static
-position, an `if` branch, or a keyed list:
 
 ```templ
 view Dashboard(model DashboardModel, props DashboardProps) {
@@ -518,55 +323,13 @@ view Dashboard(model DashboardModel, props DashboardProps) {
 }
 ```
 
-Rules:
+- Each child owns its own model.
+- Props flow from the parent on every render.
+- A child `emit` goes to the App.
+- Branches and keyed list removal destroy children.
+- Unmounting the parent destroys the whole tree.
 
-- each child owns its own model and state,
-- props flow from the parent on every render,
-- a child `emit` bubbles up through the parent to the App,
-- closing a branch destroys its children, so their state resets on re-entry,
-- removing a list item destroys its child,
-- unmounting the parent destroys the whole nested tree,
-- keyed list children keep their state while their key stays in the list,
-- components in separate app `.gth` files are pure; declare app-owned stateful
-  components in the app file.
-
-#### Children on stateful components
-
-Inline stateful components use the same `gothic.Children` props field:
-
-```go
-type PanelProps struct {
-	gothic.Children
-	Title string
-}
-
-view Panel(model PanelModel, props PanelProps) {
-	<section>
-		<h2>{ props.Title }</h2>
-		{ props.Children }
-	</section>
-}
-```
-
-Use it in the App view:
-
-```templ
-<Panel title="Slotted panel">
-	<input class="slot-input" value={ model.Text } oninput={ TextChanged{Text: event.target.value} } />
-	<p class="slot-text">{ model.Text }</p>
-</Panel>
-```
-
-- Children keep the App scope, so App state and events work.
-- The component owns its own state around the children.
-- Stateful components inside children are mounted by the App.
-- Children on stateful components are supported in static App positions for
-  now.
-- Named slots and fallback content are not supported yet.
-- Precompiled library stateful components cannot accept children; use an
-  App-local component.
-
-### Markup
+## Markup
 
 Elements, constant attributes, text, and interpolation work as in templ:
 
@@ -577,66 +340,49 @@ Elements, constant attributes, text, and interpolation work as in templ:
 </div>
 ```
 
-Interpolation takes a Go expression. It is parsed with `go/parser`.
+Interpolation takes a Go expression parsed with `go/parser`.
 
-### Lists
+### Attributes
+
+```templ
+<input value={ model.Draft } checked={ todo.Completed } />
+```
+
+Expression attributes update a DOM property or attribute. `class:name={ expr }`
+adds or removes a class:
+
+```templ
+<li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ hidden }>
+```
+
+`focus={ expr }` focuses the element when the expression becomes true.
+
+`key={ expr }` declares a list key. `key` is reserved and is not passed to
+components as a prop.
+
+## Lists
 
 ```templ
 for _, item := range model.Items {
-	<Item key={ item.ID } item={ item } />
+	<li key={ item.ID }>{ item.Text }</li>
 }
 ```
 
 The range source is a Go expression, normally a model field. Add `key={ expr }`
 to the root of the loop body, or to a component call, to enable keyed list
-reconciliation. Keyed lists reuse nodes by key, update their text, and reorder
-or remove them as the model changes. Lists without a key append and remove from
-the end only. `key` is reserved and is not passed to components as a prop.
+reconciliation. Keyed lists reuse nodes by key and update, reorder, or remove
+them as the model changes.
+
+Lists without a key append and remove from the end only.
 
 The server renders the initial children. The client adopts them and hydrates
 their events.
 
-### Long lists
-
-Core gothic keeps only the visible window in your own view. The separate
-`github.com/metruzanca/gothic/virtual` module provides the window math so the
-server and client agree:
-
-```go
-import "github.com/metruzanca/gothic/virtual"
-
-win := virtual.WindowFor(msg.Top, 36, 432, len(m.Items))
-m.Start = win.Start
-m.Count = win.Count
-m.Top = win.Top
-m.Bottom = win.Bottom
-```
-
-Render the window with a scroll event and two spacers:
-
-```templ
-<div class="viewport" onscroll={ Scrolled{Top: event.target.scrollTop} }>
-	<div class="spacer" style={ "height:" + dom.Px(model.Top) }></div>
-	for _, item := range model.Items[model.Start : model.Start+model.Count] {
-		<div class="row" key={ item.ID }>{ item.Text }</div>
-	}
-	<div class="spacer" style={ "height:" + dom.Px(model.Bottom) }></div>
-</div>
-```
-
-`dom.Px(n)` formats an integer pixel length as a string on the server and
-lowers to a `px` runtime helper in the browser. See the
-[virtual example](../virtual/example) for a complete 5,000 row app.
-
-### Conditionals
+## Conditionals
 
 ```templ
 if len(model.Todos) > 0 {
-	<ul>
-		for _, todo := range model.Todos {
-			<li>{ todo.Title }</li>
-		}
-	</ul>
+	<ul>...</ul>
 } else if model.Loading {
 	<p>Loading todos.</p>
 } else {
@@ -644,32 +390,23 @@ if len(model.Todos) > 0 {
 }
 ```
 
-The condition is a Go expression in the same subset as `Update` and events.
-`else if` is sugar for a nested conditional. A branch can hold any number of
-nodes, including text, interpolation, elements, loops inside an element,
-components, and nested conditionals.
+The condition is a Go expression in the client Go subset. `else if` is sugar
+for a nested conditional.
 
-The server renders only the chosen branch. The client adopts it on load and
-swaps branches when the condition changes, removing the unused nodes from the
-DOM. `len(x)` is supported in conditions and compiles to a runtime helper that
-counts slices, arrays, strings, and map keys, and returns 0 for null.
-
-A branch can contain stateful components. They mount when the branch appears
-and unmount when it leaves, so their state resets on re-entry. A `for` loop can
-be the direct child of a branch when the loop body is one element.
-
-Limits in this iteration:
-
-- a pure component still renders exactly one root element, so an `if` cannot be
-  the component root,
-- a branch-level loop body must be one element,
+- The server renders only the chosen branch.
+- The client adopts it and swaps branches when the condition changes.
+- `len(x)` is supported and counts slices, arrays, strings, and map keys.
+- A branch can contain stateful components. They mount when the branch appears
+  and unmount when it leaves.
+- A pure component still renders exactly one root element, so an `if` cannot be
+  the component root.
+- A branch-level `for` must have one element as its body.
 - `switch` is not part of the view language.
 
-As with `for`, text that begins with the word `if` is parsed as a conditional.
-Rephrase such prose or place it inside an element that makes the intent
-unambiguous.
+Text that begins with the word `if` is parsed as a conditional. Rephrase such
+prose or place it inside an element.
 
-### Events
+## Events
 
 An event attribute is a Go expression that produces a message:
 
@@ -679,9 +416,9 @@ An event attribute is a Go expression that produces a message:
 ```
 
 The generated JavaScript dispatches the message value. There is no imperative
-handler block in the application model.
+handler block.
 
-Event handlers receive the DOM event as `event`. This is useful for inputs:
+Event handlers receive the DOM event as `event`:
 
 ```templ
 <input oninput={ DraftChanged{Text: event.target.value} } />
@@ -693,25 +430,9 @@ Event handlers receive the DOM event as `event`. This is useful for inputs:
 <input onenter={ SaveEdit{ID: todo.ID} } onescape={ CancelEdit{ID: todo.ID} } />
 ```
 
-### Attributes and classes
+## Routing
 
-Expression attributes update a DOM property or attribute:
-
-```templ
-<input value={ model.Draft } checked={ todo.Completed } />
-```
-
-`class:name={ expr }` adds or removes a class when the expression changes:
-
-```templ
-<li class:completed={ todo.Completed } class:editing={ editing } class:hidden={ hidden }>
-```
-
-`focus={ expr }` focuses the element when the expression becomes true.
-
-### Routing
-
-For path-based URL state, define a `LocationChanged` message:
+Define a `LocationChanged` message:
 
 ```go
 type LocationChanged struct {
@@ -721,19 +442,27 @@ type LocationChanged struct {
 }
 ```
 
-The client dispatches it on load and on `popstate`. `Path` is
-`window.location.pathname`, `Query` is `window.location.search` including the
-leading `?`, and `Hash` is `window.location.hash` including `#`.
-
-Mark internal anchors with `route`:
+The client dispatches it on load and on `popstate`. Mark internal anchors with
+`route`:
 
 ```templ
 <a href="/about" route>About</a>
 ```
 
-A plain left click is intercepted, `history.pushState` runs, and
-`LocationChanged` dispatches. Modifier clicks, `target` values other than
-`_self`, `download` links, and external origins are left to the browser.
+`route` is only supported on `<a>` elements and only in the App view.
+
+Path patterns and parameters come from the `route` package:
+
+```go
+params := route.Params("/todos/:id", msg.Path)
+if params != nil {
+	m.ID = params["id"]
+}
+```
+
+`route.Params` returns `map[string]string` or `nil`. `route.Match` returns only
+the boolean. Patterns are slash-separated, `:` captures one non-empty segment,
+and the pattern and path must have the same number of segments.
 
 Programmatic navigation comes from the `browser` module:
 
@@ -743,10 +472,11 @@ browser.Replace("/about")
 browser.Back()
 ```
 
-These are client-only and valid in `Init`, `Update`, or commands. They require
-a `LocationChanged` message.
+These are client-only and valid in `Init`, `Update`, or commands. They require a
+`LocationChanged` message.
 
-Render the right state for deep links with a request-scoped model:
+`MountApp` registers a catch-all below the pattern, so deep links reach the app.
+Use a request-scoped model to render the right state:
 
 ```go
 s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
@@ -754,18 +484,13 @@ s.MountApp("/", gothic.NewAppFunc(func(r *http.Request) Model {
 }))
 ```
 
-`MountApp` also registers a catch-all below the pattern, so paths below the
-mount reach the app. The server renders the model for the request, then the
-client hydrates it and dispatches `LocationChanged` on load.
+See [Routing and documents](guide/04-routing.md) for a full walkthrough.
 
-#### Documents and previews
+## Documents
 
-`MountApp` renders a full HTML document: doctype, `lang`, charset, viewport,
-title, description, icons, stylesheets, and OpenGraph tags. The zero
-`Document` gets a title of `Gothic App`, no icons, and no image.
-
-Set server-wide defaults with `SetDocument`, then override them for a mount with
-`WithDocument`:
+`MountApp` renders a full HTML document. The zero `Document` gets a title of
+`Gothic App`, no icons, and no image. Set server-wide defaults with
+`SetDocument`, then override them for a mount with `WithDocument`:
 
 ```go
 s := gothic.NewServer()
@@ -784,79 +509,13 @@ s.MountApp("/", gothic.NewApp(NewModel()),
 - `WithDocument` replaces the server document for that mount. Zero fields fall
   back to the built-in defaults.
 - Leave `Image` empty to omit `og:image`. Leave `Icons` nil to omit icons.
-- Relative `og:image` and `og:url` values become absolute using the request
-  host and forwarding headers.
+- Relative `og:image` and `og:url` values become absolute using the request host
+  and forwarding headers.
 - `gothic.WriteDocument(w, r, doc, body)` renders the same shell around any
   component, without a Model.
-- The `/_gothic/` prefix is reserved for the runtime and generated modules. The
-  framework ships no default icon or social image.
+- `/_gothic/` is reserved for the runtime and generated modules.
 
-#### Path parameters
-
-Use the `route` package to match patterns and capture segments:
-
-```go
-import "github.com/metruzanca/gothic/route"
-
-params := route.Params("/todos/:id", msg.Path)
-if params != nil {
-	m.ID = params["id"]
-}
-```
-
-`route.Params` returns a `map[string]string`, or `nil` when the path does not
-match. `route.Match(pattern, path)` returns only the boolean result.
-
-Patterns are slash-separated. A segment that starts with `:` captures one
-non-empty segment. The pattern and path must have the same number of segments.
-
-```go
-route.Params("/users/:name/posts/:post", "/users/ada/posts/7")
-// map[string]string{"name": "ada", "post": "7"}
-```
-
-`route.Params` works on the server and in `Update`. The prelude calls the real
-Go package. The generated JavaScript uses an equivalent runtime helper, so the
-same pattern matches the same paths on both sides. Captured segments are
-percent-decoded to match `r.URL.Path`.
-
-A typical app matches once in the server model factory and once in
-`LocationChanged`:
-
-```go
-func NewModel(path string) Model {
-	m := Model{Path: path}
-	m.Page, m.ID = pageFor(path)
-	return m
-}
-
-func (m Model) Update(msg gothic.Msg) (Model, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case LocationChanged:
-		params := route.Params("/todos/:id", msg.Path)
-		if params != nil {
-			m.Page = "todo"
-			m.ID = params["id"]
-		} else {
-			m.Page = "notfound"
-		}
-	}
-	return m, nil
-}
-```
-
-The router example uses `/hello/:name` and renders the captured name on the
-server and after client-side navigation. Its input and Say hello button build a
-new path in a command with `browser.Navigate("/hello/" + name)`.
-
-Limits:
-
-- no wildcard or optional segments,
-- no trailing-slash normalization,
-- duplicate parameter names keep the last segment,
-- query and hash are not part of the pattern.
-
-### Browser interop
+## Browser interop
 
 The `browser` module is a curated, client-only surface:
 
@@ -879,10 +538,9 @@ Calls are lowered to browser APIs in the generated JavaScript. They are only
 valid in `Init`, `Update`, or commands; calling them from a view is a compile
 error. The package does not expose arbitrary `window` access.
 
-### Client Go subset
+## Client Go subset
 
-`Update`, `Init`, constructors, and commands compile a growing subset of Go.
-The following are supported:
+`Init`, `Update`, commands, and component views compile a growing subset of Go:
 
 ```go
 item := m.Items[0]
@@ -896,56 +554,38 @@ m.Total += 1
 m.Count--
 ```
 
-Indexing, two-index slicing, map literals, `len`, `delete`, compound
-assignment, and `++`/`--` all lower to JavaScript. Three-index slices, `&^=`,
-labeled branches, `goto`, and `fallthrough` are compile errors.
+Supported:
 
-Range loops work over slices and maps:
+- field access, indexing, and two-index slicing,
+- map literals, `len`, `delete`, and map indexing,
+- `append`, assignments, and compound assignments,
+- `++` and `--`,
+- `if` and `if err != nil`,
+- range loops over slices and maps with `break` and `continue`,
+- non-type switches, including tagless switches and init statements,
+- procedure calls and command closures.
 
-```go
-for i, item := range m.Items {
-	if item == "" {
-		continue
-	}
-	m.Items[i] = item
-	if i > 100 {
-		break
-	}
-}
+Not supported:
 
-for key, count := range m.Counts {
-	m.Total += count
-}
-```
+- three-index slices,
+- `&^=`,
+- labeled branches,
+- `goto`,
+- `fallthrough`,
+- declaring variables in view expressions.
 
-Non-type switches compile to JavaScript switches with explicit `break`:
+Differences from server Go:
 
-```go
-switch m.Filter {
-case "all", "active":
-	m.Count++
-case "completed":
-	m.Count--
-default:
-	m.Label = "none"
-}
-```
+- `dom.Px(n)` formats pixel lengths for style attributes.
+- `browser.ClientHeight(selector)` reads an element height.
+- A missing map key reads as `undefined`, not the zero value.
+- Map iteration uses JavaScript insertion order, and map keys arrive as strings.
+- `/=` is floating division.
+- Slices copy instead of sharing a backing array.
 
-Tagless switches and switch init statements are supported.
+## Procedures
 
-Keep these differences from server Go in mind:
-
-- `dom.Px(n)` formats pixel lengths for style attributes,
-- `browser.ClientHeight(selector)` reads an element height for measurement commands,
-- a missing map key reads as `undefined`, not the zero value,
-- map iteration uses JavaScript insertion order, and map keys arrive as strings,
-- `/=` is floating division,
-- slices copy instead of sharing a backing array,
-- view expressions still cannot declare variables or call procedures.
-
-### Procedures
-
-Declare client-callable procedures as a Go interface that embeds
+Declare client-callable procedures as an interface that embeds
 `gothic.RPCService`:
 
 ```go
@@ -953,24 +593,18 @@ type Procedures interface {
 	gothic.RPCService
 	Ping(ctx context.Context) (string, error)
 	AddTodo(ctx context.Context, text string) error
-	ToggleTodo(ctx context.Context, id int64) error
 	ListTodos(ctx context.Context) ([]Todo, error)
 }
 ```
 
-The interface name is arbitrary. The compiler looks for the embedded
-`gothic.RPCService`, then generates the registrar and the client stubs from the
-interface methods.
+The first parameter must be `context.Context`. Remaining parameters are sent by
+the client as JSON. The result is `(T, error)` or `error`.
 
 The generator emits:
 
 - a registrar `RegisterProcedures(s, impl)`,
 - a client-side Go stub used to compile commands,
 - a JavaScript RPC function.
-
-The first parameter must be `context.Context`. Remaining parameters are
-arguments sent by the client as JSON. The result must be `(T, error)` or
-`error`. The client stub drops the context.
 
 Commands call procedures directly:
 
@@ -982,24 +616,15 @@ func callPing() gothic.Msg {
 	}
 	return PongReceived{Text: pong}
 }
-
-func callAdd(text string) gothic.Msg {
-	if err := AddTodo(text); err != nil {
-		return TodoFailed{Message: err.Error()}
-	}
-	return TodosLoaded{}
-}
 ```
 
-The Go stub panics if it is called on the server. The server never runs
-commands, so this is safe for the proof of concept.
-
-An interface without `gothic.RPCService` is an ordinary Go interface and is not
-treated as a procedure contract.
+The Go stub panics if called on the server. The server never runs commands, so
+this is safe. An interface without `gothic.RPCService` is an ordinary Go
+interface.
 
 ## Commands
 
-A command is a function that returns a message:
+A command performs work and returns a message:
 
 ```go
 func loadItems() gothic.Msg {
@@ -1011,14 +636,7 @@ func loadItems() gothic.Msg {
 }
 ```
 
-`Update` returns it as the second value:
-
-```go
-return m, loadItems
-```
-
-A command can also be a closure, which is useful when it needs values from the
-message or model:
+`Update` returns it as the second value. A command can also be a closure:
 
 ```go
 return m, func() gothic.Msg {
@@ -1028,12 +646,6 @@ return m, func() gothic.Msg {
 	return loadTodos()
 }
 ```
-
-The runtime renders the new model first, then runs the command. When the
-command returns a message, the runtime dispatches it. This keeps optimistic
-updates visible before the asynchronous work completes.
-
-### Batch and Sequence
 
 Compose commands with `gothic.Batch` or `gothic.Sequence`:
 
@@ -1052,8 +664,8 @@ return m, gothic.Sequence(
 - Nil commands are ignored.
 - Component commands stop after unmount.
 
-`gothic.Batch` and `gothic.Sequence` are client-only. The Go stubs exist so
-`Init`, `Update`, and commands compile.
+Both are client-only. The Go stubs exist so `Init`, `Update`, and commands
+compile.
 
 ## Rendering
 
@@ -1069,57 +681,38 @@ return m, gothic.Sequence(
 
 ## Current limits
 
-The proof of concept supports:
+Supported:
 
 - one application model per package,
-- one `App` view with a single model parameter,
+- one `App` view with one model parameter,
 - pure components with a props struct,
-- stateful components with their own model, a props struct, Init, Update, and view,
-- named tag props mapped case-insensitively to props struct fields,
-- optional pointer props with nil and null semantics,
-- props in component Init and Update,
-- app-local stateful components and precompiled external components,
-- components in the same file or separate files in the same package,
-- nested pure components and components inside lists,
+- stateful components with their own model, props struct, `Init`, `Update`, and
+  view,
+- named tag props mapped case-insensitively,
+- optional pointer props with `nil` and `null` semantics,
 - children through `gothic.Children` on pure and stateful components,
-- stateful components inside children,
-- `if`, `else if`, and `else` in views, including inside loops and pure
-  components,
-- stateful components inside conditional branches, with unmount and state reset,
-- nested stateful components in static positions, branches, and keyed lists,
-- stateful components as keyed list items, including components with internal
-  loops,
-- `gothic.PropsChanged` on prop changes,
-- component Init running once on mount,
-- prop-seeded initial component state through `PropsChanged{Initial: true}`,
+- components in the same file or separate files in the same package,
+- nested pure and stateful components,
+- stateful components inside conditionals and keyed lists, with unmount,
+- `gothic.PropsChanged` with `Initial` for prop-seeded state,
 - component commands with unmount guards,
-- `for` loops directly inside conditional branches when the body is one element,
-- the installable gothic UI kit,
-- message structs with zero or simple fields,
-- `Update` with type and value switches,
-- indexing, two-index slicing, map literals, `len`, and `delete`,
-- compound assignment and `++`/`--`,
-- range loops over slices and maps with `break` and `continue`,
+- `if`, `else if`, and `else`,
+- `for` lists with keyed reconciliation,
+- message-valued events and `event` values,
+- dynamic attributes, class toggles, and focus,
+- indexing, slicing, maps, `len`, `delete`, compound assignment, `++`/`--`,
+- range loops and non-type switches,
 - `append` and assignments,
 - `if err != nil`,
-- commands with procedure calls and command closures,
-- `Batch` and `Sequence` command composition,
+- commands with procedure calls and closures,
+- `Batch` and `Sequence`,
 - procedure arguments,
-- lists over a model field and keyed list reconciliation,
-- headless long-list windows through the separate `virtual` module,
-- reactive interpolated text and message-valued event bindings,
-- event values such as `event.target.value`,
-- dynamic attributes, class toggles, and focus bindings,
-- path, query, and hash URL state through a `LocationChanged` message,
-- `route` links with pushState, replaceState, back, and popstate,
-- path pattern matching and parameters through the `route` package,
-- request-scoped app models and catch-all app mounting for deep links,
-- curated browser interop through the `browser` module,
-- component-to-parent action messages through `emit`,
-- children on stateful components in static App positions through
-  `gothic.Children`,
-- App-owned procedures passed to components as action props,
-- procedure contracts through an interface embedding `gothic.RPCService`.
+- path, query, and hash state through `LocationChanged`,
+- `route` links, `route.Params`, and `route.Match`,
+- request-scoped models and catch-all mounting,
+- documents, metadata, icons, stylesheets, and previews,
+- curated browser interop through `browser`,
+- headless long lists through `virtual`.
 
 Not supported yet:
 
@@ -1132,7 +725,8 @@ Not supported yet:
 - `switch` in views,
 - multiple `App` parameters,
 - typed procedure argument validation,
-- arbitrary browser globals outside the `browser` module,
-- nested routers and wildcard or optional route segments,
-- message serialization,
-- `go/packages` type information.
+- arbitrary browser globals outside `browser`,
+- wildcard or optional route segments and reverse URL building,
+- message serialization beyond JSON,
+- `go/packages` type information,
+- formatter, LSP, and source maps.
