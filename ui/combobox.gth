@@ -1,0 +1,218 @@
+package ui
+
+import (
+	"strings"
+
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/dom"
+)
+
+type ComboboxItem struct {
+	Value string
+	Label string
+}
+
+type ComboboxProps struct {
+	ID          string
+	Items       []ComboboxItem
+	FieldLabel  *string
+	Value       *string
+	Label       *string
+	AriaLabel   *string
+	Placeholder *string
+	EmptyText   *string
+	Name        *string
+	Disabled    *bool
+	Required    *bool
+	Invalid     *bool
+	Clearable   *bool
+	ClearLabel  *string
+}
+
+type ComboboxModel struct {
+	Query   string
+	Value   string
+	Label   string
+	Open    bool
+	Active  int
+	Visible []ComboboxItem
+}
+
+type ComboboxValueChanged struct {
+	ID    string
+	Value string
+	Label string
+}
+
+type ComboboxInput struct{ Text string }
+type ComboboxKey struct{ Key string }
+type ComboboxSelected struct{ Index int }
+type ComboboxOpened struct{}
+type ComboboxClosed struct{}
+type ComboboxCleared struct{}
+
+func (m ComboboxModel) Init() gothic.Cmd { return nil }
+
+func (m ComboboxModel) Update(msg gothic.Msg, props ComboboxProps) (ComboboxModel, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case gothic.PropsChanged:
+		if msg.Initial {
+			if props.Value != nil {
+				m.Value = *props.Value
+			}
+			if props.Label != nil {
+				m.Label = *props.Label
+			}
+			m.Query = m.Label
+			if m.Query == "" {
+				m.Query = m.Value
+			}
+			m.Visible = props.Items
+			m.Active = 0
+		}
+	case ComboboxInput:
+		m.Query = msg.Text
+		m.Open = true
+		m.Visible = nil
+		query := strings.ToLower(strings.TrimSpace(msg.Text))
+		for _, item := range props.Items {
+			if query == "" || strings.Contains(strings.ToLower(item.Label), query) {
+				m.Visible = append(m.Visible, item)
+			}
+		}
+		m.Active = 0
+	case ComboboxOpened:
+		m.Open = true
+		if m.Query == m.Label {
+			m.Query = ""
+		}
+		m.Visible = props.Items
+		m.Active = 0
+	case ComboboxClosed:
+		m.Open = false
+		m.Query = m.Label
+	case ComboboxKey:
+		if !m.Open {
+			if msg.Key == "ArrowDown" || msg.Key == "Enter" {
+				m.Open = true
+				m.Visible = props.Items
+				m.Active = 0
+			}
+			return m, nil
+		}
+		switch msg.Key {
+		case "ArrowDown":
+			if len(m.Visible) > 0 {
+				m.Active = (m.Active + 1) % len(m.Visible)
+			}
+		case "ArrowUp":
+			if len(m.Visible) > 0 {
+				m.Active = (m.Active - 1 + len(m.Visible)) % len(m.Visible)
+			}
+		case "Home":
+			m.Active = 0
+		case "End":
+			if len(m.Visible) > 0 {
+				m.Active = len(m.Visible) - 1
+			}
+		case "PageDown":
+			if len(m.Visible) > 0 {
+				m.Active = m.Active + 10
+				if m.Active >= len(m.Visible) {
+					m.Active = len(m.Visible) - 1
+				}
+			}
+		case "PageUp":
+			m.Active = m.Active - 10
+			if m.Active < 0 {
+				m.Active = 0
+			}
+		case "Enter":
+			if len(m.Visible) > 0 && m.Active >= 0 && m.Active < len(m.Visible) {
+				item := m.Visible[m.Active]
+				m.Value = item.Value
+				m.Label = item.Label
+				m.Query = item.Label
+				m.Open = false
+				return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
+			}
+		case "Escape":
+			m.Open = false
+			m.Query = m.Label
+		}
+	case ComboboxSelected:
+		if msg.Index >= 0 && msg.Index < len(m.Visible) {
+			item := m.Visible[msg.Index]
+			m.Value = item.Value
+			m.Label = item.Label
+			m.Query = item.Label
+			m.Open = false
+			return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
+		}
+	case ComboboxCleared:
+		m.Value = ""
+		m.Label = ""
+		m.Query = ""
+		m.Open = false
+		return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: "", Label: ""})
+	}
+	return m, nil
+}
+
+view Combobox(model ComboboxModel, props ComboboxProps) {
+	<div
+		data-part="combobox"
+		data-open={ dom.If(model.Open, "true", "") }
+		data-invalid={ dom.If(props.Invalid != nil && *props.Invalid, "true", "") }
+	>
+		if props.FieldLabel != nil {
+			<label data-part="combobox-label" for={ props.ID }>{ *props.FieldLabel }</label>
+		}
+		<div data-part="combobox-control">
+			<input
+				data-part="combobox-input"
+				id={ props.ID }
+				role="combobox"
+				aria-expanded={ dom.If(model.Open, "true", "false") }
+				aria-controls={ props.ID + "-listbox" }
+				aria-autocomplete="list"
+				aria-activedescendant={ dom.If(model.Open && len(model.Visible) > 0, dom.ID(props.ID + "-option", model.Active), "") }
+				aria-label={ dom.Str(props.AriaLabel) }
+				aria-invalid={ dom.True(props.Invalid) }
+				autocomplete="off"
+				placeholder={ dom.Str(props.Placeholder) }
+				value={ model.Query }
+				disabled={ props.Disabled != nil && *props.Disabled }
+				required={ props.Required != nil && *props.Required }
+				oninput={ ComboboxInput{Text: event.target.value} }
+				onfocus={ ComboboxOpened{} }
+				onblur={ ComboboxClosed{} }
+				onkeynav={ ComboboxKey{Key: event.key} }
+			/>
+			if props.Clearable != nil && *props.Clearable && model.Value != "" {
+				<button data-part="combobox-clear" type="button" aria-label={ dom.StrOr(props.ClearLabel, "Clear") } onclick={ ComboboxCleared{} }>×</button>
+			}
+		</div>
+		if model.Open {
+			<ul data-part="combobox-listbox" id={ props.ID + "-listbox" } role="listbox">
+				if len(model.Visible) == 0 {
+					<li data-part="combobox-empty">{ dom.StrOr(props.EmptyText, "No results") }</li>
+				}
+				for i, item := range model.Visible {
+					<li
+						data-part="combobox-option"
+						id={ dom.ID(props.ID + "-option", i) }
+						role="option"
+						aria-selected={ dom.If(item.Value == model.Value, "true", "false") }
+						data-highlighted={ dom.If(i == model.Active, "true", "") }
+						scroll={ i == model.Active }
+						onmousedown={ ComboboxSelected{Index: i} }
+					>{ item.Label }</li>
+				}
+			</ul>
+		}
+		if props.Name != nil {
+			<input type="hidden" name={ *props.Name } value={ model.Value } />
+		}
+	</div>
+}

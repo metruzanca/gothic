@@ -8,150 +8,256 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/dom"
 	"html"
 	"io"
+	"strings"
 )
 
-type AccordionItem struct {
-	Title string
-	Body  string
-}
-
 type AccordionProps struct {
-	Items []AccordionItem
+	gothic.Children
 }
 
-type AccordionModel struct {
-	Open int
+type AccordionItemProps struct {
+	gothic.Children
+	Open bool
 }
 
-type AccordionClicked struct{ Index int }
+type AccordionTriggerProps struct {
+	gothic.Children
+	ID       string
+	Controls *string
+	Expanded bool
+	Onclick  gothic.Msg
+}
 
-func (m AccordionModel) Init() gothic.Cmd { return nil }
-
-func (m AccordionModel) Update(msg gothic.Msg, props AccordionProps) (AccordionModel, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case AccordionClicked:
-		next := msg.Index + 1
-		if m.Open == next {
-			m.Open = 0
-		} else {
-			m.Open = next
-		}
-	case gothic.PropsChanged:
-	}
-	if m.Open > len(props.Items) {
-		m.Open = 0
-	}
-	return m, nil
+type AccordionPanelProps struct {
+	gothic.Children
+	ID         string
+	LabelledBy *string
+	Expanded   bool
 }
 
 type ButtonProps struct {
-	Label   string
-	Primary bool
-	Onclick gothic.Msg
+	gothic.Children
+	Type      *string
+	Variant   *string
+	Disabled  *bool
+	AriaLabel *string
+	Onclick   gothic.Msg
 }
 
-type CardProps struct {
-	Title string
-	Body  string
+type CheckboxProps struct {
+	gothic.Children
+	ID       string
+	Checked  bool
+	Name     *string
+	Value    *string
+	Disabled *bool
+	Required *bool
+	Onchange gothic.Msg
 }
 
-type CounterProps struct {
+type ComboboxItem struct {
+	Value string
 	Label string
 }
 
-type CounterModel struct {
-	Count int
+type ComboboxProps struct {
+	ID          string
+	Items       []ComboboxItem
+	FieldLabel  *string
+	Value       *string
+	Label       *string
+	AriaLabel   *string
+	Placeholder *string
+	EmptyText   *string
+	Name        *string
+	Disabled    *bool
+	Required    *bool
+	Invalid     *bool
+	Clearable   *bool
+	ClearLabel  *string
 }
 
-type CounterClicked struct{ By int }
+type ComboboxModel struct {
+	Query   string
+	Value   string
+	Label   string
+	Open    bool
+	Active  int
+	Visible []ComboboxItem
+}
 
-func (m CounterModel) Init() gothic.Cmd { return nil }
+type ComboboxValueChanged struct {
+	ID    string
+	Value string
+	Label string
+}
 
-func (m CounterModel) Update(msg gothic.Msg) (CounterModel, gothic.Cmd) {
+type ComboboxInput struct{ Text string }
+type ComboboxKey struct{ Key string }
+type ComboboxSelected struct{ Index int }
+type ComboboxOpened struct{}
+type ComboboxClosed struct{}
+type ComboboxCleared struct{}
+
+func (m ComboboxModel) Init() gothic.Cmd { return nil }
+
+func (m ComboboxModel) Update(msg gothic.Msg, props ComboboxProps) (ComboboxModel, gothic.Cmd) {
 	switch msg := msg.(type) {
-	case CounterClicked:
-		m.Count = m.Count + msg.By
-	}
-	return m, nil
-}
-
-type DisclosureItem struct {
-	ID      int
-	Title   string
-	Details []string
-}
-
-type DisclosureProps struct {
-	Item DisclosureItem
-}
-
-type DisclosureModel struct {
-	Expanded bool
-	ItemID   int
-}
-
-type DisclosureToggled struct{}
-
-func (m DisclosureModel) Init() gothic.Cmd { return nil }
-
-func (m DisclosureModel) Update(msg gothic.Msg, props DisclosureProps) (DisclosureModel, gothic.Cmd) {
-	switch msg.(type) {
-	case DisclosureToggled:
-		m.Expanded = !m.Expanded
-		m.ItemID = props.Item.ID
 	case gothic.PropsChanged:
-		if m.ItemID != props.Item.ID {
-			m.Expanded = false
-			m.ItemID = props.Item.ID
+		if msg.Initial {
+			if props.Value != nil {
+				m.Value = *props.Value
+			}
+			if props.Label != nil {
+				m.Label = *props.Label
+			}
+			m.Query = m.Label
+			if m.Query == "" {
+				m.Query = m.Value
+			}
+			m.Visible = props.Items
+			m.Active = 0
 		}
+	case ComboboxInput:
+		m.Query = msg.Text
+		m.Open = true
+		m.Visible = nil
+		query := strings.ToLower(strings.TrimSpace(msg.Text))
+		for _, item := range props.Items {
+			if query == "" || strings.Contains(strings.ToLower(item.Label), query) {
+				m.Visible = append(m.Visible, item)
+			}
+		}
+		m.Active = 0
+	case ComboboxOpened:
+		m.Open = true
+		if m.Query == m.Label {
+			m.Query = ""
+		}
+		m.Visible = props.Items
+		m.Active = 0
+	case ComboboxClosed:
+		m.Open = false
+		m.Query = m.Label
+	case ComboboxKey:
+		if !m.Open {
+			if msg.Key == "ArrowDown" || msg.Key == "Enter" {
+				m.Open = true
+				m.Visible = props.Items
+				m.Active = 0
+			}
+			return m, nil
+		}
+		switch msg.Key {
+		case "ArrowDown":
+			if len(m.Visible) > 0 {
+				m.Active = (m.Active + 1) % len(m.Visible)
+			}
+		case "ArrowUp":
+			if len(m.Visible) > 0 {
+				m.Active = (m.Active - 1 + len(m.Visible)) % len(m.Visible)
+			}
+		case "Home":
+			m.Active = 0
+		case "End":
+			if len(m.Visible) > 0 {
+				m.Active = len(m.Visible) - 1
+			}
+		case "PageDown":
+			if len(m.Visible) > 0 {
+				m.Active = m.Active + 10
+				if m.Active >= len(m.Visible) {
+					m.Active = len(m.Visible) - 1
+				}
+			}
+		case "PageUp":
+			m.Active = m.Active - 10
+			if m.Active < 0 {
+				m.Active = 0
+			}
+		case "Enter":
+			if len(m.Visible) > 0 && m.Active >= 0 && m.Active < len(m.Visible) {
+				item := m.Visible[m.Active]
+				m.Value = item.Value
+				m.Label = item.Label
+				m.Query = item.Label
+				m.Open = false
+				return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
+			}
+		case "Escape":
+			m.Open = false
+			m.Query = m.Label
+		}
+	case ComboboxSelected:
+		if msg.Index >= 0 && msg.Index < len(m.Visible) {
+			item := m.Visible[msg.Index]
+			m.Value = item.Value
+			m.Label = item.Label
+			m.Query = item.Label
+			m.Open = false
+			return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: m.Value, Label: m.Label})
+		}
+	case ComboboxCleared:
+		m.Value = ""
+		m.Label = ""
+		m.Query = ""
+		m.Open = false
+		return m, gothic.Emit(ComboboxValueChanged{ID: props.ID, Value: "", Label: ""})
 	}
 	return m, nil
 }
 
 type FieldProps struct {
 	gothic.Children
-	Label string
+	ID          string
+	Label       string
+	Description *string
+	Error       *string
+	Invalid     *bool
+	Required    *bool
+	Disabled    *bool
 }
 
-type Tab struct {
-	Label string
-	Panel string
+type SwitchProps struct {
+	gothic.Children
+	ID       string
+	Checked  bool
+	Name     *string
+	Value    *string
+	Disabled *bool
+	Required *bool
+	Onchange gothic.Msg
 }
 
 type TabsProps struct {
-	Items  []Tab
-	Active *int
+	gothic.Children
 }
 
-type TabsModel struct {
-	Active int
+type TabsListProps struct {
+	gothic.Children
+	Label    *string
+	Onkeynav gothic.Msg
 }
 
-type TabClicked struct{ Index int }
-
-func (m TabsModel) Init() gothic.Cmd { return nil }
-
-func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case TabClicked:
-		m.Active = msg.Index
-	case gothic.PropsChanged:
-		if msg.Initial && props.Active != nil {
-			m.Active = *props.Active
-		}
-	}
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
-	}
-	if m.Active < 0 {
-		m.Active = 0
-	}
-	return m, nil
+type TabsTriggerProps struct {
+	gothic.Children
+	ID       string
+	Controls *string
+	Active   bool
+	Onclick  gothic.Msg
 }
 
-func __gothicAccordionView(model AccordionModel, props AccordionProps) gothic.Component {
+type TabsPanelProps struct {
+	gothic.Children
+	ID         string
+	LabelledBy *string
+	Active     bool
+}
+
+func __gothicComboboxView(model ComboboxModel, props ComboboxProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -160,47 +266,53 @@ func __gothicAccordionView(model AccordionModel, props AccordionProps) gothic.Co
 			_, err := io.WriteString(w, s)
 			return err
 		}
-		if err := write("<div"); err != nil {
+		if err := write("<div data-part=\"combobox\" data-gothic-attr-0=\"data-open\""); err != nil {
 			return err
 		}
-		if err := write(" class=\"ui-accordion"); err != nil {
+		attrVal0 := fmt.Sprint(dom.If(model.Open, "true", ""))
+		if attrVal0 != "" {
+			if err := write(" data-open=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal0)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-attr-1=\"data-invalid\""); err != nil {
 			return err
 		}
-		if err := write("\""); err != nil {
-			return err
+		attrVal1 := fmt.Sprint(dom.If(props.Invalid != nil && *props.Invalid, "true", ""))
+		if attrVal1 != "" {
+			if err := write(" data-invalid=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal1)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
 		}
 		if err := write(">"); err != nil {
 			return err
 		}
-		if err := write("<!--g:each:0:open-->"); err != nil {
+		if err := write("<!--g:if:0:open-->"); err != nil {
 			return err
 		}
-		for i, item := range props.Items {
-			if err := write("<div"); err != nil {
+		if props.FieldLabel != nil {
+			if err := write("<!--g:if:0:then-->"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-accordion-item"); err != nil {
+			if err := write("<label data-part=\"combobox-label\" data-gothic-attr-2=\"for\""); err != nil {
 				return err
 			}
-			if err := write("\""); err != nil {
+			if err := write(" for=\""); err != nil {
 				return err
 			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(i))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<button data-gothic-on=\"0\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-accordion-header"); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(props.ID))); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
@@ -212,318 +324,306 @@ func __gothicAccordionView(model AccordionModel, props AccordionProps) gothic.Co
 			if err := write("<!--g:text:0:open-->"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Title))); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(*props.FieldLabel))); err != nil {
 				return err
 			}
 			if err := write("<!--g:text:0:close-->"); err != nil {
 				return err
 			}
-			if err := write("</button>"); err != nil {
+			if err := write("</label>"); err != nil {
 				return err
 			}
-			if err := write("<div data-gothic-class-0=\"hidden\""); err != nil {
+		} else {
+			if err := write("<!--g:if:0:else-->"); err != nil {
 				return err
 			}
-			if err := write(" class=\"ui-accordion-body"); err != nil {
+		}
+		if err := write("<!--g:if:0:close-->"); err != nil {
+			return err
+		}
+		if err := write("<div data-part=\"combobox-control\">"); err != nil {
+			return err
+		}
+		if err := write("<input data-part=\"combobox-input\" data-gothic-attr-3=\"id\""); err != nil {
+			return err
+		}
+		if err := write(" id=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(props.ID))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" role=\"combobox\" data-gothic-attr-4=\"aria-expanded\""); err != nil {
+			return err
+		}
+		attrVal4 := fmt.Sprint(dom.If(model.Open, "true", "false"))
+		if attrVal4 != "" {
+			if err := write(" aria-expanded=\""); err != nil {
 				return err
 			}
-			if model.Open != i+1 {
-				if err := write(" hidden"); err != nil {
+			if err := write(html.EscapeString(attrVal4)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-attr-5=\"aria-controls\""); err != nil {
+			return err
+		}
+		attrVal5 := fmt.Sprint(props.ID + "-listbox")
+		if attrVal5 != "" {
+			if err := write(" aria-controls=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal5)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" aria-autocomplete=\"list\" data-gothic-attr-6=\"aria-activedescendant\""); err != nil {
+			return err
+		}
+		attrVal6 := fmt.Sprint(dom.If(model.Open && len(model.Visible) > 0, dom.ID(props.ID+"-option", model.Active), ""))
+		if attrVal6 != "" {
+			if err := write(" aria-activedescendant=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal6)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-attr-7=\"aria-label\""); err != nil {
+			return err
+		}
+		attrVal7 := fmt.Sprint(dom.Str(props.AriaLabel))
+		if attrVal7 != "" {
+			if err := write(" aria-label=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal7)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-attr-8=\"aria-invalid\""); err != nil {
+			return err
+		}
+		attrVal8 := fmt.Sprint(dom.True(props.Invalid))
+		if attrVal8 != "" {
+			if err := write(" aria-invalid=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(attrVal8)); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+		}
+		if err := write(" autocomplete=\"off\" data-gothic-attr-9=\"placeholder\""); err != nil {
+			return err
+		}
+		if err := write(" placeholder=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(dom.Str(props.Placeholder)))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" data-gothic-attr-10=\"value\""); err != nil {
+			return err
+		}
+		if err := write(" value=\""); err != nil {
+			return err
+		}
+		if err := write(html.EscapeString(fmt.Sprint(model.Query))); err != nil {
+			return err
+		}
+		if err := write("\""); err != nil {
+			return err
+		}
+		if err := write(" data-gothic-attr-11=\"disabled\""); err != nil {
+			return err
+		}
+		if props.Disabled != nil && *props.Disabled {
+			if err := write(" disabled"); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-attr-12=\"required\""); err != nil {
+			return err
+		}
+		if props.Required != nil && *props.Required {
+			if err := write(" required"); err != nil {
+				return err
+			}
+		}
+		if err := write(" data-gothic-on=\"0 1 2 3\">"); err != nil {
+			return err
+		}
+		if err := write("<!--g:if:1:open-->"); err != nil {
+			return err
+		}
+		if props.Clearable != nil && *props.Clearable && model.Value != "" {
+			if err := write("<!--g:if:1:then-->"); err != nil {
+				return err
+			}
+			if err := write("<button data-part=\"combobox-clear\" type=\"button\" data-gothic-attr-13=\"aria-label\""); err != nil {
+				return err
+			}
+			attrVal13 := fmt.Sprint(dom.StrOr(props.ClearLabel, "Clear"))
+			if attrVal13 != "" {
+				if err := write(" aria-label=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(attrVal13)); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
 					return err
 				}
 			}
-			if err := write("\""); err != nil {
+			if err := write(" data-gothic-on=\"4\">"); err != nil {
 				return err
 			}
-			if err := write(">"); err != nil {
+			if err := write("×"); err != nil {
 				return err
 			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
+			if err := write("</button>"); err != nil {
 				return err
 			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Body))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
+		} else {
+			if err := write("<!--g:if:1:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:each:0:close-->"); err != nil {
+		if err := write("<!--g:if:1:close-->"); err != nil {
 			return err
 		}
 		if err := write("</div>"); err != nil {
 			return err
 		}
-		return nil
-	})
-}
-
-func Accordion(id string, key string, props AccordionProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model AccordionModel
-		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
+		if err := write("<!--g:if:2:open-->"); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Accordion\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
+		if model.Open {
+			if err := write("<!--g:if:2:then-->"); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
+			if err := write("<ul data-part=\"combobox-listbox\" data-gothic-attr-14=\"id\""); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, "\""); err != nil {
+			if err := write(" id=\""); err != nil {
 				return err
 			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicAccordionView(model, props).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
-func __gothicCounterView(model CounterModel, props CounterProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<div"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-counter"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<button data-gothic-class-0=\"ui-button-primary\" data-gothic-on=\"0\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-button"); err != nil {
-			return err
-		}
-		if (ButtonProps{Label: props.Label, Primary: true, Onclick: CounterClicked{By: 1}}).Primary {
-			if err := write(" ui-button-primary"); err != nil {
-				return err
-			}
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint((ButtonProps{Label: props.Label, Primary: true, Onclick: CounterClicked{By: 1}}).Label))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</button>"); err != nil {
-			return err
-		}
-		if err := write("<strong"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-counter-value"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(model.Count))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:1:close-->"); err != nil {
-			return err
-		}
-		if err := write("</strong>"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func Counter(id string, key string, props CounterProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model CounterModel
-		model, _ = model.Update(gothic.PropsChanged{Initial: true})
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Counter\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicCounterView(model, props).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
-func __gothicDisclosureView(model DisclosureModel, props DisclosureProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<div data-gothic-class-0=\"ui-disclosure-expanded\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-disclosure"); err != nil {
-			return err
-		}
-		if model.Expanded {
-			if err := write(" ui-disclosure-expanded"); err != nil {
-				return err
-			}
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<button data-gothic-on=\"0\""); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-disclosure-toggle"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:open-->"); err != nil {
-			return err
-		}
-		if err := write(html.EscapeString(fmt.Sprint(props.Item.Title))); err != nil {
-			return err
-		}
-		if err := write("<!--g:text:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</button>"); err != nil {
-			return err
-		}
-		if err := write("<!--g:if:0:open-->"); err != nil {
-			return err
-		}
-		if model.Expanded {
-			if err := write("<!--g:if:0:then-->"); err != nil {
-				return err
-			}
-			if err := write("<ul"); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-disclosure-details"); err != nil {
+			if err := write(html.EscapeString(fmt.Sprint(props.ID + "-listbox"))); err != nil {
 				return err
 			}
 			if err := write("\""); err != nil {
 				return err
 			}
-			if err := write(">"); err != nil {
+			if err := write(" role=\"listbox\">"); err != nil {
 				return err
 			}
-			if err := write("<!--g:each:0:open-->"); err != nil {
+			if err := write("<!--g:if:3:open-->"); err != nil {
 				return err
 			}
-			for _, detail := range props.Item.Details {
-				if err := write("<li>"); err != nil {
+			if len(model.Visible) == 0 {
+				if err := write("<!--g:if:3:then-->"); err != nil {
+					return err
+				}
+				if err := write("<li data-part=\"combobox-empty\">"); err != nil {
 					return err
 				}
 				if err := write("<!--g:text:1:open-->"); err != nil {
 					return err
 				}
-				if err := write(html.EscapeString(fmt.Sprint(detail))); err != nil {
+				if err := write(html.EscapeString(fmt.Sprint(dom.StrOr(props.EmptyText, "No results")))); err != nil {
 					return err
 				}
 				if err := write("<!--g:text:1:close-->"); err != nil {
+					return err
+				}
+				if err := write("</li>"); err != nil {
+					return err
+				}
+			} else {
+				if err := write("<!--g:if:3:else-->"); err != nil {
+					return err
+				}
+			}
+			if err := write("<!--g:if:3:close-->"); err != nil {
+				return err
+			}
+			if err := write("<!--g:each:0:open-->"); err != nil {
+				return err
+			}
+			for i, item := range model.Visible {
+				if err := write("<li data-part=\"combobox-option\" data-gothic-attr-15=\"id\""); err != nil {
+					return err
+				}
+				if err := write(" id=\""); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(dom.ID(props.ID+"-option", i)))); err != nil {
+					return err
+				}
+				if err := write("\""); err != nil {
+					return err
+				}
+				if err := write(" role=\"option\" data-gothic-attr-16=\"aria-selected\""); err != nil {
+					return err
+				}
+				attrVal16 := fmt.Sprint(dom.If(item.Value == model.Value, "true", "false"))
+				if attrVal16 != "" {
+					if err := write(" aria-selected=\""); err != nil {
+						return err
+					}
+					if err := write(html.EscapeString(attrVal16)); err != nil {
+						return err
+					}
+					if err := write("\""); err != nil {
+						return err
+					}
+				}
+				if err := write(" data-gothic-attr-17=\"data-highlighted\""); err != nil {
+					return err
+				}
+				attrVal17 := fmt.Sprint(dom.If(i == model.Active, "true", ""))
+				if attrVal17 != "" {
+					if err := write(" data-highlighted=\""); err != nil {
+						return err
+					}
+					if err := write(html.EscapeString(attrVal17)); err != nil {
+						return err
+					}
+					if err := write("\""); err != nil {
+						return err
+					}
+				}
+				if err := write(" data-gothic-scroll=\"0\" data-gothic-on=\"5\">"); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:open-->"); err != nil {
+					return err
+				}
+				if err := write(html.EscapeString(fmt.Sprint(item.Label))); err != nil {
+					return err
+				}
+				if err := write("<!--g:text:2:close-->"); err != nil {
 					return err
 				}
 				if err := write("</li>"); err != nil {
@@ -537,11 +637,53 @@ func __gothicDisclosureView(model DisclosureModel, props DisclosureProps) gothic
 				return err
 			}
 		} else {
-			if err := write("<!--g:if:0:else-->"); err != nil {
+			if err := write("<!--g:if:2:else-->"); err != nil {
 				return err
 			}
 		}
-		if err := write("<!--g:if:0:close-->"); err != nil {
+		if err := write("<!--g:if:2:close-->"); err != nil {
+			return err
+		}
+		if err := write("<!--g:if:4:open-->"); err != nil {
+			return err
+		}
+		if props.Name != nil {
+			if err := write("<!--g:if:4:then-->"); err != nil {
+				return err
+			}
+			if err := write("<input type=\"hidden\" data-gothic-attr-18=\"name\""); err != nil {
+				return err
+			}
+			if err := write(" name=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(*props.Name))); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(" data-gothic-attr-19=\"value\""); err != nil {
+				return err
+			}
+			if err := write(" value=\""); err != nil {
+				return err
+			}
+			if err := write(html.EscapeString(fmt.Sprint(model.Value))); err != nil {
+				return err
+			}
+			if err := write("\""); err != nil {
+				return err
+			}
+			if err := write(">"); err != nil {
+				return err
+			}
+		} else {
+			if err := write("<!--g:if:4:else-->"); err != nil {
+				return err
+			}
+		}
+		if err := write("<!--g:if:4:close-->"); err != nil {
 			return err
 		}
 		if err := write("</div>"); err != nil {
@@ -551,15 +693,15 @@ func __gothicDisclosureView(model DisclosureModel, props DisclosureProps) gothic
 	})
 }
 
-func Disclosure(id string, key string, props DisclosureProps) gothic.Component {
+func Combobox(id string, key string, props ComboboxProps) gothic.Component {
 	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model DisclosureModel
+		var model ComboboxModel
 		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
 		stateJSON, err := json.Marshal(model)
 		if err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Disclosure\" data-gothic-component-id=\""); err != nil {
+		if _, err := io.WriteString(w, "<div data-gothic-component=\"Combobox\" data-gothic-component-id=\""); err != nil {
 			return err
 		}
 		if _, err := io.WriteString(w, id); err != nil {
@@ -591,205 +733,7 @@ func Disclosure(id string, key string, props DisclosureProps) gothic.Component {
 		if _, err := io.WriteString(w, "</script>"); err != nil {
 			return err
 		}
-		if err := __gothicDisclosureView(model, props).Render(ctx, w); err != nil {
-			return err
-		}
-		_, err = io.WriteString(w, "</div>")
-		return err
-	})
-}
-
-func __gothicTabsView(model TabsModel, props TabsProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		write := func(s string) error {
-			_, err := io.WriteString(w, s)
-			return err
-		}
-		if err := write("<div"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-tabs"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<div"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-tabs-list"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:each:0:open-->"); err != nil {
-			return err
-		}
-		for i, item := range props.Items {
-			if err := write("<button data-gothic-class-0=\"active\" data-gothic-on=\"0\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-tab"); err != nil {
-				return err
-			}
-			if model.Active == i {
-				if err := write(" active"); err != nil {
-					return err
-				}
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(i))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Label))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:0:close-->"); err != nil {
-				return err
-			}
-			if err := write("</button>"); err != nil {
-				return err
-			}
-		}
-		if err := write("<!--g:each:0:close-->"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		if err := write("<div"); err != nil {
-			return err
-		}
-		if err := write(" class=\"ui-tabs-panels"); err != nil {
-			return err
-		}
-		if err := write("\""); err != nil {
-			return err
-		}
-		if err := write(">"); err != nil {
-			return err
-		}
-		if err := write("<!--g:each:1:open-->"); err != nil {
-			return err
-		}
-		for i, item := range props.Items {
-			if err := write("<div data-gothic-class-1=\"hidden\""); err != nil {
-				return err
-			}
-			if err := write(" class=\"ui-tab-panel"); err != nil {
-				return err
-			}
-			if model.Active != i {
-				if err := write(" hidden"); err != nil {
-					return err
-				}
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(" data-gothic-key=\""); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(i))); err != nil {
-				return err
-			}
-			if err := write("\""); err != nil {
-				return err
-			}
-			if err := write(">"); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:open-->"); err != nil {
-				return err
-			}
-			if err := write(html.EscapeString(fmt.Sprint(item.Panel))); err != nil {
-				return err
-			}
-			if err := write("<!--g:text:1:close-->"); err != nil {
-				return err
-			}
-			if err := write("</div>"); err != nil {
-				return err
-			}
-		}
-		if err := write("<!--g:each:1:close-->"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		if err := write("</div>"); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func Tabs(id string, key string, props TabsProps) gothic.Component {
-	return gothic.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		var model TabsModel
-		model, _ = model.Update(gothic.PropsChanged{Initial: true}, props)
-		stateJSON, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<div data-gothic-component=\"Tabs\" data-gothic-component-id=\""); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, id); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "\""); err != nil {
-			return err
-		}
-		if key != "" {
-			if _, err := io.WriteString(w, " data-gothic-key=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, html.EscapeString(key)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		}
-		if _, err := io.WriteString(w, ">"); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "<script type=\"application/json\" data-gothic-component-state>"); err != nil {
-			return err
-		}
-		if _, err := w.Write(stateJSON); err != nil {
-			return err
-		}
-		if _, err := io.WriteString(w, "</script>"); err != nil {
-			return err
-		}
-		if err := __gothicTabsView(model, props).Render(ctx, w); err != nil {
+		if err := __gothicComboboxView(model, props).Render(ctx, w); err != nil {
 			return err
 		}
 		_, err = io.WriteString(w, "</div>")

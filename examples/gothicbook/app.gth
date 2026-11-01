@@ -3,313 +3,117 @@ package main
 //gothic:components github.com/metruzanca/gothic/ui
 
 import (
-	"fmt"
+	"context"
+	"strings"
 
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/browser"
+	"github.com/metruzanca/gothic/dom"
 	"github.com/metruzanca/gothic/ui"
 )
 
-type CodeProps struct {
-	Title string
-	Code  string
+type TabEntry struct {
+	ID    string
+	Label string
+	Panel string
 }
 
-type Model struct {
-	Path              string
-	Page              string
-	Wordmark          string
-	Tabs              []ui.Tab
-	ManyTabs          []ui.Tab
-	FewTabs           []ui.Tab
-	Accordion         []ui.AccordionItem
-	Count             int
-	ButtonCode        string
-	CardCode          string
-	FieldCode         string
-	TabsCode          string
-	AccordionCode     string
-	ConditionalsCode  string
-	StatefulListsCode string
-	ServerCode        string
-	DisclosureCode    string
-	FieldText          string
-	ShowExample       bool
-	ListPage          int
-	PageLabel         string
-	FeatureDisclosure ui.DisclosureItem
-	TabStart          *int
-	PageOne           []ui.DisclosureItem
-	PageTwo           []ui.DisclosureItem
-	Visible           []ui.DisclosureItem
-}
-
-func NewModel(count int) Model {
-	m := Model{
-		Path:     "/",
-		Page:     "overview",
-		Wordmark: wordmarkHref,
-		Tabs: []ui.Tab{
-			{Label: "Overview", Panel: "The first panel shows the overview."},
-			{Label: "Details", Panel: "The second panel shows more detail."},
-			{Label: "Settings", Panel: "The third panel holds settings."},
-		},
-		FewTabs: []ui.Tab{
-			{Label: "Overview", Panel: "The first panel shows the overview."},
-			{Label: "Details", Panel: "The second panel shows more detail."},
-		},
-		Accordion: []ui.AccordionItem{
-			{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
-			{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
-			{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
-		},
-		Count: count,
-		ButtonCode: `// Page
-<ui.Button label="Say hello" primary={ true } onclick={ ButtonClicked{} } />
-<ui.Button label="Cancel" primary={ false } onclick={ nil } />
-
-// Message and update
-type ButtonClicked struct{}
-
-case ButtonClicked:
-	return m, func() gothic.Msg {
-		browser.Alert("Hello from Gothicbook")
-		return nil
-	}`,
-		CardCode: `// Page
-<ui.Card title="A simple card" body="Cards group related content with a small surface." />
-
-// ui/card.gth
-type CardProps struct {
+type AccordionEntry struct {
+	ID    string
 	Title string
 	Body  string
 }
 
-	view Card(props CardProps) {
-		<section class="ui-card">
-			<h2>{ props.Title }</h2>
-			<p>{ props.Body }</p>
-		</section>
-	}`,
-		FieldCode: `// Page
-<ui.Field label="Your name">
-	<input class="field-input" value={ model.FieldText } oninput={ FieldTextChanged{Text: event.target.value} } />
-</ui.Field>
-<p class="server-count">Hello, { model.FieldText }!</p>
-
-// Message and update
-type FieldTextChanged struct{ Text string }
-
-case FieldTextChanged:
-	m.FieldText = msg.Text`,
-		TabsCode: `// Page
-<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
-<div class="row">
-	<button
-		class="ui-button"
-		disabled={ len(model.Tabs) <= len(model.FewTabs) }
-		onclick={ FewerTabs{} }
-	>Fewer tabs</button>
-	<button
-		class="ui-button"
-		class:ui-button-primary={ len(model.Tabs) < len(model.ManyTabs) }
-		disabled={ len(model.Tabs) >= len(model.ManyTabs) }
-		onclick={ MoreTabs{} }
-	>More tabs</button>
-</div>
-
-// Messages and update
-type FewerTabs struct{}
-type MoreTabs struct{}
-
-case FewerTabs:
-	m.Tabs = m.FewTabs
-case MoreTabs:
-	m.Tabs = m.ManyTabs`,
-		AccordionCode: `// Page
-<ui.Accordion items={ model.Accordion } />
-
-// Model
-Accordion: []ui.AccordionItem{
-	{Title: "What is Gothicbook?", Body: "A small design system demo built with gothic."},
-	{Title: "Is this production ready?", Body: "No. It is a proof of concept for the UI kit."},
-	{Title: "Can I install the UI kit?", Body: "Yes. Import github.com/metruzanca/gothic/ui."},
-},`,
-		DisclosureCode: `// Page
-<ui.Disclosure item={ model.FeatureDisclosure } />
-
-// Model
-FeatureDisclosure: ui.DisclosureItem{
-	ID:    999,
-	Title: "Conditional disclosure",
-	Details: []string{
-		"Expand me, then hide the branch.",
-		"Show the branch again and I start collapsed.",
-	},
-},`,
-		ConditionalsCode: `// Page
-<div class="row">
-	<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
-</div>
-if model.ShowExample {
-	<ui.Disclosure item={ model.FeatureDisclosure } />
-} else {
-	<p class="server-count">The else branch is visible instead.</p>
+type Model struct {
+	Path          string
+	Page          string
+	Wordmark      string
+	Count         int
+	Error         string
+	Name          string
+	NameError     string
+	Done          bool
+	Notify        bool
+	Tabs          []TabEntry
+	ActiveTab     string
+	Accordion     []AccordionEntry
+	OpenAccordion string
+	Fruits        []ui.ComboboxItem
+	FruitValue    string
+	FruitLabel    string
 }
 
-// Message and update
-type ToggleExample struct{}
-
-case ToggleExample:
-	m.ShowExample = !m.ShowExample`,
-		StatefulListsCode: `// Page
-<div class="ui-disclosure-list">
-	for _, item := range model.Visible {
-		<ui.Disclosure key={ item.ID } item={ item } />
-	}
-</div>
-<div class="row">
-	<ui.Button label="Previous page" primary={ false } onclick={ PrevPage{} } />
-	<ui.Button label="Next page" primary={ true } onclick={ NextPage{} } />
-</div>
-<p class="server-count">{ model.PageLabel }</p>
-
-// Messages and update
-type NextPage struct{}
-type PrevPage struct{}
-
-case NextPage:
-	m.ListPage = 1
-	m.Visible = m.PageTwo
-	m.PageLabel = "Showing 11-20 of 20"
-case PrevPage:
-	m.ListPage = 0
-	m.Visible = m.PageOne
-	m.PageLabel = "Showing 1-10 of 20"`,
-		ServerCode: `// Page
-<div class="row">
-	<ui.Counter label="Increment on client" />
-	<div class="ui-counter">
-		<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
-		<strong class="ui-counter-value">{ model.Count }</strong>
-	</div>
-</div>
-
-// app.gth prelude
-type IncrementClicked struct{}
-
-type Procedures interface {
-	gothic.RPCService
-	Increment(ctx context.Context) (int, error)
-}
-
-case IncrementClicked:
-	return m, func() gothic.Msg {
-		count, err := Increment()
-		if err != nil {
-			return CountFailed{Message: err.Error()}
-		}
-		return CountUpdated{Count: count}
-	}
-
-// main.go
-func (p procedures) Increment(ctx context.Context) (int, error) {
-	return p.counter.increment(), nil
-}`,
-		FieldText:    "friend",
-		ShowExample: true,
-		FeatureDisclosure: ui.DisclosureItem{
-			ID:    999,
-			Title: "Conditional disclosure",
-			Details: []string{
-				"Expand me, then hide the branch.",
-				"Show the branch again and I start collapsed.",
-			},
-		},
-		PageOne:     sampleDisclosures(1, 10),
-		PageTwo:     sampleDisclosures(11, 10),
-		PageLabel:   "Showing 1-10 of 20",
-	}
-	m.ManyTabs = m.Tabs
-	startTab := 1
-	m.TabStart = &startTab
-	m.Visible = m.PageOne
-	return m
-}
-
-func NewModelAt(path string, count int) Model {
-	m := NewModel(count)
-	m.Path = path
-	switch path {
-	case "/":
-		m.Page = "overview"
-	case "/button":
-		m.Page = "button"
-	case "/card":
-		m.Page = "card"
-	case "/field":
-		m.Page = "field"
-	case "/tabs":
-		m.Page = "tabs"
-	case "/accordion":
-		m.Page = "accordion"
-	case "/disclosure":
-		m.Page = "disclosure"
-	case "/conditionals":
-		m.Page = "conditionals"
-	case "/stateful-lists":
-		m.Page = "stateful-lists"
-	case "/server-state":
-		m.Page = "server-state"
-	default:
-		m.Page = "notfound"
-	}
-	return m
-}
-
-
-func sampleDisclosures(from, count int) []ui.DisclosureItem {
-	titles := []string{
-		"Design tokens", "Color roles", "Typography", "Spacing", "Radius",
-		"Elevation", "Focus states", "Motion", "Forms", "Validation",
-		"Tables", "Pagination", "Empty states", "Errors", "Notifications",
-		"Dialogs", "Menus", "Tooltips", "Icons", "Accessibility",
-	}
-	items := make([]ui.DisclosureItem, 0, count)
-	for i := 0; i < count; i++ {
-		n := from + i
-		title := titles[n-1]
-		items = append(items, ui.DisclosureItem{
-			ID:    n,
-			Title: title,
-			Details: []string{
-				"First detail for " + title + ".",
-				"Second detail for " + title + ".",
-			},
-		})
-	}
-	return items
-}
-
-type IncrementClicked struct{}
-type ButtonClicked struct{}
-type CountUpdated struct{ Count int }
-type CountFailed struct{ Message string }
-type ToggleExample struct{}
-type FewerTabs struct{}
-type MoreTabs struct{}
-type NextPage struct{}
-type PrevPage struct{}
-type FieldTextChanged struct{ Text string }
 type LocationChanged struct {
 	Path  string
 	Query string
 	Hash  string
 }
 
+type IncrementClicked struct{}
+type CountLoaded struct{ Count int }
+type CountFailed struct{ Message string }
+type NameChanged struct{ Text string }
+type DoneChanged struct{}
+type NotifyChanged struct{}
+type TabClicked struct{ ID string }
+type TabKey struct{ Key string }
+type AccordionClicked struct{ ID string }
+
 type Procedures interface {
 	gothic.RPCService
 	Increment(ctx context.Context) (int, error)
+}
+
+func NewModelAt(path string, count int) Model {
+	m := Model{
+		Path:          path,
+		Page:          pageForPath(path),
+		Wordmark:      wordmarkHref,
+		Count:         count,
+		Name:          "Ada",
+		ActiveTab:     "profile",
+		OpenAccordion: "one",
+		FruitValue:    "banana",
+		FruitLabel:    "Banana",
+		Tabs: []TabEntry{
+			{ID: "profile", Label: "Profile", Panel: "Profile settings. The App owns the active tab."},
+			{ID: "notifications", Label: "Notifications", Panel: "Notification settings. Keyboard navigation is handled with onkeynav."},
+			{ID: "billing", Label: "Billing", Panel: "Billing settings. Panels are controlled pure components."},
+		},
+		Accordion: []AccordionEntry{
+			{ID: "one", Title: "What is gothic?", Body: "A fullstack Go framework with server rendering and a compiled client runtime."},
+			{ID: "two", Title: "How does state work?", Body: "The App owns the model. Components send typed messages back to Update."},
+			{ID: "three", Title: "Why no CSS?", Body: "The UI kit ships markup and behavior. You own the styling through data-part and data attributes."},
+		},
+		Fruits: []ui.ComboboxItem{
+			{Value: "apple", Label: "Apple"},
+			{Value: "banana", Label: "Banana"},
+			{Value: "cherry", Label: "Cherry"},
+			{Value: "dragonfruit", Label: "Dragon fruit"},
+			{Value: "elderberry", Label: "Elderberry"},
+			{Value: "fig", Label: "Fig"},
+			{Value: "grape", Label: "Grape"},
+		},
+	}
+	return m
+}
+
+func pageForPath(path string) string {
+	switch path {
+	case "/":
+		return "overview"
+	case "/button":
+		return "button"
+	case "/field":
+		return "field"
+	case "/tabs":
+		return "tabs"
+	case "/accordion":
+		return "accordion"
+	case "/combobox":
+		return "combobox"
+	default:
+		return "notfound"
+	}
 }
 
 func (m Model) Init() gothic.Cmd {
@@ -320,70 +124,61 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 	switch msg := msg.(type) {
 	case LocationChanged:
 		m.Path = msg.Path
-		switch msg.Path {
-		case "/":
-			m.Page = "overview"
-		case "/button":
-			m.Page = "button"
-		case "/card":
-			m.Page = "card"
-		case "/field":
-			m.Page = "field"
-		case "/tabs":
-			m.Page = "tabs"
-		case "/accordion":
-			m.Page = "accordion"
-		case "/disclosure":
-			m.Page = "disclosure"
-		case "/conditionals":
-			m.Page = "conditionals"
-		case "/stateful-lists":
-			m.Page = "stateful-lists"
-		case "/server-state":
-			m.Page = "server-state"
-		default:
-			m.Page = "notfound"
-		}
-	case ButtonClicked:
-		return m, func() gothic.Msg {
-			browser.Alert("Hello from Gothicbook")
-			return nil
-		}
+		m.Page = pageForPath(msg.Path)
 	case IncrementClicked:
 		return m, func() gothic.Msg {
 			count, err := Increment()
 			if err != nil {
 				return CountFailed{Message: err.Error()}
 			}
-			return CountUpdated{Count: count}
+			return CountLoaded{Count: count}
 		}
-	case CountUpdated:
+	case CountLoaded:
 		m.Count = msg.Count
-	case ToggleExample:
-		m.ShowExample = !m.ShowExample
-	case FewerTabs:
-		m.Tabs = m.FewTabs
-	case MoreTabs:
-		m.Tabs = m.ManyTabs
-	case NextPage:
-		m.ListPage = 1
-		m.Visible = m.PageTwo
-		m.PageLabel = "Showing 11-20 of 20"
-	case PrevPage:
-		m.ListPage = 0
-		m.Visible = m.PageOne
-		m.PageLabel = "Showing 1-10 of 20"
-	case FieldTextChanged:
-		m.FieldText = msg.Text
+		m.Error = ""
+	case CountFailed:
+		m.Error = msg.Message
+	case NameChanged:
+		m.Name = msg.Text
+		if strings.TrimSpace(msg.Text) == "" {
+			m.NameError = "Enter your name."
+		} else {
+			m.NameError = ""
+		}
+	case DoneChanged:
+		m.Done = !m.Done
+	case NotifyChanged:
+		m.Notify = !m.Notify
+	case TabClicked:
+		m.ActiveTab = msg.ID
+	case TabKey:
+		index := 0
+		for i, tab := range m.Tabs {
+			if tab.ID == m.ActiveTab {
+				index = i
+			}
+		}
+		if msg.Key == "ArrowRight" {
+			index = (index + 1) % len(m.Tabs)
+		} else if msg.Key == "ArrowLeft" {
+			index = (index - 1 + len(m.Tabs)) % len(m.Tabs)
+		} else if msg.Key == "Home" {
+			index = 0
+		} else if msg.Key == "End" {
+			index = len(m.Tabs) - 1
+		}
+		m.ActiveTab = m.Tabs[index].ID
+	case AccordionClicked:
+		if m.OpenAccordion == msg.ID {
+			m.OpenAccordion = ""
+		} else {
+			m.OpenAccordion = msg.ID
+		}
+	case ui.ComboboxValueChanged:
+		m.FruitValue = msg.Value
+		m.FruitLabel = msg.Label
 	}
 	return m, nil
-}
-
-view Code(props CodeProps) {
-	<div class="code-block">
-		<h3>{ props.Title }</h3>
-		<pre><code>{ props.Code }</code></pre>
-	</div>
 }
 
 view App(model Model) {
@@ -393,25 +188,17 @@ view App(model Model) {
 				<img src={ model.Wordmark } alt="Gothic" />
 				<span class="brand-book">book</span>
 			</a>
-			<nav class="nav" aria-label="Sections">
-				<p class="nav-group">Getting started</p>
+			<nav class="nav">
 				<a class="nav-link" href="/" route class:active={ model.Page == "overview" }>Overview</a>
-				<p class="nav-group">Components</p>
+				<p class="nav-group">Primitives</p>
 				<a class="nav-link" href="/button" route class:active={ model.Page == "button" }>Button</a>
-				<a class="nav-link" href="/card" route class:active={ model.Page == "card" }>Card</a>
 				<a class="nav-link" href="/field" route class:active={ model.Page == "field" }>Field</a>
 				<a class="nav-link" href="/tabs" route class:active={ model.Page == "tabs" }>Tabs</a>
 				<a class="nav-link" href="/accordion" route class:active={ model.Page == "accordion" }>Accordion</a>
-				<a class="nav-link" href="/disclosure" route class:active={ model.Page == "disclosure" }>Disclosure</a>
-				<p class="nav-group">Patterns</p>
-				<a class="nav-link" href="/conditionals" route class:active={ model.Page == "conditionals" }>Conditionals</a>
-				<a class="nav-link" href="/stateful-lists" route class:active={ model.Page == "stateful-lists" }>Stateful lists</a>
-				<a class="nav-link" href="/server-state" route class:active={ model.Page == "server-state" }>Server state</a>
+				<a class="nav-link" href="/combobox" route class:active={ model.Page == "combobox" }>Combobox</a>
 			</nav>
 			<div class="sidebar-footer">
 				<button class="theme-toggle" type="button" data-theme-toggle>
-					<span class="theme-icon theme-sun" aria-hidden="true">☀</span>
-					<span class="theme-icon theme-moon" aria-hidden="true">☾</span>
 					<span class="theme-label theme-label-dark">Dark</span>
 					<span class="theme-label theme-label-light">Light</span>
 				</button>
@@ -423,196 +210,111 @@ view App(model Model) {
 				if model.Page == "overview" {
 					<header class="hero">
 						<p class="eyebrow">ui kit</p>
-						<h1>A small design system for gothic</h1>
-						<p>Browse the components and patterns below. Every page has its own URL, so you can link straight to it.</p>
+						<h1>A headless design system for gothic</h1>
+						<p>Primitives ship markup and behavior. You own the styles through data-part and data attributes.</p>
 					</header>
 					<div class="tiles">
-						<a class="tile" href="/button" route>
-							<strong>Button</strong>
-							<span>Primary and secondary actions.</span>
-						</a>
-						<a class="tile" href="/card" route>
-							<strong>Card</strong>
-							<span>Group related content on a small surface.</span>
-						</a>
-						<a class="tile" href="/field" route>
-							<strong>Field</strong>
-							<span>A label and control wrapper for form rows.</span>
-						</a>
-						<a class="tile" href="/tabs" route>
-							<strong>Tabs</strong>
-							<span>Switch between panels in place.</span>
-						</a>
-						<a class="tile" href="/accordion" route>
-							<strong>Accordion</strong>
-							<span>Stack expandable sections.</span>
-						</a>
-						<a class="tile" href="/disclosure" route>
-							<strong>Disclosure</strong>
-							<span>Reveal details on demand.</span>
-						</a>
-						<a class="tile" href="/conditionals" route>
-							<strong>Conditionals</strong>
-							<span>Render one branch and remove the other.</span>
-						</a>
-						<a class="tile" href="/stateful-lists" route>
-							<strong>Stateful lists</strong>
-							<span>Keyed lists that reset state on unmount.</span>
-						</a>
-						<a class="tile" href="/server-state" route>
-							<strong>Server state</strong>
-							<span>Run a typed procedure from an action.</span>
-						</a>
+						<a class="tile" href="/button" route><strong>Button</strong><span>Native buttons with app-owned actions.</span></a>
+						<a class="tile" href="/field" route><strong>Field</strong><span>Labels, descriptions, errors, and children.</span></a>
+						<a class="tile" href="/tabs" route><strong>Tabs</strong><span>Compound parts with app-owned state.</span></a>
+						<a class="tile" href="/accordion" route><strong>Accordion</strong><span>Compound disclosure parts.</span></a>
+						<a class="tile" href="/combobox" route><strong>Combobox</strong><span>Filtering, keyboard navigation, and typed messages.</span></a>
 					</div>
 				}
 
 				if model.Page == "button" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Button</h1>
-						<p>Primary and secondary actions. The primary button calls browser.Alert.</p>
-					</header>
-					<div class="demo">
-						<div class="row">
-							<ui.Button label="Say hello" primary={ true } onclick={ ButtonClicked{} } />
-							<ui.Button label="Cancel" primary={ false } onclick={ nil } />
-						</div>
+					<header class="page-head"><p class="eyebrow">primitive</p><h1>Button</h1></header>
+					<div class="row">
+						<ui.Button variant={ dom.Ptr("primary") } onclick={ IncrementClicked{} }>Increment on the server</ui.Button>
+						<ui.Button onclick={ nil }>Secondary</ui.Button>
+						<ui.Button disabled={ dom.BoolPtr(true) } onclick={ nil }>Disabled</ui.Button>
 					</div>
-					<Code title="Page code" code={ model.ButtonCode } />
-				}
-
-				if model.Page == "card" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Card</h1>
-						<p>Group related content on a small surface.</p>
-					</header>
-					<div class="demo">
-						<ui.Card title="A simple card" body="Cards group related content with a small surface." />
-					</div>
-					<Code title="Page code" code={ model.CardCode } />
+					<p class="server-count">Server count:{ " " }{ model.Count }</p>
+					if model.Error != "" { <p class="error">{ model.Error }</p> }
 				}
 
 				if model.Page == "field" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Field</h1>
-						<p>A label and control wrapper for form rows.</p>
-					</header>
-					<div class="demo">
-						<ui.Field label="Your name">
-							<input class="field-input" value={ model.FieldText } oninput={ FieldTextChanged{Text: event.target.value} } />
-						</ui.Field>
-						<p class="server-count">Hello,{ " " }{ model.FieldText }!</p>
+					<header class="page-head"><p class="eyebrow">primitive</p><h1>Field</h1></header>
+					<ui.Field
+						id="name"
+						label="Your name"
+						description={ dom.Ptr("The label and description are linked by id.") }
+						error={ dom.Ptr(model.NameError) }
+						invalid={ dom.BoolPtr(model.NameError != "") }
+						required={ dom.BoolPtr(true) }
+					>
+						<input class="field-input" id="name" value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
+					</ui.Field>
+					<div class="stack">
+						<ui.Checkbox id="done" checked={ model.Done } onchange={ DoneChanged{} }>Done</ui.Checkbox>
+						<ui.Switch id="notify" checked={ model.Notify } onchange={ NotifyChanged{} }>Notify me</ui.Switch>
 					</div>
-					<Code title="Page code" code={ model.FieldCode } />
+					<p class="server-count">Done: { model.Done } Notify: { model.Notify }</p>
 				}
 
 				if model.Page == "tabs" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Tabs</h1>
-						<p>Select the third tab, then remove a tab. The component clamps its active index from the items prop, and the controls disable at the ends of the range.</p>
-					</header>
-					<div class="demo">
-						<ui.Tabs items={ model.Tabs } active={ model.TabStart } />
-						<div class="row">
-							<button class="ui-button" disabled={ len(model.Tabs) <= len(model.FewTabs) } onclick={ FewerTabs{} }>Fewer tabs</button>
-							<button class="ui-button" class:ui-button-primary={ len(model.Tabs) < len(model.ManyTabs) } disabled={ len(model.Tabs) >= len(model.ManyTabs) } onclick={ MoreTabs{} }>More tabs</button>
-						</div>
-					</div>
-					<Code title="Page code" code={ model.TabsCode } />
+					<header class="page-head"><p class="eyebrow">primitive</p><h1>Tabs</h1></header>
+					<ui.Tabs>
+						<ui.TabsList label={ dom.Ptr("Account settings") } onkeynav={ TabKey{Key: event.key} }>
+							for i, tab := range model.Tabs {
+								<ui.TabsTrigger
+									id={ dom.ID("settings-tab", i) }
+									controls={ dom.Ptr(dom.ID("settings-panel", i)) }
+									active={ model.ActiveTab == tab.ID }
+									onclick={ TabClicked{ID: tab.ID} }
+								>{ tab.Label }</ui.TabsTrigger>
+							}
+						</ui.TabsList>
+						for i, tab := range model.Tabs {
+							<ui.TabsPanel
+								id={ dom.ID("settings-panel", i) }
+								labelledby={ dom.Ptr(dom.ID("settings-tab", i)) }
+								active={ model.ActiveTab == tab.ID }
+							>{ tab.Panel }</ui.TabsPanel>
+						}
+					</ui.Tabs>
 				}
 
 				if model.Page == "accordion" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Accordion</h1>
-						<p>Stack expandable sections in a single surface.</p>
-					</header>
-					<div class="demo">
-						<ui.Accordion items={ model.Accordion } />
-					</div>
-					<Code title="Page code" code={ model.AccordionCode } />
-				}
-
-				if model.Page == "disclosure" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Disclosure</h1>
-						<p>Reveal details on demand.</p>
-					</header>
-					<div class="demo">
-						<ui.Disclosure item={ model.FeatureDisclosure } />
-					</div>
-					<Code title="Page code" code={ model.DisclosureCode } />
-				}
-
-				if model.Page == "conditionals" {
-					<header class="page-head">
-						<p class="eyebrow">pattern</p>
-						<h1>Conditionals</h1>
-						<p>An if branch renders one panel or the other. Toggling removes the unused branch from the DOM, so stateful components start fresh when the branch returns.</p>
-					</header>
-					<div class="demo">
-						<div class="row">
-							<ui.Button label="Toggle panel" primary={ true } onclick={ ToggleExample{} } />
-						</div>
-						if model.ShowExample {
-							<ui.Disclosure item={ model.FeatureDisclosure } />
-						} else {
-							<p class="server-count">The else branch is visible instead.</p>
+					<header class="page-head"><p class="eyebrow">primitive</p><h1>Accordion</h1></header>
+					<ui.Accordion>
+						for i, item := range model.Accordion {
+							<ui.AccordionItem open={ model.OpenAccordion == item.ID }>
+								<ui.AccordionTrigger
+									id={ dom.ID("accordion-trigger", i) }
+									controls={ dom.Ptr(dom.ID("accordion-panel", i)) }
+									expanded={ model.OpenAccordion == item.ID }
+									onclick={ AccordionClicked{ID: item.ID} }
+								>{ item.Title }</ui.AccordionTrigger>
+								<ui.AccordionPanel
+									id={ dom.ID("accordion-panel", i) }
+									labelledby={ dom.Ptr(dom.ID("accordion-trigger", i)) }
+									expanded={ model.OpenAccordion == item.ID }
+								>{ item.Body }</ui.AccordionPanel>
+							</ui.AccordionItem>
 						}
-					</div>
-					<Code title="Page code" code={ model.ConditionalsCode } />
+					</ui.Accordion>
 				}
 
-				if model.Page == "stateful-lists" {
-					<header class="page-head">
-						<p class="eyebrow">pattern</p>
-						<h1>Stateful lists</h1>
-						<p>Ten disclosures per page in a scrollable viewport. Paging removes the old items, so expanded rows start collapsed when they return.</p>
-					</header>
-					<div class="demo">
-						<div class="ui-disclosure-list">
-							for _, item := range model.Visible {
-								<ui.Disclosure key={ item.ID } item={ item } />
-							}
-						</div>
-						<div class="row">
-							<ui.Button label="Previous page" primary={ false } onclick={ PrevPage{} } />
-							<ui.Button label="Next page" primary={ true } onclick={ NextPage{} } />
-						</div>
-						<p class="server-count">{ model.PageLabel }</p>
-					</div>
-					<Code title="Page code" code={ model.StatefulListsCode } />
-				}
-
-				if model.Page == "server-state" {
-					<header class="page-head">
-						<p class="eyebrow">pattern</p>
-						<h1>Server state</h1>
-						<p>Increment on client stays inside the component. Increment on server emits a message to the app, which runs a procedure.</p>
-					</header>
-					<div class="demo">
-						<div class="row">
-							<ui.Counter label="Increment on client" />
-							<div class="ui-counter">
-								<ui.Button label="Increment on server" primary={ true } onclick={ IncrementClicked{} } />
-								<strong class="ui-counter-value">{ model.Count }</strong>
-							</div>
-						</div>
-					</div>
-					<Code title="Page code" code={ model.ServerCode } />
+				if model.Page == "combobox" {
+					<header class="page-head"><p class="eyebrow">primitive</p><h1>Combobox</h1></header>
+					<ui.Combobox
+						id="fruit"
+						items={ model.Fruits }
+						fieldlabel={ dom.Ptr("Fruit") }
+						value={ dom.Ptr(model.FruitValue) }
+						label={ dom.Ptr(model.FruitLabel) }
+						placeholder={ dom.Ptr("Pick a fruit") }
+						name={ dom.Ptr("fruit") }
+						clearable={ dom.BoolPtr(true) }
+						clearLabel={ dom.Ptr("Clear fruit") }
+					/>
+					<p class="server-count">Selected: { model.FruitLabel } ({ model.FruitValue })</p>
 				}
 
 				if model.Page == "notfound" {
-					<header class="page-head">
-						<p class="eyebrow">404</p>
-						<h1>Not found</h1>
-						<p>No page matches{ " " }{ model.Path }.</p>
-					</header>
-					<a class="nav-link" href="/" route>Back to the overview</a>
+					<header class="page-head"><p class="eyebrow">404</p><h1>Not found</h1></header>
+					<p>No page matches { model.Path }.</p>
 				}
 			</div>
 		</main>

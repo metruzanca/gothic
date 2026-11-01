@@ -1,54 +1,69 @@
 package ui
 
-import "github.com/metruzanca/gothic"
-
-type Tab struct {
-	Label string
-	Panel string
-}
+import (
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/dom"
+)
 
 type TabsProps struct {
-	Items  []Tab
-	Active *int
+	gothic.Children
 }
 
-type TabsModel struct {
-	Active int
+type TabsListProps struct {
+	gothic.Children
+	Label    *string
+	Onkeynav gothic.Msg
 }
 
-type TabClicked struct{ Index int }
-
-func (m TabsModel) Init() gothic.Cmd { return nil }
-
-func (m TabsModel) Update(msg gothic.Msg, props TabsProps) (TabsModel, gothic.Cmd) {
-	switch msg := msg.(type) {
-	case TabClicked:
-		m.Active = msg.Index
-	case gothic.PropsChanged:
-		if msg.Initial && props.Active != nil {
-			m.Active = *props.Active
-		}
-	}
-	if m.Active >= len(props.Items) {
-		m.Active = len(props.Items) - 1
-	}
-	if m.Active < 0 {
-		m.Active = 0
-	}
-	return m, nil
+type TabsTriggerProps struct {
+	gothic.Children
+	ID       string
+	Controls *string
+	Active   bool
+	Onclick  gothic.Msg
 }
 
-view Tabs(model TabsModel, props TabsProps) {
-	<div class="ui-tabs">
-		<div class="ui-tabs-list">
-			for i, item := range props.Items {
-				<button class="ui-tab" key={ i } class:active={ model.Active == i } onclick={ TabClicked{Index: i} }>{ item.Label }</button>
-			}
-		</div>
-		<div class="ui-tabs-panels">
-			for i, item := range props.Items {
-				<div class="ui-tab-panel" key={ i } class:hidden={ model.Active != i }>{ item.Panel }</div>
-			}
-		</div>
-	</div>
+type TabsPanelProps struct {
+	gothic.Children
+	ID         string
+	LabelledBy *string
+	Active     bool
+}
+
+view Tabs(props TabsProps) {
+	<div data-part="tabs">{ props.Children }</div>
+}
+
+view TabsList(props TabsListProps) {
+	<div
+		data-part="tabs-list"
+		role="tablist"
+		aria-label={ dom.Str(props.Label) }
+		onkeynav={ props.Onkeynav }
+	>{ props.Children }</div>
+}
+
+view TabsTrigger(props TabsTriggerProps) {
+	<button
+		data-part="tabs-trigger"
+		data-active={ dom.If(props.Active, "true", "") }
+		type="button"
+		role="tab"
+		id={ props.ID }
+		aria-selected={ dom.If(props.Active, "true", "false") }
+		aria-controls={ dom.Str(props.Controls) }
+		tabindex={ dom.If(props.Active, "0", "-1") }
+		onclick={ props.Onclick }
+	>{ props.Children }</button>
+}
+
+view TabsPanel(props TabsPanelProps) {
+	<div
+		data-part="tabs-panel"
+		data-active={ dom.If(props.Active, "true", "") }
+		role="tabpanel"
+		id={ props.ID }
+		aria-labelledby={ dom.Str(props.LabelledBy) }
+		hidden={ !props.Active }
+	>{ props.Children }</div>
 }

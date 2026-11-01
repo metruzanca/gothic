@@ -1,0 +1,39 @@
+package ui
+
+import (
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/dom"
+)
+
+type CheckboxProps struct {
+	gothic.Children
+	ID       string
+	Checked  bool
+	Name     *string
+	Value    *string
+	Disabled *bool
+	Required *bool
+	Onchange gothic.Msg
+}
+
+view Checkbox(props CheckboxProps) {
+	<label
+		data-part="checkbox"
+		data-checked={ dom.If(props.Checked, "true", "") }
+		data-disabled={ dom.If(props.Disabled != nil && *props.Disabled, "true", "") }
+	>
+		<input
+			data-part="checkbox-input"
+			type="checkbox"
+			id={ props.ID }
+			name={ dom.Str(props.Name) }
+			value={ dom.Str(props.Value) }
+			checked={ props.Checked }
+			disabled={ props.Disabled != nil && *props.Disabled }
+			required={ props.Required != nil && *props.Required }
+			onchange={ props.Onchange }
+		/>
+		<span data-part="checkbox-indicator" aria-hidden="true"></span>
+		<span data-part="checkbox-label">{ props.Children }</span>
+	</label>
+}

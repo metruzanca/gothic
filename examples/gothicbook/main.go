@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 
 	"github.com/metruzanca/gothic"
-	"github.com/metruzanca/gothic/ui"
 )
 
 //go:embed style.css
@@ -32,7 +31,6 @@ var pageOG []byte
 // stylesheet or social card from the Railway edge cache.
 var (
 	styleHref    = assetHref("/style.css", pageCSS)
-	uiStyleHref  = assetHref("/gothic-ui.css", ui.Styles)
 	ogImageHref  = assetHref("/og.png", pageOG)
 	wordmarkHref = assetHref("/gothic-wordmark.svg", pageWordmark)
 )
@@ -86,7 +84,6 @@ func main() {
 
 func mountApp(s *gothic.Server, counter *counterStore) {
 	RegisterProcedures(s, procedures{counter: counter})
-	ui.MountStyles(s)
 	s.Asset("/style.css", pageCSS)
 	s.Asset("/gothic-mark.svg", pageMark)
 	s.Asset("/gothic-wordmark.svg", pageWordmark)
@@ -100,7 +97,7 @@ func mountApp(s *gothic.Server, counter *counterStore) {
 			Description: "A tiny design system demo for the installable gothic UI kit.",
 			Image:       ogImageHref,
 			Icons:       []gothic.Icon{{Href: "/gothic-mark.svg", Type: "image/svg+xml"}},
-			Styles:      []string{uiStyleHref, styleHref},
+			Styles:      []string{styleHref},
 			ExtraHead:   themeScript,
 		}),
 	)

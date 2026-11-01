@@ -1,6 +1,6 @@
 # Gothicbook
 
-A tiny design system demo for the installable gothic UI kit.
+A small demo for the headless gothic UI kit.
 
 ## Run
 
@@ -17,37 +17,24 @@ versions.
 
 ## Shows
 
-- `ui.Button`, including a primary action that calls `browser.Alert`
-- `ui.Card`
-- `ui.Field` wrapping a controlled input
-- `ui.Tabs`, with controls that disable at the ends of the range
-- `ui.Accordion`
-- `ui.Disclosure` in a conditional branch and in a paginated list
-- `ui.Counter` as a purely client-side counter next to a server-backed counter
-  with the same layout, with `Counter` using `Button` internally
-- a short `.gth` usage snippet for each component
-- props structs behind the named tag props
-- a server-backed Button action that emits a message to the app, runs an RPC
-  procedure, and receives the new count as model state
-- a scrollable list with 20 disclosures across two pages of 10
-- a grouped sidebar with one page per component and pattern
+- `ui.Button` with primary, secondary, and disabled states
+- `ui.Field` with a label, description, and inline validation
+- `ui.Checkbox` and `ui.Switch` as controlled primitives
+- compound `ui.Tabs` with app-owned active state and `onkeynav`
+- compound `ui.Accordion` with app-owned open state
+- `ui.Combobox` with local filtering, keyboard navigation, and typed messages
+- a server-backed button that runs an RPC procedure
 - client-side routing with server-rendered deep links
 - a system-aware theme with a session-only manual toggle
 
-The client counter, Tabs, Accordion, and Disclosure stay purely client-side.
-The server action proves that the App owns procedures and components only emit
-action messages. Paging unmounts the old list items, so expanded disclosures
-reset when they return.
-
-No database, auth, or interactive playground.
+The kit ships no CSS. `style.css` styles `[data-part]` and `[data-*]` directly.
 
 ## Navigation and theme
 
 The sidebar links to flat, deep-linkable paths:
 
 - `/` overview
-- `/button`, `/card`, `/field`, `/tabs`, `/accordion`, `/disclosure`
-- `/conditionals`, `/stateful-lists`, `/server-state`
+- `/button`, `/field`, `/tabs`, `/accordion`, `/combobox`
 
 `NewModelAt` maps the request path to the initial page on the server, and a
 `LocationChanged` handler does the same on the client. Links use the `route`
@@ -62,14 +49,7 @@ script set through the `ExtraHead` field of `gothic.WithDocument`.
 
 The page is served by `gothic.MountApp`, so it ships a full document: title,
 description, favicon links, OpenGraph tags, and an absolute `og:image`. The
-1200x630 card is `assets/og.png`, rendered from `assets/og.html`. Re-render it
-with headless Chrome after changing the card:
-
-```sh
-cd assets
-google-chrome --headless=new --disable-gpu --hide-scrollbars \
-  --window-size=1200,630 --screenshot=og.png "file://$PWD/og.html"
-```
+1200x630 card is `assets/og.png`, rendered from `assets/og.html`.
 
 ## Deploy
 
@@ -81,26 +61,13 @@ Railway deploys this folder as the `Gothic UI` service:
 - no dashboard build or start command
 
 `railpack.json` owns the build. It installs `git`, then the build step drops
-the local replaces from `go.mod` and fetches `github.com/metruzanca/gothic`,
-`github.com/metruzanca/gothic/ui`, and `github.com/metruzanca/gothic/browser`
-at the deployed commit
-(`RAILWAY_GIT_COMMIT_SHA`, falling back to `main`). The module edits run in the
-build step because the install step only receives `go.mod` and `go.sum`, while
-the build step has the full source. The install step is intentionally a no-op.
+the local replaces from `go.mod` and fetches the released core, UI, and browser
+modules at the deployed commit.
 
-This means the demo runs the in-repo core rather than the released modules, so
-a push that changes the core, the UI, or this example redeploys it. Published
-module versions still matter for real consumers.
-
-The stylesheet, UI stylesheet, wordmark, and social card URLs carry a content
-hash (`?v=...`). The Railway edge caches static assets for hours, so the hash
-ensures a deploy is never served the previous file. Generated JavaScript
-modules and the runtime are served with `Cache-Control: no-store` for the same
-reason.
-
-Locally, the replaces in `go.mod` point at this checkout, so `go test ./...`
-here uses the working tree.
+The stylesheet, wordmark, and social card URLs carry a content hash (`?v=...`).
+The Railway edge caches static assets for hours, so the hash ensures a deploy is
+never served the previous file. Generated JavaScript modules and the runtime are
+served with `Cache-Control: no-store`.
 
 Do not add a `Dockerfile` to this folder. It would switch the service to the
 Docker builder and bypass `railpack.json`.
-

@@ -1,75 +1,95 @@
 # gothic UI kit
 
-A small, proof-of-concept design system for gothic. Stateful components ship
-precompiled Go renderers and JavaScript modules. Pure components are expanded
-from source by the gothic app generator. The kit lives in a separately
-versioned Go module.
+A headless, accessible component kit for gothic. The kit ships markup and
+behavior. It does not ship CSS, class names, or a stylesheet mount.
 
-## Install
-
-```sh
-go get github.com/metruzanca/gothic/ui
-```
-
-## Use
-
-Add the component package to the app prelude:
+Add the package to an app prelude:
 
 ```go
 //gothic:components github.com/metruzanca/gothic/ui
 ```
 
-Import the package in `main.go` and mount the styles:
+Every part carries `data-part="<primitive>-<part>"` and state is exposed through
+`data-*` attributes. Style them from your own stylesheet:
 
-```go
-import "github.com/metruzanca/gothic/ui"
-
-s := gothic.NewServer()
-ui.MountStyles(s)
+```css
+[data-part="button"] { /* ... */ }
+[data-part="button"][data-variant="primary"] { /* ... */ }
+[data-part="tabs-trigger"][data-active="true"] { /* ... */ }
 ```
 
-Use namespaced tags in `.gth` views:
+## Primitives
+
+**Pure and controlled**
+
+- `Button` with `type`, `variant`, `disabled`, `aria-label`, and `onclick`
+- `Field` with `id`, `label`, optional `description` and `error`, and children
+- `Checkbox` with `id`, `checked`, optional `name`, `value`, `disabled`, and `required`
+- `Switch` with the same props as `Checkbox`
+- `Tabs`, `TabsList`, `TabsTrigger`, `TabsPanel`
+- `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionPanel`
+
+**Stateful**
+
+- `Combobox` with local filtering, keyboard navigation, and a hidden input for
+  native forms
+
+The App owns state for the controlled primitives. For example:
 
 ```templ
-<ui.Button label="Save" primary={ true } onclick={ SaveClicked{} } />
-<ui.Button label="Cancel" primary={ false } onclick={ nil } />
-<ui.Card title="Card title" body="Card body" />
-<ui.Field label="Your name">
-	<input value={ model.Name } oninput={ NameChanged{Text: event.target.value} } />
-</ui.Field>
-<ui.Counter label="Increment on client" />
-<ui.Tabs items={ model.Tabs } />
-<ui.Accordion items={ model.Accordion } />
-<ui.Disclosure key={ item.ID } item={ item } />
+<ui.Tabs>
+	<ui.TabsList label={ dom.Ptr("Settings") } onkeynav={ TabKey{Key: event.key} }>
+		for i, tab := range model.Tabs {
+			<ui.TabsTrigger
+				id={ dom.ID("settings-tab", i) }
+				controls={ dom.Ptr(dom.ID("settings-panel", i)) }
+				active={ model.ActiveTab == tab.ID }
+				onclick={ TabClicked{ID: tab.ID} }
+			>{ tab.Label }</ui.TabsTrigger>
+		}
+	</ui.TabsList>
+	for i, tab := range model.Tabs {
+		<ui.TabsPanel
+			id={ dom.ID("settings-panel", i) }
+			labelledby={ dom.Ptr(dom.ID("settings-tab", i)) }
+			active={ model.ActiveTab == tab.ID }
+		>{ tab.Panel }</ui.TabsPanel>
+	}
+</ui.Tabs>
 ```
 
-`Button` emits its `onclick` message to the parent app through `emit`. The app
-owns the message handler and any server procedures it calls.
+## Combobox
 
-`Tabs` uses `[]ui.Tab`, `Accordion` uses `[]ui.AccordionItem`, and
-`Disclosure` uses `ui.DisclosureItem`. `Tabs` accepts an optional `active`
-pointer prop and seeds its active tab from it.
+```templ
+<ui.Combobox
+	id="fruit"
+	items={ model.Fruits }
+	fieldlabel={ dom.Ptr("Fruit") }
+	value={ dom.Ptr(model.FruitValue) }
+	label={ dom.Ptr(model.FruitLabel) }
+	placeholder={ dom.Ptr("Pick a fruit") }
+	name={ dom.Ptr("fruit") }
+	clearable={ dom.BoolPtr(true) }
+/>
+```
 
-## Components
+The component emits `ui.ComboboxValueChanged` to the App:
 
-Pure components:
+```go
+case ui.ComboboxValueChanged:
+	m.FruitValue = msg.Value
+	m.FruitLabel = msg.Label
+```
 
-- `Button` with `label`, `primary`, and `onclick gothic.Msg`
-- `Card` with `title` and `body`
-- `Field` with `label`, accepting App children through `gothic.Children`
+## Styling contract
 
-Stateful components:
-
-- `Counter` with `label`, keeping count in component state
-- `Tabs` with `items []Tab`
-- `Accordion` with `items []AccordionItem`
-- `Disclosure` with `item DisclosureItem`, keeping its expanded state
-
-`Counter` uses `Button` internally as a pure component. The app generator
-expands pure UI kit components into the consumer app. `Field` receives its
-children from the App view through `gothic.Children`, so events and state stay
-in the App. `Tabs` and `Accordion` react to prop changes through their
-component `Update`.
+- `data-part` identifies the part.
+- `data-open`, `data-active`, `data-checked`, `data-highlighted`,
+  `data-invalid`, `data-required`, `data-disabled`, and `data-expanded` expose
+  state.
+- `aria-*` attributes are always correct. Empty `aria-*` and `data-*` values
+  are omitted.
+- IDs are caller supplied. They must be unique per page.
 
 ## Development
 
@@ -79,17 +99,8 @@ The generated files are committed:
 - `ui_gothic.js`
 - `gothic-components.json`
 
-Regenerate them from the repository root with:
+Regenerate them from the repository root:
 
 ```sh
 go run ./cmd/gothic generate ./ui
 ```
-
-The UI module needs the core release that ships stateful components and the
-component runtime helpers. During local development, `ui/go.work` builds the UI
-module against this checkout. The `require` entry in `ui/go.mod` should be
-bumped when the next core release is tagged.
-
-## CSS
-
-`ui.MountStyles(s)` serves the kit stylesheet at `/gothic-ui.css`.

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,11 +39,8 @@ func TestGothicbookDocument(t *testing.T) {
 		`<meta name="description" content="A tiny design system demo for the installable gothic UI kit.">`,
 		`<meta property="og:title" content="Gothicbook">`,
 		`<meta property="og:site_name" content="Gothic">`,
-		`<meta property="og:description" content="A tiny design system demo for the installable gothic UI kit.">`,
 		`<meta property="og:image" content="` + ts.URL + `/og.png?v=`,
-		`<meta name="twitter:card" content="summary_large_image">`,
 		`<link rel="icon" href="/gothic-mark.svg" type="image/svg+xml">`,
-		`<link rel="stylesheet" href="/gothic-ui.css?v=`,
 		`<link rel="stylesheet" href="/style.css?v=`,
 		`data-theme-toggle`,
 		`prefers-color-scheme: dark`,
@@ -53,9 +49,12 @@ func TestGothicbookDocument(t *testing.T) {
 			t.Errorf("document missing %q\n\n%s", want, html)
 		}
 	}
+	if strings.Contains(html, "gothic-ui.css") {
+		t.Errorf("document should not load the removed UI stylesheet")
+	}
 }
 
-func TestGothicbookNavigation(t *testing.T) {
+func TestGothicbookPages(t *testing.T) {
 	s := gothic.NewServer()
 	mountApp(s, &counterStore{})
 	ts := httptest.NewServer(s)
@@ -65,9 +64,9 @@ func TestGothicbookNavigation(t *testing.T) {
 	for _, want := range []string{
 		`class="brand"`,
 		`<span class="brand-book">book</span>`,
-		`class="nav-group"`,
-		`A small design system for gothic`,
+		`A headless design system for gothic`,
 		`href="/button"`,
+		`href="/combobox"`,
 		`class="tile"`,
 	} {
 		if !strings.Contains(overview, want) {
@@ -77,55 +76,23 @@ func TestGothicbookNavigation(t *testing.T) {
 
 	pages := []struct {
 		path string
-		want string
+		want []string
 	}{
-		{"/button", `<h1>Button</h1>`},
-		{"/card", `<h1>Card</h1>`},
-		{"/field", `<h1>Field</h1>`},
-		{"/tabs", `<h1>Tabs</h1>`},
-		{"/accordion", `<h1>Accordion</h1>`},
-		{"/disclosure", `<h1>Disclosure</h1>`},
-		{"/conditionals", `<h1>Conditionals</h1>`},
-		{"/stateful-lists", `<h1>Stateful lists</h1>`},
-		{"/server-state", `<h1>Server state</h1>`},
+		{"/button", []string{`<h1>Button</h1>`, `data-part="button"`, `Server count:`}},
+		{"/field", []string{`<h1>Field</h1>`, `data-part="field"`, `data-part="checkbox"`, `data-part="switch"`}},
+		{"/tabs", []string{`<h1>Tabs</h1>`, `role="tablist"`, `role="tab"`, `role="tabpanel"`}},
+		{"/accordion", []string{`<h1>Accordion</h1>`, `data-part="accordion"`, `aria-expanded="true"`}},
+		{"/combobox", []string{`<h1>Combobox</h1>`, `role="combobox"`, `aria-controls="fruit-listbox"`, `name="fruit"`}},
 	}
 	for _, page := range pages {
 		html := getPage(t, ts.URL+page.path)
-		if !strings.Contains(html, page.want) {
-			t.Errorf("GET %s missing %q\n\n%s", page.path, page.want, html)
+		for _, want := range page.want {
+			if !strings.Contains(html, want) {
+				t.Errorf("GET %s missing %q\n\n%s", page.path, want, html)
+			}
 		}
 		if !strings.Contains(html, `class="sidebar"`) {
 			t.Errorf("GET %s missing the sidebar", page.path)
-		}
-	}
-
-	button := getPage(t, ts.URL+"/button")
-	if !strings.Contains(button, `class="ui-button`) {
-		t.Errorf("button page missing the button demo\n\n%s", button)
-	}
-	field := getPage(t, ts.URL+"/field")
-	if !strings.Contains(field, "Your name") || !strings.Contains(field, "field-input") {
-		t.Errorf("field page missing the field demo\n\n%s", field)
-	}
-	tabs := getPage(t, ts.URL+"/tabs")
-	if !strings.Contains(tabs, `class="ui-tabs`) || !strings.Contains(tabs, `{"Active":1}`) {
-		t.Errorf("tabs page missing the tabs demo\n\n%s", tabs)
-	}
-	if !strings.Contains(tabs, "nav-link active") {
-		t.Errorf("tabs nav item is not active\n\n%s", tabs)
-	}
-	if got := strings.Count(tabs, " disabled "); got != 1 {
-		t.Errorf("tabs page has %d disabled buttons, want 1\n\n%s", got, tabs)
-	}
-	lists := getPage(t, ts.URL+"/stateful-lists")
-	for _, want := range []string{
-		`data-gothic-key="1"`,
-		`Showing 1-10 of 20`,
-		`Design tokens`,
-		`Accessibility`,
-	} {
-		if !strings.Contains(lists, want) {
-			t.Errorf("stateful lists page missing %q\n\n%s", want, lists)
 		}
 	}
 
@@ -141,46 +108,36 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	for _, path := range []string{"/gothic-ui.css", "/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg", "/og.png"} {
+	for _, path := range []string{"/style.css", "/gothic-mark.svg", "/gothic-wordmark.svg", "/og.png"} {
 		if getPage(t, ts.URL+path) == "" {
 			t.Fatalf("%s is empty", path)
 		}
 	}
 
-	js := getPage(t, ts.URL+"/_gothic/modules/app_gothic.js")
+	appJS := getPage(t, ts.URL+"/_gothic/modules/app_gothic.js")
 	for _, want := range []string{
 		`from "./ui_gothic.js"`,
-		`mountTabs`,
-		`mountAccordion`,
-		`mountCounter`,
-		`mountDisclosure`,
-		`createDisclosure`,
-		`model.Visible`,
-		`FieldTextChanged`,
+		`mountCombobox`,
+		`createCombobox`,
+		`ComboboxValueChanged`,
 		`IncrementClicked`,
-		`ButtonClicked`,
-		`window.alert("Hello from Gothicbook")`,
 		`LocationChanged`,
 		`dispatch`,
 	} {
-		if !strings.Contains(js, want) {
-			t.Errorf("app JS missing %q\n\n%s", want, js)
+		if !strings.Contains(appJS, want) {
+			t.Errorf("app JS missing %q\n\n%s", want, appJS)
 		}
 	}
 
 	uiJS := getPage(t, ts.URL+"/_gothic/modules/ui_gothic.js")
 	for _, want := range []string{
-		`export function mountTabs`,
-		`export function mountAccordion`,
-		`export function mountCounter`,
-		`export function mountDisclosure`,
-		`export function createDisclosure`,
+		`export function mountCombobox`,
+		`export function createCombobox`,
 	} {
 		if !strings.Contains(uiJS, want) {
 			t.Errorf("UI JS missing %q", want)
 		}
 	}
-
 }
 
 func TestGothicbookServerState(t *testing.T) {
@@ -190,39 +147,10 @@ func TestGothicbookServerState(t *testing.T) {
 	defer ts.Close()
 
 	postRPC(t, ts.URL, "Increment", `[]`)
-	page := getPage(t, ts.URL+"/server-state")
+	page := getPage(t, ts.URL+"/button")
 	stripped := regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(page, "")
-	if !strings.Contains(stripped, `ui-counter-value">1</strong>`) {
+	if !strings.Contains(stripped, "Server count: 1") {
 		t.Fatalf("server count did not update\n\n%s", stripped)
-	}
-}
-
-func TestGothicbookPaginationSSR(t *testing.T) {
-	model := NewModelAt("/stateful-lists", 0)
-	model.ListPage = 1
-	model.Visible = model.PageTwo
-	model.PageLabel = "Showing 11-20 of 20"
-
-	var page strings.Builder
-	if err := App(model).Render(context.Background(), &page); err != nil {
-		t.Fatal(err)
-	}
-	html := page.String()
-	markup := regexp.MustCompile(`(?s)<script type="application/json".*?</script>`).ReplaceAllString(html, "")
-
-	for _, want := range []string{
-		`data-gothic-key="11"`,
-		`data-gothic-key="20"`,
-		`Tables`,
-		`Accessibility`,
-		`Showing 11-20 of 20`,
-	} {
-		if !strings.Contains(markup, want) {
-			t.Errorf("page two SSR missing %q\n\n%s", want, markup)
-		}
-	}
-	if strings.Contains(markup, "Design tokens") || strings.Contains(markup, "Validation") {
-		t.Errorf("page two SSR contains page one items\n\n%s", markup)
 	}
 }
 
