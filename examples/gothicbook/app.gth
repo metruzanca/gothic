@@ -15,11 +15,6 @@ type CodeProps struct {
 	Code  string
 }
 
-type VirtualRowData struct {
-	Title  string
-	Detail string
-}
-
 type Model struct {
 	Path              string
 	Page              string
@@ -47,8 +42,6 @@ type Model struct {
 	PageOne           []ui.DisclosureItem
 	PageTwo           []ui.DisclosureItem
 	Visible           []ui.DisclosureItem
-	VirtualRows       []VirtualRowData
-	VirtualCode       string
 }
 
 func NewModel(count int) Model {
@@ -236,22 +229,6 @@ func (p procedures) Increment(ctx context.Context) (int, error) {
 		PageOne:     sampleDisclosures(1, 10),
 		PageTwo:     sampleDisclosures(11, 10),
 		PageLabel:   "Showing 1-10 of 20",
-		VirtualRows: sampleVirtualRows(1000),
-		VirtualCode: `// Page
-<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />
-
-// Row view
-	view VirtualRow(row VirtualRowData) {
-		<div class="virtual-row-content">
-			<strong class="ui-virtual-title">{ row.Title }</strong>
-			<span class="ui-virtual-detail">{ row.Detail }</span>
-		</div>
-	}
-
-type VirtualRowData struct {
-	Title  string
-	Detail string
-}`,
 	}
 	m.ManyTabs = m.Tabs
 	startTab := 1
@@ -278,8 +255,6 @@ func NewModelAt(path string, count int) Model {
 		m.Page = "accordion"
 	case "/disclosure":
 		m.Page = "disclosure"
-	case "/virtual-list":
-		m.Page = "virtual-list"
 	case "/conditionals":
 		m.Page = "conditionals"
 	case "/stateful-lists":
@@ -292,18 +267,6 @@ func NewModelAt(path string, count int) Model {
 	return m
 }
 
-
-func sampleVirtualRows(count int) []VirtualRowData {
-	rows := make([]VirtualRowData, count)
-	for i := range rows {
-		n := i + 1
-		rows[i] = VirtualRowData{
-			Title:  fmt.Sprintf("Row %d", n),
-			Detail: fmt.Sprintf("Virtual item %d of %d", n, count),
-		}
-	}
-	return rows
-}
 
 func sampleDisclosures(from, count int) []ui.DisclosureItem {
 	titles := []string{
@@ -372,8 +335,6 @@ func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
 			m.Page = "accordion"
 		case "/disclosure":
 			m.Page = "disclosure"
-		case "/virtual-list":
-			m.Page = "virtual-list"
 		case "/conditionals":
 			m.Page = "conditionals"
 		case "/stateful-lists":
@@ -425,13 +386,6 @@ view Code(props CodeProps) {
 	</div>
 }
 
-view VirtualRow(row VirtualRowData) {
-	<div class="virtual-row-content">
-		<strong class="ui-virtual-title">{ row.Title }</strong>
-		<span class="ui-virtual-detail">{ row.Detail }</span>
-	</div>
-}
-
 view App(model Model) {
 	<div class="shell">
 		<aside class="sidebar">
@@ -449,7 +403,6 @@ view App(model Model) {
 				<a class="nav-link" href="/tabs" route class:active={ model.Page == "tabs" }>Tabs</a>
 				<a class="nav-link" href="/accordion" route class:active={ model.Page == "accordion" }>Accordion</a>
 				<a class="nav-link" href="/disclosure" route class:active={ model.Page == "disclosure" }>Disclosure</a>
-				<a class="nav-link" href="/virtual-list" route class:active={ model.Page == "virtual-list" }>Virtual list</a>
 				<p class="nav-group">Patterns</p>
 				<a class="nav-link" href="/conditionals" route class:active={ model.Page == "conditionals" }>Conditionals</a>
 				<a class="nav-link" href="/stateful-lists" route class:active={ model.Page == "stateful-lists" }>Stateful lists</a>
@@ -497,10 +450,6 @@ view App(model Model) {
 						<a class="tile" href="/disclosure" route>
 							<strong>Disclosure</strong>
 							<span>Reveal details on demand.</span>
-						</a>
-						<a class="tile" href="/virtual-list" route>
-							<strong>Virtual list</strong>
-							<span>Render only the visible window.</span>
 						</a>
 						<a class="tile" href="/conditionals" route>
 							<strong>Conditionals</strong>
@@ -597,18 +546,6 @@ view App(model Model) {
 						<ui.Disclosure item={ model.FeatureDisclosure } />
 					</div>
 					<Code title="Page code" code={ model.DisclosureCode } />
-				}
-
-				if model.Page == "virtual-list" {
-					<header class="page-head">
-						<p class="eyebrow">component</p>
-						<h1>Virtual list</h1>
-						<p>One thousand rows, with only the visible window in the DOM. Scroll inside the list to move the window.</p>
-					</header>
-					<div class="demo">
-						<ui.VirtualList items={ model.VirtualRows } height={ 432 } rowheight={ 36 } row={ VirtualRow } />
-					</div>
-					<Code title="Page code" code={ model.VirtualCode } />
 				}
 
 				if model.Page == "conditionals" {

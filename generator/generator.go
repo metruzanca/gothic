@@ -56,7 +56,6 @@ type Stateful struct {
 	App                   *goapp.App
 	Listable              bool
 	External              bool
-	Inline                bool
 	Children              bool
 	Slot                  bool
 	ImportAlias           string
@@ -73,12 +72,12 @@ func (c *Stateful) ComponentName() string {
 }
 
 // PropsGoType returns the Go type used for the component props, qualified for
-// external and inline components.
+// external components.
 func (c *Stateful) PropsGoType() string {
 	if c.PropsType == "" {
 		return ""
 	}
-	if c.External || c.Inline {
+	if c.External {
 		return c.ImportAlias + "." + c.PropsType
 	}
 	return c.PropsType
@@ -86,17 +85,11 @@ func (c *Stateful) PropsGoType() string {
 
 // GoModelType returns the Go type used for the component model.
 func (c *Stateful) GoModelType() string {
-	if c.Inline && c.ImportAlias != "" {
-		return c.ImportAlias + "." + c.ModelType
-	}
 	return c.ModelType
 }
 
 // GoConstructor returns the Go constructor name.
 func (c *Stateful) GoConstructor() string {
-	if c.Inline && c.ImportAlias != "" {
-		return c.ImportAlias + "." + c.Constructor
-	}
 	return c.Constructor
 }
 
@@ -161,7 +154,7 @@ func GenerateSingle(f *parser.File, app *goapp.App, opts Options) ([]byte, error
 	viewSpecs := viewImports(usesHTML, usesFmt)
 	seenExternal := map[string]bool{}
 	for _, comp := range opts.Stateful {
-		if !comp.External && !comp.Inline {
+		if !comp.External {
 			continue
 		}
 		key := comp.ImportAlias + " " + comp.ImportPath

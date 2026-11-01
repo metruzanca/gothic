@@ -62,33 +62,6 @@
         }
       ],
       "listable": true
-    },
-    {
-      "name": "VirtualList",
-      "go": "VirtualList",
-      "mount": "mountVirtualList",
-      "create": "createVirtualList",
-      "props_type": "VirtualListProps",
-      "props": [
-        {
-          "name": "Items",
-          "type": "[]any"
-        },
-        {
-          "name": "Height",
-          "type": "int"
-        },
-        {
-          "name": "RowHeight",
-          "type": "int"
-        },
-        {
-          "name": "Estimate",
-          "type": "*int"
-        }
-      ],
-      "listable": true,
-      "inline": true
     }
   ]
 }

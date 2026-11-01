@@ -20,28 +20,31 @@ h1 {
 	font-size: 28px;
 }
 
-.hint {
-	margin: 0 0 16px;
-	color: #57534e;
-}
-
-.ui-virtual-list {
-	margin-top: 16px;
-}
-
-.variable-list .ui-virtual-list {
-	height: clamp(160px, 30vh, 216px);
-}
-
 h2 {
 	margin: 32px 0 8px;
 	font-size: 20px;
 }
 
-.row-content {
+.hint {
+	margin: 0 0 16px;
+	color: #57534e;
+}
+
+.viewport {
+	overflow-y: auto;
+	border: 1px solid #d6d3d1;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.row {
 	display: flex;
 	align-items: center;
 	gap: 12px;
+	height: 36px;
+	padding: 0 12px;
+	box-sizing: border-box;
+	border-bottom: 1px solid #f5f5f4;
 }
 
 .title {
@@ -54,6 +57,11 @@ h2 {
 
 .other-row {
 	display: flex;
-	align-items: center;
-	gap: 12px;
+	flex-direction: column;
+	justify-content: center;
+	gap: 2px;
+	height: 56px;
+	padding: 0 12px;
+	box-sizing: border-box;
+	border-bottom: 1px solid #f5f5f4;
 }

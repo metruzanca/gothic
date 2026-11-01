@@ -1595,10 +1595,6 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
 			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "gothic" {
 				switch sel.Sel.Name {
-				case "AnySlice":
-					if len(e.Args) == 1 {
-						return g.expr(e.Args[0], ctx)
-					}
 				case "Batch", "Sequence":
 					args := make([]string, 0, len(e.Args))
 					for _, arg := range e.Args {

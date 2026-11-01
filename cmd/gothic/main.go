@@ -44,14 +44,13 @@ type result struct {
 }
 
 type libraryConfig struct {
-	Kind       string   `json:"kind"`
-	Package    string   `json:"package"`
-	Alias      string   `json:"alias"`
-	ModuleFile string   `json:"module_file"`
-	ModuleURL  string   `json:"module_url"`
-	GoFile     string   `json:"go_file"`
-	Manifest   string   `json:"manifest"`
-	Inline     []string `json:"inline"`
+	Kind       string `json:"kind"`
+	Package    string `json:"package"`
+	Alias      string `json:"alias"`
+	ModuleFile string `json:"module_file"`
+	ModuleURL  string `json:"module_url"`
+	GoFile     string `json:"go_file"`
+	Manifest   string `json:"manifest"`
 }
 
 type libraryManifest struct {
@@ -246,7 +245,7 @@ func generateDir(dir string, paths []string, out io.Writer) (int, int, error) {
 		return 0, 0, wrapFile(appSource.path, err)
 	}
 	for _, ext := range external {
-		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, Inline: ext.Inline, AcceptsChildren: ext.Children, ParamList: ext.Props}
+		registry[ext.Name] = &viewparser.Template{Name: ext.Name, Stateful: true, AcceptsChildren: ext.Children, ParamList: ext.Props}
 	}
 	for name, t := range externalPure {
 		if _, exists := registry[name]; exists {
@@ -583,14 +582,6 @@ func readLibraryConfig(dir string) (libraryConfig, bool, error) {
 	return cfg, true, nil
 }
 
-func inlineComponents(names []string) map[string]bool {
-	set := make(map[string]bool, len(names))
-	for _, name := range names {
-		set[name] = true
-	}
-	return set
-}
-
 func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Writer) (int, int, error) {
 	sort.Strings(paths)
 	type libFile struct {
@@ -660,7 +651,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 	}
 
 	stateful := make([]*generator.Stateful, 0, len(statefulViews))
-	inlineSet := inlineComponents(cfg.Inline)
 	seenStateful := map[string]bool{}
 	for _, sv := range statefulViews {
 		t := sv.t
@@ -683,12 +673,9 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		if err != nil {
 			return 0, 0, err
 		}
-		expanded := t
-		if !inlineSet[t.Name] {
-			expanded, err = viewparser.ExpandTemplateWithProps(t, pure, propsTypes)
-			if err != nil {
-				return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
-			}
+		expanded, err := viewparser.ExpandTemplateWithProps(t, pure, propsTypes)
+		if err != nil {
+			return 0, 0, fmt.Errorf("library component %s: %w", t.Name, err)
 		}
 		if len(expanded.Children) != 1 {
 			return 0, 0, fmt.Errorf("library component %s must have one root element", t.Name)
@@ -697,9 +684,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			return 0, 0, fmt.Errorf("library component %s root must be an element", t.Name)
 		}
 		name := t.Name
-		if children && !inlineSet[name] {
-			return 0, 0, fmt.Errorf("library component %s accepts children and must be inline", name)
-		}
 		constructor, constructorTakesProps := componentConstructor(sv.app.Commands, t.ParamList[0].Type)
 		stateful = append(stateful, &generator.Stateful{
 			Name:                  name,
@@ -716,7 +700,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 			View:                  expanded,
 			App:                   sv.app.ComponentApp(t.ParamList[0].Type),
 			Listable:              true,
-			Inline:                inlineSet[name],
 			Children:              children,
 			ModuleURL:             cfg.ModuleURL,
 		})
@@ -727,24 +710,18 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		preludes = append(preludes, f.prelude)
 	}
 
-	var precompiled []*generator.Stateful
-	for _, comp := range stateful {
-		if !comp.Inline {
-			precompiled = append(precompiled, comp)
-		}
-	}
 	goSrc, err := generator.GenerateLibrary(generator.LibraryOptions{
 		FileName:   filepath.Join(dir, "library.gth"),
 		Package:    "",
 		ModuleFile: cfg.ModuleFile,
 		ModuleURL:  cfg.ModuleURL,
 		Preludes:   preludes,
-		Stateful:   precompiled,
+		Stateful:   stateful,
 	})
 	if err != nil {
 		return 0, 0, err
 	}
-	jsSrc, err := appjs.GenerateComponents(precompiled, appjs.Options{
+	jsSrc, err := appjs.GenerateComponents(stateful, appjs.Options{
 		FileName:    filepath.Join(dir, "library.gth"),
 		RuntimeURL:  "/_gothic/runtime.js",
 		AllStateful: stateful,
@@ -761,7 +738,7 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		}
 		manifest.Components = append(manifest.Components, libraryComponent{
 			Name: comp.Name, Go: comp.GoName, Mount: comp.MountFunc, Create: comp.CreateFunc,
-			PropsType: comp.PropsType, Props: props, Listable: comp.Listable, Inline: comp.Inline, Children: comp.Children,
+			PropsType: comp.PropsType, Props: props, Listable: comp.Listable, Children: comp.Children,
 		})
 	}
 	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
@@ -778,221 +755,6 @@ func generateLibraryDir(dir string, paths []string, cfg libraryConfig, out io.Wr
 		return 0, 0, err
 	}
 	return n, len(paths), nil
-}
-
-func findRowSlot(nodes []viewparser.Node) *viewparser.ComponentCall {
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *viewparser.ComponentCall:
-			if n.Name == "RowSlot" {
-				return n
-			}
-		case *viewparser.Element:
-			if c := findRowSlot(n.Children); c != nil {
-				return c
-			}
-		case *viewparser.If:
-			if c := findRowSlot(n.Then); c != nil {
-				return c
-			}
-			if c := findRowSlot(n.Else); c != nil {
-				return c
-			}
-		case *viewparser.For:
-			if c := findRowSlot(n.Children); c != nil {
-				return c
-			}
-		}
-	}
-	return nil
-}
-
-func walkComponentCalls(nodes []viewparser.Node, fn func(*viewparser.ComponentCall)) {
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *viewparser.ComponentCall:
-			fn(n)
-		case *viewparser.Element:
-			walkComponentCalls(n.Children, fn)
-		case *viewparser.If:
-			walkComponentCalls(n.Then, fn)
-			walkComponentCalls(n.Else, fn)
-		case *viewparser.For:
-			walkComponentCalls(n.Children, fn)
-		}
-	}
-}
-
-func anySliceExpr(e ast.Expr) ast.Expr {
-	return &ast.CallExpr{
-		Fun: &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "gothic"},
-			Sel: &ast.Ident{Name: "AnySlice"},
-		},
-		Args: []ast.Expr{e},
-	}
-}
-
-func bakeRowNodes(nodes []viewparser.Node, rowName, rowParam, rowType string) (int, error) {
-	found := 0
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *viewparser.ComponentCall:
-			if n.Name != "RowSlot" {
-				continue
-			}
-			var itemExpr ast.Expr
-			for _, prop := range n.Props {
-				if prop.Name == "item" {
-					itemExpr = prop.Value
-				}
-			}
-			if itemExpr == nil {
-				return 0, fmt.Errorf("row placeholder must have an item prop")
-			}
-			typeExpr, err := parser.ParseExpr(rowType)
-			if err != nil {
-				return 0, fmt.Errorf("row component parameter type %s: %w", rowType, err)
-			}
-			n.Name = rowName
-			n.Props = []viewparser.Prop{{
-				Name: rowParam,
-				Value: &ast.TypeAssertExpr{
-					X:    itemExpr,
-					Type: typeExpr,
-				},
-			}}
-			found++
-		case *viewparser.Element:
-			n2, err := bakeRowNodes(n.Children, rowName, rowParam, rowType)
-			if err != nil {
-				return 0, err
-			}
-			found += n2
-		case *viewparser.If:
-			n2, err := bakeRowNodes(n.Then, rowName, rowParam, rowType)
-			if err != nil {
-				return 0, err
-			}
-			found += n2
-			n2, err = bakeRowNodes(n.Else, rowName, rowParam, rowType)
-			if err != nil {
-				return 0, err
-			}
-			found += n2
-		case *viewparser.For:
-			n2, err := bakeRowNodes(n.Children, rowName, rowParam, rowType)
-			if err != nil {
-				return 0, err
-			}
-			found += n2
-		}
-	}
-	return found, nil
-}
-
-type inlineRowGroup struct {
-	Name  string
-	Calls []*viewparser.ComponentCall
-}
-
-func inlineCalls(appView *viewparser.File, inlineName string) []*viewparser.ComponentCall {
-	var calls []*viewparser.ComponentCall
-	for _, t := range appView.Templates {
-		if t.Name != "App" {
-			continue
-		}
-		for _, call := range collectComponentCalls(t.Children) {
-			if call.Name == inlineName {
-				calls = append(calls, call)
-			}
-		}
-	}
-	return calls
-}
-
-func inlineRowGroups(calls []*viewparser.ComponentCall, inlineName string) ([]inlineRowGroup, error) {
-	order := []string{}
-	byName := map[string][]*viewparser.ComponentCall{}
-	for _, call := range calls {
-		rowName := ""
-		for _, prop := range call.Props {
-			if prop.Name != "row" {
-				continue
-			}
-			id, ok := prop.Value.(*ast.Ident)
-			if !ok {
-				return nil, fmt.Errorf("component %s: row must be a view name", inlineName)
-			}
-			rowName = id.Name
-		}
-		if rowName == "" {
-			return nil, fmt.Errorf("component %s: add row={ RowView }", inlineName)
-		}
-		if _, ok := byName[rowName]; !ok {
-			order = append(order, rowName)
-		}
-		byName[rowName] = append(byName[rowName], call)
-	}
-	groups := make([]inlineRowGroup, 0, len(order))
-	for _, name := range order {
-		groups = append(groups, inlineRowGroup{Name: name, Calls: byName[name]})
-	}
-	return groups, nil
-}
-
-func rewriteInlineCall(call *viewparser.ComponentCall, variantName string) {
-	call.Name = variantName
-	kept := make([]viewparser.Prop, 0, len(call.Props))
-	for _, prop := range call.Props {
-		switch prop.Name {
-		case "row":
-			continue
-		case "items":
-			prop.Value = anySliceExpr(prop.Value)
-		}
-		kept = append(kept, prop)
-	}
-	call.Props = kept
-}
-
-func reparseInlineTemplate(path, name string) (*viewparser.Template, error) {
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	appFile, err := viewparser.ParseApp(path, src)
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range appFile.View.Templates {
-		if t.Name == name {
-			return t, nil
-		}
-	}
-	return nil, fmt.Errorf("inline component %s has no view", name)
-}
-
-func inlineVariantName(inlineName, rowName string) string {
-	if rowName == "" {
-		return inlineName
-	}
-	return inlineName + "#" + viewparserName(rowName)
-}
-
-func inlinePrefix(alias, name, rowName string) string {
-	if rowName == "" {
-		return viewparserName(alias + name)
-	}
-	return viewparserName(alias + name + rowName)
-}
-
-func collectComponentCalls(nodes []viewparser.Node) []*viewparser.ComponentCall {
-	var calls []*viewparser.ComponentCall
-	walkComponentCalls(nodes, func(call *viewparser.ComponentCall) {
-		calls = append(calls, call)
-	})
-	return calls
 }
 
 func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*generator.Stateful, viewparser.ComponentSet, viewparser.PropsTypes, error) {
@@ -1020,13 +782,8 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 			return nil, nil, nil, fmt.Errorf("component package %s: missing alias in manifest", path)
 		}
 		statefulNames := map[string]bool{}
-		var inlineManifest []libraryComponent
 		for _, comp := range manifest.Components {
 			statefulNames[comp.Name] = true
-			if comp.Inline {
-				inlineManifest = append(inlineManifest, comp)
-				continue
-			}
 			props := make([]viewparser.Param, len(comp.Props))
 			for i, p := range comp.Props {
 				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
@@ -1083,153 +840,6 @@ func loadExternalComponents(s *source, appRegistry viewparser.ComponentSet) ([]*
 				pkgProps[name] = viewparser.PropsType{Name: name, Fields: params}
 			}
 		}
-		localPure := viewparser.ComponentSet{}
-		for _, f := range pureFiles {
-			for _, t := range f.appFile.View.Templates {
-				if statefulNames[t.Name] {
-					continue
-				}
-				localPure[t.Name] = t
-			}
-		}
-		for _, comp := range inlineManifest {
-			inlineName := manifest.Alias + "." + comp.Name
-			calls := inlineCalls(s.view, inlineName)
-			if len(calls) == 0 {
-				continue
-			}
-			var tmpl *viewparser.Template
-			var compApp *goapp.App
-			filePath := ""
-			for _, f := range pureFiles {
-				for _, t := range f.appFile.View.Templates {
-					if t.Name != comp.Name {
-						continue
-					}
-					tmpl = t
-					filePath = f.path
-					if len(t.ParamList) > 0 {
-						compApp = f.app.ComponentApp(t.ParamList[0].Type)
-					}
-				}
-			}
-			if tmpl == nil {
-				return nil, nil, nil, fmt.Errorf("component package %s: inline component %s has no view", path, comp.Name)
-			}
-			if len(tmpl.ParamList) == 0 || compApp == nil {
-				return nil, nil, nil, fmt.Errorf("component package %s: inline component %s has no model Init and Update", path, comp.Name)
-			}
-			modelType := tmpl.ParamList[0].Type
-			modelJSON, err := zeroModelJSON(compApp.Messages[modelType])
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
-			}
-			constructor, constructorTakesProps := componentConstructor(compApp.Commands, modelType)
-			props := make([]viewparser.Param, len(comp.Props))
-			for i, p := range comp.Props {
-				props[i] = viewparser.Param{Name: p.Name, Type: p.Type}
-			}
-			inlineRegistry := viewparser.ComponentSet{}
-			for name, t := range localPure {
-				inlineRegistry[name] = t
-			}
-			for name, t := range appRegistry {
-				inlineRegistry[name] = t
-			}
-			inlineProps := propsTypesFromMessages(s.app.Messages)
-			for name, spec := range pkgProps {
-				inlineProps[name] = spec
-			}
-			addInline := func(variantName, rowName string, view *viewparser.Template) error {
-				if err := viewparser.RejectSlots(view.Children); err != nil {
-					return fmt.Errorf("inline component %s: %w", comp.Name, err)
-				}
-				hasChildren, err := viewparser.MarkChildren(view)
-				if err != nil {
-					return fmt.Errorf("inline component %s: %w", comp.Name, err)
-				}
-				if comp.Children && !hasChildren {
-					return fmt.Errorf("inline component %s declares gothic.Children; render { props.Children } in its view", comp.Name)
-				}
-				if hasChildren && !comp.Children {
-					return fmt.Errorf("inline component %s renders props.Children but its props struct does not declare gothic.Children", comp.Name)
-				}
-				expanded, err := viewparser.ExpandTemplateWithProps(view, inlineRegistry, inlineProps)
-				if err != nil {
-					return fmt.Errorf("inline component %s: %w", comp.Name, err)
-				}
-				for i := range expanded.ParamList {
-					expanded.ParamList[i].Type = manifest.Alias + "." + expanded.ParamList[i].Type
-				}
-				expanded.Params = paramsString(expanded.ParamList)
-				prefix := inlinePrefix(manifest.Alias, comp.Name, rowName)
-				out = append(out, &generator.Stateful{
-					Name:                  variantName,
-					DisplayName:           comp.Name,
-					GoName:                "__gothic" + prefix + "Component",
-					ViewName:              "__gothic" + prefix + "View",
-					MountFunc:             "mount" + prefix,
-					CreateFunc:            "create" + prefix,
-					ModelType:             modelType,
-					ModelJSON:             modelJSON,
-					Constructor:           constructor,
-					ConstructorTakesProps: constructorTakesProps,
-					PropsType:             comp.PropsType,
-					Props:                 props,
-					View:                  expanded,
-					App:                   compApp,
-					Listable:              comp.Listable,
-					Inline:                true,
-					Children:              comp.Children,
-					Slot:                  hasChildren,
-					ImportAlias:           manifest.Alias,
-					ImportPath:            manifest.Package,
-					ModuleURL:             generator.ComponentsModuleURL(s.base),
-				})
-				return nil
-			}
-			if findRowSlot(tmpl.Children) == nil {
-				if err := addInline(inlineName, "", tmpl); err != nil {
-					return nil, nil, nil, err
-				}
-				continue
-			}
-			groups, err := inlineRowGroups(calls, inlineName)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			for _, group := range groups {
-				row, ok := appRegistry[group.Name]
-				if !ok {
-					return nil, nil, nil, fmt.Errorf("component %s: unknown row view %s", inlineName, group.Name)
-				}
-				if row.Stateful {
-					return nil, nil, nil, fmt.Errorf("component %s: row view %s must be pure", inlineName, group.Name)
-				}
-				if len(row.ParamList) != 1 {
-					return nil, nil, nil, fmt.Errorf("component %s: row view %s must take one parameter", inlineName, group.Name)
-				}
-				fresh, err := reparseInlineTemplate(filePath, comp.Name)
-				if err != nil {
-					return nil, nil, nil, fmt.Errorf("inline component %s: %w", comp.Name, err)
-				}
-				found, err := bakeRowNodes(fresh.Children, group.Name, row.ParamList[0].Name, row.ParamList[0].Type)
-				if err != nil {
-					return nil, nil, nil, fmt.Errorf("component %s: %w", inlineName, err)
-				}
-				if found == 0 {
-					return nil, nil, nil, fmt.Errorf("component %s: view has no row placeholder", inlineName)
-				}
-				variantName := inlineVariantName(inlineName, group.Name)
-				for _, call := range group.Calls {
-					rewriteInlineCall(call, variantName)
-				}
-				if err := addInline(variantName, group.Name, fresh); err != nil {
-					return nil, nil, nil, err
-				}
-			}
-		}
-
 		for _, f := range pureFiles {
 			for _, t := range f.appFile.View.Templates {
 				if statefulNames[t.Name] {

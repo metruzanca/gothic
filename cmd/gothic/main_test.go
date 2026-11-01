@@ -2,13 +2,10 @@ package main
 
 import (
 	"bytes"
-	"go/ast"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	viewparser "github.com/metruzanca/gothic/parser"
 )
 
 func TestGenerateReportsArtifacts(t *testing.T) {
@@ -61,6 +58,8 @@ func TestGenerateAppWithComponents(t *testing.T) {
 
 type Model struct{ Status string }
 
+type CardProps struct{ Text string }
+
 func (m Model) Init() Cmd { return nil }
 
 func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
@@ -71,8 +70,8 @@ view App(model Model) {
 `)
 	writeFile(t, dir, "card.gth", `package main
 
-view Card(text string) {
-	<p>{ text }</p>
+view Card(props CardProps) {
+	<p>{ props.Text }</p>
 }
 `)
 
@@ -99,7 +98,7 @@ view Card(text string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`text(root, "0", (model.Status));`} {
+	for _, want := range []string{`text(root, "0", ({Text: model.Status}).Text);`} {
 		if !strings.Contains(string(jsSrc), want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, jsSrc)
 		}
@@ -426,102 +425,6 @@ view App(model Model) {
 	} {
 		if !strings.Contains(string(appJS), want) {
 			t.Errorf("generated app JS missing %q\n\n%s", want, appJS)
-		}
-	}
-}
-
-func TestBakeInlineRowVariants(t *testing.T) {
-	appFile, err := viewparser.ParseViews("app.gth", []byte(`package main
-
-view RowA(row RowA) {
-	<span>{ row.Title }</span>
-}
-
-view RowB(row RowB) {
-	<strong>{ row.Name }</strong>
-}
-
-view App(model Model) {
-	<main>
-		<ui.VirtualList items={ model.Rows } height={ 432 } rowheight={ 36 } row={ RowA } />
-		<ui.VirtualList items={ model.Other } height={ 300 } rowheight={ 30 } row={ RowB } />
-	</main>
-}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	inlineSrc := `package ui
-
-view VirtualList(model VirtualListModel, props VirtualListProps) {
-	<div>
-		for i, item := range props.Items[0:1] {
-			<div key={ i }>
-				<RowSlot item={ item } />
-			</div>
-		}
-	</div>
-}
-`
-	registry := viewparser.ComponentSet{
-		"RowA": appFile.Templates[0],
-		"RowB": appFile.Templates[1],
-	}
-	calls := inlineCalls(appFile, "ui.VirtualList")
-	if len(calls) != 2 {
-		t.Fatalf("app calls = %d, want 2", len(calls))
-	}
-	groups, err := inlineRowGroups(calls, "ui.VirtualList")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(groups) != 2 || groups[0].Name != "RowA" || groups[1].Name != "RowB" {
-		t.Fatalf("groups = %+v", groups)
-	}
-	for _, group := range groups {
-		inline, err := viewparser.ParseViews("virtual.gth", []byte(inlineSrc))
-		if err != nil {
-			t.Fatal(err)
-		}
-		row := registry[group.Name]
-		found, err := bakeRowNodes(inline.Templates[0].Children, group.Name, row.ParamList[0].Name, row.ParamList[0].Type)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if found != 1 {
-			t.Fatalf("baked %d row slots, want 1", found)
-		}
-		variant := inlineVariantName("ui.VirtualList", group.Name)
-		for _, call := range group.Calls {
-			rewriteInlineCall(call, variant)
-		}
-		rowCalls := collectComponentCalls(inline.Templates[0].Children)
-		if len(rowCalls) != 1 || rowCalls[0].Name != group.Name {
-			t.Fatalf("row calls = %+v", rowCalls)
-		}
-		if _, ok := rowCalls[0].Props[0].Value.(*ast.TypeAssertExpr); !ok {
-			t.Fatalf("row arg = %T, want type assertion", rowCalls[0].Props[0].Value)
-		}
-	}
-
-	got := collectComponentCalls(appFile.Templates[2].Children)
-	wantNames := []string{"ui.VirtualList#RowA", "ui.VirtualList#RowB"}
-	if len(got) != 2 {
-		t.Fatalf("rewritten calls = %d, want 2", len(got))
-	}
-	for i, call := range got {
-		if call.Name != wantNames[i] {
-			t.Errorf("call %d name = %q, want %q", i, call.Name, wantNames[i])
-		}
-		for _, prop := range call.Props {
-			if prop.Name == "row" {
-				t.Errorf("call %d still has row prop", i)
-			}
-			if prop.Name == "items" {
-				if _, ok := prop.Value.(*ast.CallExpr); !ok {
-					t.Errorf("call %d items = %T, want AnySlice call", i, prop.Value)
-				}
-			}
 		}
 	}
 }

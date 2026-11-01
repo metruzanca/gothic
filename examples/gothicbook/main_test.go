@@ -69,7 +69,6 @@ func TestGothicbookNavigation(t *testing.T) {
 		`class="nav-group"`,
 		`A small design system for gothic`,
 		`href="/button"`,
-		`href="/virtual-list"`,
 		`class="tile"`,
 	} {
 		if !strings.Contains(overview, want) {
@@ -87,7 +86,6 @@ func TestGothicbookNavigation(t *testing.T) {
 		{"/tabs", `<h1>Tabs</h1>`},
 		{"/accordion", `<h1>Accordion</h1>`},
 		{"/disclosure", `<h1>Disclosure</h1>`},
-		{"/virtual-list", `<h1>Virtual list</h1>`},
 		{"/conditionals", `<h1>Conditionals</h1>`},
 		{"/stateful-lists", `<h1>Stateful lists</h1>`},
 		{"/server-state", `<h1>Server state</h1>`},
@@ -132,11 +130,6 @@ func TestGothicbookNavigation(t *testing.T) {
 		}
 	}
 
-	virtual := getPage(t, ts.URL+"/virtual-list")
-	if got := strings.Count(virtual, `class="ui-virtual-row"`); got != 12 {
-		t.Errorf("SSR rendered %d virtual rows, want 12", got)
-	}
-
 	notFound := getPage(t, ts.URL+"/does-not-exist")
 	if !strings.Contains(notFound, "Not found") || !strings.Contains(notFound, "No page matches") {
 		t.Errorf("missing not found page\n\n%s", notFound)
@@ -163,7 +156,6 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 		`mountCounter`,
 		`mountDisclosure`,
 		`createDisclosure`,
-		`mountuiVirtualList`,
 		`model.Visible`,
 		`SlotTextChanged`,
 		`IncrementClicked`,
@@ -190,17 +182,6 @@ func TestGothicbookAssetsAndModules(t *testing.T) {
 		}
 	}
 
-	compJS := getPage(t, ts.URL+"/_gothic/modules/app_components_gothic.js")
-	for _, want := range []string{
-		`export function mountuiVirtualList`,
-		`export function createuiVirtualList`,
-		`virtualRowsWindow(`,
-		`"resize"`,
-	} {
-		if !strings.Contains(compJS, want) {
-			t.Errorf("component JS missing %q", want)
-		}
-	}
 }
 
 func TestGothicbookServerState(t *testing.T) {

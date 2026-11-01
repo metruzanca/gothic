@@ -186,13 +186,3 @@ func lookupModule(path string) ([]byte, bool) {
 	data, ok := modules[path]
 	return data, ok
 }
-
-// AnySlice converts a typed slice to []any. It is used by inline components
-// that accept app-defined item types.
-func AnySlice[T any](items []T) []any {
-	out := make([]any, len(items))
-	for i, item := range items {
-		out[i] = item
-	}
-	return out
-}

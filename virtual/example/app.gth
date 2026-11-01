@@ -1,0 +1,108 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/metruzanca/gothic"
+	"github.com/metruzanca/gothic/dom"
+	"github.com/metruzanca/gothic/virtual"
+)
+
+const (
+	totalRows      = 5000
+	rowsViewport   = 432
+	rowHeight      = 36
+	otherViewport  = 392
+	otherRowHeight = 56
+)
+
+type RowData struct {
+	Title  string
+	Detail string
+}
+
+type OtherRowData struct {
+	Name string
+	Meta string
+}
+
+type Model struct {
+	Rows      []RowData
+	OtherRows []OtherRowData
+	RowsWin   virtual.Window
+	OtherWin  virtual.Window
+}
+
+type RowsScrolled struct{ Top int }
+type OtherScrolled struct{ Top int }
+
+func NewModel() Model {
+	rows := make([]RowData, totalRows)
+	for i := range rows {
+		n := i + 1
+		rows[i] = RowData{
+			Title:  fmt.Sprintf("Row %d", n),
+			Detail: fmt.Sprintf("Virtual row %d of %d", n, totalRows),
+		}
+	}
+	other := make([]OtherRowData, 200)
+	for i := range other {
+		n := i + 1
+		detail := fmt.Sprintf("Second list row %d", n)
+		if n%3 == 0 {
+			detail = detail + " with a longer description that wraps onto another line."
+		}
+		other[i] = OtherRowData{
+			Name: fmt.Sprintf("Item %d", n),
+			Meta: detail,
+		}
+	}
+	model := Model{Rows: rows, OtherRows: other}
+	model.RowsWin = virtual.WindowFor(0, rowHeight, rowsViewport, len(rows))
+	model.OtherWin = virtual.WindowFor(0, otherRowHeight, otherViewport, len(other))
+	return model
+}
+
+func (m Model) Init() gothic.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg gothic.Msg) (gothic.Model, gothic.Cmd) {
+	switch msg := msg.(type) {
+	case RowsScrolled:
+		m.RowsWin = virtual.WindowFor(msg.Top, rowHeight, rowsViewport, len(m.Rows))
+	case OtherScrolled:
+		m.OtherWin = virtual.WindowFor(msg.Top, otherRowHeight, otherViewport, len(m.OtherRows))
+	}
+	return m, nil
+}
+
+view App(model Model) {
+	<main class="app">
+		<h1>Virtualized list</h1>
+		<p class="hint">5,000 rows with only the visible window in the DOM. Scroll inside the list.</p>
+		<div class="viewport" style={ "height:" + dom.Px(rowsViewport) } onscroll={ RowsScrolled{Top: event.target.scrollTop} }>
+			<div style={ "height:" + dom.Px(model.RowsWin.Top) }></div>
+			for _, row := range model.Rows[model.RowsWin.Start : model.RowsWin.Start+model.RowsWin.Count] {
+				<div class="row" key={ row.Title }>
+					<strong class="title">{ row.Title }</strong>
+					<span class="detail">{ row.Detail }</span>
+				</div>
+			}
+			<div style={ "height:" + dom.Px(model.RowsWin.Bottom) }></div>
+		</div>
+
+		<h2>Second list</h2>
+		<p class="hint">The same helper drives a second list with different row markup and height.</p>
+		<div class="viewport other" style={ "height:" + dom.Px(otherViewport) } onscroll={ OtherScrolled{Top: event.target.scrollTop} }>
+			<div style={ "height:" + dom.Px(model.OtherWin.Top) }></div>
+			for _, row := range model.OtherRows[model.OtherWin.Start : model.OtherWin.Start+model.OtherWin.Count] {
+				<div class="other-row" key={ row.Name }>
+					<strong>{ row.Name }</strong>
+					<span>{ row.Meta }</span>
+				</div>
+			}
+			<div style={ "height:" + dom.Px(model.OtherWin.Bottom) }></div>
+		</div>
+	</main>
+}
