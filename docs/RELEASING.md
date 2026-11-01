@@ -15,7 +15,8 @@ with independent versions:
 Only release the modules that changed. Tags are never moved or deleted. If a
 release is wrong, publish a new patch version.
 
-Releases are initiated by the user only. Run the verification commands in
+The module map lives in [MODULES.md](MODULES.md). Releases are initiated by the
+user only. Run the verification commands in
 [AGENT.md](../AGENT.md) before tagging. Push `main` with each release, not only
 the tag, so the tagged commits are reachable from the default branch.
 

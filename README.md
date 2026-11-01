@@ -172,6 +172,7 @@ Guide:
 
 Reference:
 
+- [Modules](docs/MODULES.md)
 - [Syntax](docs/SYNTAX.md)
 - [Roadmap](docs/PLAN.md)
 - [Pitch](docs/PITCH.md)
