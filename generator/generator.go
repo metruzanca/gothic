@@ -388,6 +388,7 @@ type templateGen struct {
 	attrN         int
 	classN        int
 	focusN        int
+	scrollN       int
 	usesHTML      bool
 	usesFmt       bool
 }
@@ -513,6 +514,10 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 				idx := g.focusN
 				g.focusN++
 				static.WriteString(fmt.Sprintf(" data-gothic-focus=\"%d\"", idx))
+			case "scroll":
+				idx := g.scrollN
+				g.scrollN++
+				static.WriteString(fmt.Sprintf(" data-gothic-scroll=\"%d\"", idx))
 			case "value":
 				idx := g.attrN
 				g.attrN++
@@ -534,9 +539,21 @@ func (g *templateGen) writeElement(b *strings.Builder, el *parser.Element, isRoo
 				g.attrN++
 				static.WriteString(fmt.Sprintf(" data-gothic-attr-%d=%q", idx, a.Name))
 				flush()
-				g.emitWrite(b, " "+a.Name+"=\"")
-				g.emitEscapedExpr(b, a.Expr)
-				g.emitWrite(b, "\"")
+				if strings.HasPrefix(a.Name, "aria-") || strings.HasPrefix(a.Name, "data-") {
+					g.usesHTML = true
+					g.usesFmt = true
+					name := fmt.Sprintf("attrVal%d", idx)
+					fmt.Fprintf(b, "\t\t%s := fmt.Sprint(%s)\n", name, goExpr(a.Expr))
+					fmt.Fprintf(b, "\t\tif %s != \"\" {\n", name)
+					g.emitWrite(b, " "+a.Name+"=\"")
+					fmt.Fprintf(b, "\t\t\tif err := write(html.EscapeString(%s)); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n", name)
+					g.emitWrite(b, "\"")
+					b.WriteString("\t\t}\n")
+				} else {
+					g.emitWrite(b, " "+a.Name+"=\"")
+					g.emitEscapedExpr(b, a.Expr)
+					g.emitWrite(b, "\"")
+				}
 			}
 		case *parser.ClassToggleAttr:
 			idx := g.classN

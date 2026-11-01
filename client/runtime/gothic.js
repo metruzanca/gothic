@@ -429,7 +429,8 @@ export function attr(root, marker, value, skipComponents = true) {
     if (el.value !== next) el.value = next;
     return;
   }
-  if (value === false || value == null) {
+  const empty = value === "" && (name.startsWith("aria-") || name.startsWith("data-"));
+  if (value === false || value == null || empty) {
     el.removeAttribute(name);
   } else {
     el.setAttribute(name, String(value));
@@ -461,6 +462,23 @@ export function focus(root, marker, active, skipComponents = true) {
   } else {
     if (el.__gothicFocused) el.blur();
     el.__gothicFocused = false;
+  }
+}
+
+export function scroll(root, marker, active, skipComponents = true) {
+  const selector = `[data-gothic-scroll="${marker}"]`;
+  const el = findEl(root, selector, skipComponents);
+  if (!el) return;
+
+  if (active) {
+    if (!el.__gothicScrolled) {
+      el.__gothicScrolled = true;
+      setTimeout(() => {
+        if (el.__gothicScrolled) el.scrollIntoView({ block: "nearest" });
+      }, 0);
+    }
+  } else {
+    el.__gothicScrolled = false;
   }
 }
 
@@ -532,4 +550,6 @@ export function onLocal(root, marker, event, handler) { return on(root, marker, 
 export function attrLocal(root, marker, value) { return attr(root, marker, value, false); }
 export function classToggleLocal(root, marker, active) { return classToggle(root, marker, active, false); }
 export function focusLocal(root, marker, active) { return focus(root, marker, active, false); }
+
+export function scrollLocal(root, marker, active) { return scroll(root, marker, active, false); }
 export function listLocal(root, marker, render, hydrate, key) { return list(root, marker, render, hydrate, key, false); }

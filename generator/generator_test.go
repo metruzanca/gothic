@@ -626,3 +626,38 @@ view App(model Model) {
 		t.Errorf("generated Go should not render disabled with a value\n\n%s", generated)
 	}
 }
+
+func TestGenerateOmitsEmptyAriaAndData(t *testing.T) {
+	f, err := parser.ParseViews("app.gth", []byte(`package app
+
+view App(model Model) {
+	<div aria-expanded={ model.Open } data-active={ model.Active } class={ model.Label }></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := testApp(t)
+	out, err := generator.GenerateSingle(f, app, generator.Options{
+		FileName:   "app.gth",
+		ModuleBase: "app",
+		App:        app,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`attrVal0 := fmt.Sprint(model.Open)`,
+		`if attrVal0 != "" {`,
+		`attrVal1 := fmt.Sprint(model.Active)`,
+		`if attrVal1 != "" {`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated Go missing %q\n\n%s", want, src)
+		}
+	}
+	if strings.Contains(src, `if attrVal2 != ""`) {
+		t.Errorf("class should not use the aria/data omit path\n\n%s", src)
+	}
+}

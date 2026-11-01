@@ -71,6 +71,12 @@ func Sequence(cmds ...Cmd) Cmd {
 	return func() Msg { panic(commandOnly) }
 }
 
+// Emit sends msg to the App from a stateful component. It is only valid in a
+// component's Init, Update, or commands.
+func Emit(msg Msg) Cmd {
+	return func() Msg { panic("gothic: Emit runs in the browser") }
+}
+
 // Children marks a pure component props field that receives child content.
 //
 // Embed it in a pure component props struct to let the component accept

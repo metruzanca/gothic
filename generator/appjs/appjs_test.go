@@ -88,7 +88,7 @@ func TestGenerate(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, scroll, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow } from "/_gothic/runtime.js";`,
 		`const Ping = (...args) => rpc("Ping", ...args);`,
 		`on(root, "0", "click", (event) => dispatch({tag: "PingClicked"}));`,
 		`const renderList0 = list(root, "0", (m, __i0) => {`,
@@ -1028,6 +1028,7 @@ view Box(model BoxModel, props BoxProps) {
 
 type BoxProps struct{ Hint *string }
 type BoxModel struct{}
+type Clicked struct{}
 
 func (m BoxModel) Init() Cmd { return nil }
 func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) { return m, nil }
@@ -1831,7 +1832,7 @@ func (m Model) Update(msg Msg) (Model, Cmd) { return m, nil }
 	src := string(out)
 	for _, want := range []string{
 		`"height:" + px(model.Top)`,
-		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
+		`import { attr, classToggle, entries, focus, ifBlock, len, list, on, px, readState, scroll, rpc, routeParams, text, virtualRowsWindow, virtualVariableWindow, virtualWindow }`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
@@ -2201,6 +2202,122 @@ func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
 		`const child = inner;`,
 		`switch (child.tag) {`,
 		`m.Label = child.Label;`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated JS missing %q\n\n%s", want, src)
+		}
+	}
+}
+
+func TestGenerateEmitCommand(t *testing.T) {
+	view, err := parser.ParseViews("box.gth", []byte(`package ui
+
+view Box(model BoxModel) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseComponents("box.go", []byte(`package ui
+
+type BoxModel struct{}
+type Clicked struct{}
+
+func (m BoxModel) Init() Cmd { return nil }
+func (m BoxModel) Update(msg Msg) (BoxModel, Cmd) {
+	return m, gothic.Emit(Clicked{})
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.GenerateComponents([]*generator.Stateful{{
+		Name: "Box", View: view.Templates[0], App: app.ComponentApp("BoxModel"), ModelJSON: `{}`, ModelType: "BoxModel",
+		MountFunc: "mountBox", CreateFunc: "createBox",
+	}}, appjs.Options{FileName: "box.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `() => emit({tag: "Clicked"})`) {
+		t.Fatalf("generated JS missing Emit lowering\n\n%s", out)
+	}
+}
+
+func TestRejectEmitInApp(t *testing.T) {
+	view, err := parser.ParseViews("app.gth", []byte(`package app
+
+view App(model Model) {
+	<div></div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct{}
+
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) { return m, gothic.Emit(Clicked{}) }
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = appjs.Generate(view, app, appjs.Options{FileName: "app.gth"})
+	if err == nil || !strings.Contains(err.Error(), "gothic.Emit cannot be used in the App") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestGenerateStringsDomKeynavAndScroll(t *testing.T) {
+	view, err := parser.ParseViews("app.gth", []byte(`package app
+
+view App(model Model) {
+	<div>
+		<input value={ dom.Str(model.Name) } data-active={ dom.If(model.On, "yes", "") } onkeynav={ Key{} } />
+		<span scroll={ model.On } aria-expanded={ dom.True(model.On) }>x</span>
+	</div>
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := goapp.ParseSource("app.go", []byte(`package app
+
+type Model struct {
+	Name *string
+	On   bool
+	Text string
+}
+type Key struct{}
+func (m Model) Init() Cmd { return nil }
+func (m Model) Update(msg Msg) (Model, Cmd) {
+	m.Text = strings.ToLower(strings.TrimSpace(m.Text))
+	if strings.Contains(m.Text, "x") {
+		m.On = true
+	}
+	return m, nil
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := appjs.Generate(view, app, appjs.Options{FileName: "app.gth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(out)
+	for _, want := range []string{
+		`(model.Name ?? "")`,
+		`(model.On ? "yes" : "")`,
+		`toLowerCase()`,
+		`.trim()`,
+		`includes(String("x"))`,
+		`event.preventDefault();`,
+		`includes(event.key)`,
+		`scroll(root, "0", model.On)`,
+		`if (!msg) return;`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, src)
