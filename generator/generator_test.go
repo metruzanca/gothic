@@ -209,7 +209,7 @@ func TestGenerateAppExpandsComponents(t *testing.T) {
 		`write("<p")`,
 		`write(" class=\"status")`,
 		`<!--g:text:0:open-->`,
-		`(StatusProps{Text: model.Status}).Text`,
+		`(model.Status)`,
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated Go missing %q\n\n%s", want, src)

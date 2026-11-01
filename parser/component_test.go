@@ -93,7 +93,7 @@ func TestExpandAppSubstitutesProps(t *testing.T) {
 	}
 	interp := p.Children[0].(*parser.Interpolation)
 	got := exprText(t, interp.Expr)
-	if !strings.Contains(got, "StatusProps{Text: model.Status}") || !strings.HasSuffix(got, ".Text") {
+	if got != "(model.Status)" {
 		t.Fatalf("interpolation = %q", got)
 	}
 }
@@ -184,7 +184,7 @@ view App(model Model) {
 	loop := root.Children[0].(*parser.For)
 	span := loop.Children[0].(*parser.Element)
 	interp := span.Children[0].(*parser.Interpolation)
-	if got := exprText(t, interp.Expr); !strings.Contains(got, "Value: item") {
+	if got := exprText(t, interp.Expr); got != "(item)" {
 		t.Fatalf("interpolation = %q", got)
 	}
 }
@@ -597,14 +597,14 @@ view App(model Model) {
 	section := root.Children[0].(*parser.Element)
 	h2 := section.Children[0].(*parser.Element)
 	interp := h2.Children[0].(*parser.Interpolation)
-	if got := exprText(t, interp.Expr); !strings.Contains(got, `CardProps{Title: "Hello", Body: nil}`) {
+	if got := exprText(t, interp.Expr); got != `("Hello")` {
 		t.Fatalf("title expression = %q", got)
 	}
 	cond, ok := section.Children[1].(*parser.If)
 	if !ok {
 		t.Fatalf("conditional = %T", section.Children[1])
 	}
-	if got := exprText(t, cond.Cond); !strings.Contains(got, "Body: nil") {
+	if got := exprText(t, cond.Cond); got != "((*string)(nil)) != nil" {
 		t.Fatalf("condition = %q", got)
 	}
 }

@@ -98,7 +98,7 @@ view Card(props CardProps) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`text(root, "0", ({Text: model.Status}).Text);`} {
+	for _, want := range []string{`text(root, "0", (model.Status));`} {
 		if !strings.Contains(string(jsSrc), want) {
 			t.Errorf("generated JS missing %q\n\n%s", want, jsSrc)
 		}

@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"go/ast"
+	goparser "go/parser"
 	"strings"
 )
 
@@ -219,11 +220,14 @@ func expandComponentCall(call *ComponentCall, env map[string]ast.Expr, stack []s
 	if !ok {
 		return nil, fmt.Errorf("component %s: props type %s not found", call.Name, component.ParamList[0].Type)
 	}
-	literal, err := propsStructLiteral(component, spec, call, env)
+	literal, fieldValues, err := propsStructLiteral(component, spec, call, env)
 	if err != nil {
 		return nil, err
 	}
 	childEnv := map[string]ast.Expr{"props": literal}
+	for name, value := range fieldValues {
+		childEnv["props."+name] = value
+	}
 
 	children, err := expandNodes(call.Children, env, stack, components, propsTypes)
 	if err != nil {
@@ -286,18 +290,18 @@ func matchPropField(fields []Param, tag string) (Param, bool, error) {
 	return match, found == 1, nil
 }
 
-func propsStructLiteral(component *Template, spec PropsType, call *ComponentCall, env map[string]ast.Expr) (ast.Expr, error) {
+func propsStructLiteral(component *Template, spec PropsType, call *ComponentCall, env map[string]ast.Expr) (ast.Expr, map[string]ast.Expr, error) {
 	values := map[string]ast.Expr{}
 	for _, prop := range call.Props {
 		field, ok, err := matchPropField(spec.Fields, prop.Name)
 		if err != nil {
-			return nil, fmt.Errorf("component %s: %v", call.Name, err)
+			return nil, nil, fmt.Errorf("component %s: %v", call.Name, err)
 		}
 		if !ok {
-			return nil, fmt.Errorf("component %s: unknown prop %q", call.Name, prop.Name)
+			return nil, nil, fmt.Errorf("component %s: unknown prop %q", call.Name, prop.Name)
 		}
 		if _, exists := values[field.Name]; exists {
-			return nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
+			return nil, nil, fmt.Errorf("component %s: duplicate prop %q", call.Name, prop.Name)
 		}
 		values[field.Name] = substExpr(prop.Value, env)
 	}
@@ -309,14 +313,22 @@ func propsStructLiteral(component *Template, spec PropsType, call *ComponentCall
 		value, ok := values[field.Name]
 		if !ok {
 			if strings.HasPrefix(field.Type, "*") {
-				value = ast.NewIdent("nil")
+				typeExpr, err := goparser.ParseExpr(field.Type)
+				if err != nil {
+					return nil, nil, fmt.Errorf("component %s: invalid prop type %s", call.Name, field.Type)
+				}
+				value = &ast.CallExpr{
+					Fun:  &ast.ParenExpr{X: typeExpr},
+					Args: []ast.Expr{ast.NewIdent("nil")},
+				}
 			} else {
-				return nil, fmt.Errorf("component %s: missing prop %q", call.Name, field.Name)
+				return nil, nil, fmt.Errorf("component %s: missing prop %q", call.Name, field.Name)
 			}
 		}
+		values[field.Name] = value
 		elts = append(elts, &ast.KeyValueExpr{Key: ast.NewIdent(field.Name), Value: value})
 	}
-	return &ast.CompositeLit{Type: ast.NewIdent(spec.Name), Elts: elts}, nil
+	return &ast.CompositeLit{Type: ast.NewIdent(spec.Name), Elts: elts}, values, nil
 }
 
 func expandNodes(nodes []Node, env map[string]ast.Expr, stack []string, components ComponentSet, propsTypes PropsTypes) ([]Node, error) {
@@ -395,6 +407,11 @@ func substExpr(e ast.Expr, env map[string]ast.Expr) ast.Expr {
 	case *ast.BasicLit:
 		return &ast.BasicLit{Kind: e.Kind, Value: e.Value}
 	case *ast.SelectorExpr:
+		if id, ok := e.X.(*ast.Ident); ok {
+			if value, ok := env[id.Name+"."+e.Sel.Name]; ok {
+				return &ast.ParenExpr{X: value}
+			}
+		}
 		return &ast.SelectorExpr{X: substExpr(e.X, env), Sel: &ast.Ident{Name: e.Sel.Name}}
 	case *ast.CallExpr:
 		args := make([]ast.Expr, len(e.Args))

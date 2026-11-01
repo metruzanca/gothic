@@ -1561,6 +1561,13 @@ func (g *gen) expr(e ast.Expr, ctx exprCtx) (string, error) {
 		}
 		return x + "." + e.Sel.Name, nil
 	case *ast.CallExpr:
+		if call, ok := e.Fun.(*ast.ParenExpr); ok {
+			if _, ok := call.X.(*ast.StarExpr); ok && len(e.Args) == 1 {
+				if id, ok := e.Args[0].(*ast.Ident); ok && id.Name == "nil" {
+					return "null", nil
+				}
+			}
+		}
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "append" {
 			return "", g.exprErr(ctx, "assign the append result to a field", "append is only supported in assignment")
 		}
@@ -1820,6 +1827,16 @@ func (g *gen) domCall(name string, args []ast.Expr, ctx exprCtx) (string, error)
 			return "", g.exprErr(ctx, "pass one number", "dom.Px expects one argument")
 		}
 		return fmt.Sprintf("px(%s)", parts[0]), nil
+	case "Ptr":
+		if len(parts) != 1 {
+			return "", g.exprErr(ctx, "pass one value", "dom.Ptr expects one argument")
+		}
+		return parts[0], nil
+	case "BoolPtr":
+		if len(parts) != 1 {
+			return "", g.exprErr(ctx, "pass one bool", "dom.BoolPtr expects one argument")
+		}
+		return parts[0], nil
 	case "Str":
 		if len(parts) != 1 {
 			return "", g.exprErr(ctx, "pass one pointer", "dom.Str expects one argument")
