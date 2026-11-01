@@ -18,7 +18,7 @@ Current releases:
 | Module | Version |
 |---|---|
 | Core | `v0.5.0` |
-| UI kit | `ui/v0.3.0` |
+| UI kit | `ui/v0.4.0` |
 | Browser | `browser/v0.1.0` |
 | Virtual | `virtual/v0.1.0` |
 | Sessions | `session/v0.1.0` |
